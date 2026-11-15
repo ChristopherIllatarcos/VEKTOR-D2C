@@ -27,6 +27,8 @@ import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 import javax.swing.UnsupportedLookAndFeelException;
+import vista.archivo.DlgIndexacionDB;
+import vista.bodega.DlgParametrosInventario;
 import vista.bodega.DlgProductos;
 import vista.compras.DlgProveedores;
 import vista.ctacte.FrmCarteraCheques;
@@ -34,6 +36,9 @@ import vista.ctacte.FrmCartolaCliente;
 import vista.ctacte.FrmCartolaPorFecha;
 import vista.ctacte.FrmCuentasCobrarAlfabetico;
 import vista.ctacte.FrmEliminarRecibo;
+import vista.ventas.DlgParametrosVentaCliente;
+import vista.ventas.FrmComisionesVentas;
+import vista.ventas.FrmConsultaDocumento;
 import vista.ventas.FrmMantencionVentas;
 import vista.ventas.FrmVenta;
 
@@ -71,6 +76,7 @@ public class FrmPrincipal extends javax.swing.JFrame {
 
         // 5. Listeners para restaurar y minimizar
         minimizarPrincipal();
+        verificarRespaldoAutomatico();
 
         setVisible(true);
     }
@@ -181,8 +187,27 @@ public class FrmPrincipal extends javax.swing.JFrame {
                         System.out.println("Seleccionado módulo Ventas op: " + indexAccion);
                     }
                     case 2 -> {
-                        // TODO: Aquí irá la lógica para "2. Listado de Documentos"
-                        System.out.println("Abriendo módulo: Listado de Documentos");
+                        FrmConsultaDocumento frame = new FrmConsultaDocumento();
+
+                        // 1. Añadimos el frame al escritorio MDI
+                        escritorio.add(frame);
+
+                        // 2. Le damos su tamaño (por si el constructor no lo alcanzó a fijar antes del add)
+                        frame.setSize(980, 620);
+
+                        // 3. Lo centramos opcionalmente en el escritorio (o se ubica automáticamente)
+                        // Dimension escritorioSize = escritorio.getSize();
+                        // frame.setLocation((escritorioSize.width - frame.getWidth()) / 2, (escritorioSize.height - frame.getHeight()) / 2);
+                        // 4. Lo hacemos visible
+                        frame.setVisible(true);
+
+                        // 5. Lo seleccionamos y le damos el foco para que quede activo al frente
+                        try {
+                            frame.setSelected(true);
+                            frame.toFront();
+                        } catch (java.beans.PropertyVetoException ex) {
+                            ex.printStackTrace();
+                        }
                     }
                     case 3 -> {
 
@@ -193,15 +218,17 @@ public class FrmPrincipal extends javax.swing.JFrame {
                         frmVentas.setVisible(true);
 
                         try {
-                            frmVentas.setSelected(true); 
+                            frmVentas.setSelected(true);
                         } catch (java.beans.PropertyVetoException ex) {
                             ex.printStackTrace();
                         }
 
                     }
                     case 5 -> {
-                        // TODO: Cartola por Fecha
-                        System.out.println("Abriendo módulo: Cartola por Fecha");
+                        // Le pasamos 'this' (la ventana principal) y el panel de escritorio MDI
+                        DlgParametrosVentaCliente dlgParametros = new DlgParametrosVentaCliente(this, escritorio);
+                        dlgParametros.setLocationRelativeTo(this);
+                        dlgParametros.setVisible(true);
                     }
                     case 6 -> {
                         FrmArchivoClientes frmClientes = new FrmArchivoClientes();
@@ -209,10 +236,22 @@ public class FrmPrincipal extends javax.swing.JFrame {
                         frmClientes.setVisible(true);
                         try {
                             frmClientes.setSelected(true);
-                        } catch (java.beans.PropertyVetoException ex) { // <--- Cambiado de 'e' a 'ex'
+                        } catch (java.beans.PropertyVetoException ex) {
                             ex.printStackTrace();
                         }
                         break;
+                    }
+                    case 7 -> {
+                        FrmComisionesVentas frame = new FrmComisionesVentas();
+                        escritorio.add(frame);
+                        frame.setSize(980, 620);
+                        frame.setVisible(true);
+                        try {
+                            frame.setSelected(true);
+                            frame.toFront();
+                        } catch (java.beans.PropertyVetoException ex) {
+                            ex.printStackTrace();
+                        }
                     }
                 }
             });
@@ -318,27 +357,34 @@ public class FrmPrincipal extends javax.swing.JFrame {
             }
 
             // Acción para cada opción del menú Bodegas
-            final int index = i;
+            final int indexAccion = i;
+
             item.addActionListener(e -> {
-                if (index == 0) {
-                    // Opción 0: Fichero Productos (Principal) como JInternalFrame
-                    DlgProductos dlg = new DlgProductos();
-
-                    // Lo agregamos al panel de escritorio principal de tu aplicación MDI
-                    escritorio.add(dlg); // (Asegúrate de cambiar 'desktopPane' por el nombre de tu variable JDesktopPane si se llama diferente, ej: escritorio.add(dlg);)
-
-                    dlg.setVisible(true);
-                    try {
-                        dlg.setSelected(true); // Lo pasamos al frente si ya estaba abierto
-                    } catch (java.beans.PropertyVetoException ex) {
-                        ex.printStackTrace();
+                switch (indexAccion) {
+                    case 0 -> {
+                        // Opción 1: Registros de Productos
+                        DlgProductos dlg = new DlgProductos();
+                        escritorio.add(dlg);
+                        dlg.setVisible(true);
+                        try {
+                            dlg.setSelected(true);
+                        } catch (java.beans.PropertyVetoException ex) {
+                            ex.printStackTrace();
+                        }
                     }
-                } else {
-                    // Espacio para los demás ítems del menú de bodegas
-                    javax.swing.JOptionPane.showMessageDialog(this,
-                            "Módulo en desarrollo: " + itemsBodegas[index],
-                            "Información",
-                            javax.swing.JOptionPane.INFORMATION_MESSAGE);
+                    case 1, 2, 3, 5, 6, 7 -> {
+                        // Opciones en desarrollo
+                        javax.swing.JOptionPane.showMessageDialog(this,
+                                "Módulo en desarrollo: " + itemsBodegas[indexAccion],
+                                "Información",
+                                javax.swing.JOptionPane.INFORMATION_MESSAGE);
+                    }
+                    case 4 -> {
+                        // ¡Aquí está la opción 5: Inventario de Mercadería!
+                        Frame parentFrame = (Frame) SwingUtilities.getWindowAncestor(this);
+                        DlgParametrosInventario dlg = new DlgParametrosInventario(parentFrame);
+                        dlg.setVisible(true);
+                    }
                 }
             });
 
@@ -507,13 +553,38 @@ public class FrmPrincipal extends javax.swing.JFrame {
                     item.setMnemonic(java.awt.event.KeyEvent.VK_8);
             }
 
-            // Opción 6: Abrir ventana de Parámetros
-            if (i == 5) {
-                item.addActionListener(e -> {
-                    DlgParametros dlg = new DlgParametros(this, true);
-                    dlg.setVisible(true);
-                });
-            }
+            final int indexAccion = i + 1;
+
+            // Acción individual para cada opción del menú
+            item.addActionListener(e -> {
+                switch (indexAccion) {
+                    case 1 -> {
+                        this.dispose();
+                    }
+                    case 2 -> {
+
+                    }
+                    case 3 -> {
+
+                    }
+                    case 4 -> {
+
+                    }
+                    case 5 -> {
+
+                    }
+                    case 6 -> {
+
+                    }
+                    case 7 -> {
+                        DlgIndexacionDB dlgIndexar = new DlgIndexacionDB(this);
+                        dlgIndexar.setVisible(true);
+                    }
+                    case 8 -> {
+
+                    }
+                }
+            });
 
             menuArchivos.add(item);
         }
@@ -534,7 +605,7 @@ public class FrmPrincipal extends javax.swing.JFrame {
 
         menuBar.add(Box.createHorizontalStrut(30)); // Separación antes del título
 
-        JLabel lblTitulo = new JLabel("NEXUM");
+        JLabel lblTitulo = new JLabel("");
         lblTitulo.setFont(fuenteTitulo);
         lblTitulo.setForeground(new Color(100, 180, 255)); // aqui se cambia el color del t´tulo
 
@@ -558,49 +629,25 @@ public class FrmPrincipal extends javax.swing.JFrame {
         setJMenuBar(menuBar);
         revalidate();
         repaint();
-
-//        // ==========================================
-//        // DISTRIBUCIÓN EN LA BARRA
-//        // ==========================================
-//        menuBar.add(Box.createHorizontalStrut(95));
-//        menuBar.add(menuVentas);
-//        menuBar.add(Box.createHorizontalStrut(105));
-//        menuBar.add(menuCompras);
-//        menuBar.add(Box.createHorizontalStrut(105));
-//        menuBar.add(menuBodegas);
-//        menuBar.add(Box.createHorizontalStrut(105));
-//        menuBar.add(menuCtacte);
-//        menuBar.add(Box.createHorizontalStrut(105));
-//        menuBar.add(menuArchivos);
-//
-//        menuBar.add(Box.createHorizontalGlue());
-//
-//        JLabel lblTitulo = new JLabel("NEXUM");
-//        lblTitulo.setFont(fuenteTitulo);
-//        lblTitulo.setBorder(BorderFactory.createEmptyBorder(0, 10, 0, 15));
-//        menuBar.add(lblTitulo);
-//
-//        setJMenuBar(menuBar);
-//        revalidate();
-//        repaint();
     }
 
-//    private void inicializarVentanaPrincipal() {
-//        setTitle("");
-//        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-//        setExtendedState(JFrame.MAXIMIZED_BOTH); // Pantalla completa opcional
-//        setLayout(new BorderLayout());
-//
-//        // 1. Cargar tu barra de menú arriba
-//        configurarMenu();
-//
-//        // 2. Colocar el Panel Dashboard de bienvenida al centro
-//        PanelDashboard dashboard = new PanelDashboard();
-//        add(dashboard, BorderLayout.CENTER);
-//
-//        revalidate();
-//        repaint();
-//    }
+    private void verificarRespaldoAutomatico() {
+        // Lo ejecutamos en un hilo aparte para no congelar la apertura del menú principal
+        new Thread(() -> {
+            if (utilidades.ValidadorRespaldoUtils.esNecesarioRespaldoAutomatico()) {
+                // Opcion A: Ejecutar el respaldo de forma silenciosa o avisar al usuario
+                SwingUtilities.invokeLater(() -> {
+                    // Opcional: Mostrar un aviso discreto en la barra de estado inferior
+                    // lblEstadoSistema.setText("Aviso: Han pasado 15 días. Se recomienda ejecutar respaldo (Opción 7).");
+
+                    // Opcion B: Lanzar el diálogo de indexación/respaldo automáticamente
+                    DlgIndexacionDB dlgAuto = new DlgIndexacionDB((Frame) SwingUtilities.getWindowAncestor(this));
+                    // Si prefieres que sea completamente transparente, puedes adaptar la lógica del worker aquí.
+                });
+            }
+        }).start();
+    }
+
     /**
      * This method is called from within the constructor to initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is always

@@ -14,11 +14,11 @@ public class VentaDAO {
 
     // Método exclusivo para guardar la venta en la base de datos
     public boolean guardarVenta(int folioVenta, int codigoCliente, String fechaActual, int codigoVendedor, List<ItemVentaDTO> items) {
-        String sql = "INSERT INTO pventas_dbf (VCODIGO, VCLIENTE, VFECHA, VPXBARRA, VPXCANT, VPXPRECIO, VPXTOTAL, VVENDE) "
+        // Envolvemos los nombres de las columnas entre comillas dobles para que PostgreSQL respete las mayúsculas
+        String sql = "INSERT INTO pventas_dbf (\"VCODIGO\", \"VCLIENTE\", \"VFECHA\", \"VPXBARRA\", \"VPXCANT\", \"VPXPRECIO\", \"VPXTOTAL\", \"VVENDE\") "
                 + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
-        try (Connection conn = Conexion.getConnection(); // Usando tu método getConnection()
-                 PreparedStatement pstmt = conn.prepareStatement(sql)) {
+        try (Connection conn = Conexion.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
             for (ItemVentaDTO item : items) {
                 pstmt.setInt(1, folioVenta);

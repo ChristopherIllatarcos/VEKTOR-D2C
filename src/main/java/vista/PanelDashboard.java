@@ -1,4 +1,3 @@
-
 package vista;
 
 import java.awt.Color;
@@ -29,10 +28,9 @@ public class PanelDashboard extends javax.swing.JPanel {
         contenedor.setLayout(new BoxLayout(contenedor, BoxLayout.Y_AXIS));
         contenedor.setOpaque(false);
 
-        // Título principal
-        JLabel lblTitulo = new JLabel("NEXUM");
+        JLabel lblTitulo = new JLabel("<html><span style='color: #DCDCDC;'>VEKTOR</span> <span style='color: #64B4FF;'>D2C</span></html>");
         lblTitulo.setFont(new Font("Segoe UI", Font.BOLD, 26));
-        lblTitulo.setForeground(new Color(220, 220, 220));
+        lblTitulo.setHorizontalAlignment(JLabel.CENTER); // <--- Esto centra el HTML dentro del label
         lblTitulo.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         // ==========================================
