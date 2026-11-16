@@ -11,8 +11,29 @@ import java.util.List;
 
 public class VentaClienteDAO {
 
-    public List<VentaClienteDTO> obtenerVentasPorCliente(String fechaInicial, String fechaFinal) throws SQLException {
+    public List<VentaClienteDTO> obtenerVentasPorCliente(String fechaInicialStr, String fechaFinalStr) throws SQLException {
         List<VentaClienteDTO> lista = new ArrayList<>();
+
+        String fechaInicioBD = "";
+        String fechaFinBD = "";
+
+        try {
+            // Convertimos de formato pantalla (dd/MM/yyyy) a formato BD (yyyy-MM-dd)
+            java.time.format.DateTimeFormatter formatoPantalla = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy");
+            java.time.format.DateTimeFormatter formatoBD = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd");
+
+            if (fechaInicialStr != null && !fechaInicialStr.trim().isEmpty()) {
+                java.time.LocalDate dIni = java.time.LocalDate.parse(fechaInicialStr.trim(), formatoPantalla);
+                fechaInicioBD = dIni.format(formatoBD);
+            }
+
+            if (fechaFinalStr != null && !fechaFinalStr.trim().isEmpty()) {
+                java.time.LocalDate dFin = java.time.LocalDate.parse(fechaFinalStr.trim(), formatoPantalla);
+                fechaFinBD = dFin.format(formatoBD);
+            }
+        } catch (Exception e) {
+            System.err.println("Error al formatear fechas en ventas por cliente: " + e.getMessage());
+        }
 
         StringBuilder sql = new StringBuilder();
         sql.append("SELECT c.\"CLIRUT\", c.\"CLINOMBRE\", COUNT(v.\"VCODIGO\") as docs, SUM(v.\"VPXTOTAL\") as total ");
@@ -24,8 +45,8 @@ public class VentaClienteDAO {
 
         try (Connection conn = Conexion.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql.toString())) {
 
-            pstmt.setString(1, fechaInicial);
-            pstmt.setString(2, fechaFinal);
+            pstmt.setString(1, fechaInicioBD);
+            pstmt.setString(2, fechaFinBD);
 
             try (ResultSet rs = pstmt.executeQuery()) {
                 while (rs.next()) {

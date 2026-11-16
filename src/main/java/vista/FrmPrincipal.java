@@ -30,6 +30,8 @@ import javax.swing.UnsupportedLookAndFeelException;
 import vista.archivo.DlgIndexacionDB;
 import vista.bodega.DlgParametrosInventario;
 import vista.bodega.DlgProductos;
+import vista.bodega.FrmResultadoInventario;
+import vista.bodega.FrmVentasPorFamilia;
 import vista.compras.DlgProveedores;
 import vista.ctacte.FrmCarteraCheques;
 import vista.ctacte.FrmCartolaCliente;
@@ -37,8 +39,10 @@ import vista.ctacte.FrmCartolaPorFecha;
 import vista.ctacte.FrmCuentasCobrarAlfabetico;
 import vista.ctacte.FrmEliminarRecibo;
 import vista.ventas.DlgParametrosVentaCliente;
+import vista.ventas.FrmComisionesCobranza;
 import vista.ventas.FrmComisionesVentas;
 import vista.ventas.FrmConsultaDocumento;
+import vista.ventas.FrmFichaVendedores;
 import vista.ventas.FrmMantencionVentas;
 import vista.ventas.FrmVenta;
 
@@ -195,13 +199,8 @@ public class FrmPrincipal extends javax.swing.JFrame {
                         // 2. Le damos su tamaño (por si el constructor no lo alcanzó a fijar antes del add)
                         frame.setSize(980, 620);
 
-                        // 3. Lo centramos opcionalmente en el escritorio (o se ubica automáticamente)
-                        // Dimension escritorioSize = escritorio.getSize();
-                        // frame.setLocation((escritorioSize.width - frame.getWidth()) / 2, (escritorioSize.height - frame.getHeight()) / 2);
-                        // 4. Lo hacemos visible
                         frame.setVisible(true);
 
-                        // 5. Lo seleccionamos y le damos el foco para que quede activo al frente
                         try {
                             frame.setSelected(true);
                             frame.toFront();
@@ -243,6 +242,30 @@ public class FrmPrincipal extends javax.swing.JFrame {
                     }
                     case 7 -> {
                         FrmComisionesVentas frame = new FrmComisionesVentas();
+                        escritorio.add(frame);
+                        frame.setSize(980, 620);
+                        frame.setVisible(true);
+                        try {
+                            frame.setSelected(true);
+                            frame.toFront();
+                        } catch (java.beans.PropertyVetoException ex) {
+                            ex.printStackTrace();
+                        }
+                    }
+                    case 8 -> {
+                        FrmComisionesCobranza frame = new FrmComisionesCobranza();
+                        escritorio.add(frame);
+                        frame.setSize(980, 620);
+                        frame.setVisible(true);
+                        try {
+                            frame.setSelected(true);
+                            frame.toFront();
+                        } catch (java.beans.PropertyVetoException ex) {
+                            ex.printStackTrace();
+                        }
+                    }
+                    case 9 -> {
+                        FrmFichaVendedores frame = new FrmFichaVendedores();
                         escritorio.add(frame);
                         frame.setSize(980, 620);
                         frame.setVisible(true);
@@ -372,19 +395,61 @@ public class FrmPrincipal extends javax.swing.JFrame {
                             ex.printStackTrace();
                         }
                     }
-                    case 1, 2, 3, 5, 6, 7 -> {
-                        // Opciones en desarrollo
-                        javax.swing.JOptionPane.showMessageDialog(this,
-                                "Módulo en desarrollo: " + itemsBodegas[indexAccion],
-                                "Información",
-                                javax.swing.JOptionPane.INFORMATION_MESSAGE);
+                    case 1 -> {
+                        vista.bodega.FrmRegistroFamilias frm = new vista.bodega.FrmRegistroFamilias();
+                        escritorio.add(frm);
+                        frm.setVisible(true);
+                        try {
+                            frm.setSelected(true);
+                        } catch (java.beans.PropertyVetoException ex) {
+                            ex.printStackTrace();
+                        }
+
                     }
+                    case 2 -> {
+
+                    }
+
+                    case 3 -> {
+
+                    }
+
                     case 4 -> {
-                        // ¡Aquí está la opción 5: Inventario de Mercadería!
-                        Frame parentFrame = (Frame) SwingUtilities.getWindowAncestor(this);
-                        DlgParametrosInventario dlg = new DlgParametrosInventario(parentFrame);
-                        dlg.setVisible(true);
+                        String fechaActual = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"));
+
+                        FrmResultadoInventario frm = new FrmResultadoInventario(
+                                new ProductoVentaDAO().listarInventario(),
+                                fechaActual
+                        );
+
+                        escritorio.add(frm);
+                        frm.setVisible(true);
+                        try {
+                            frm.setSelected(true);
+                        } catch (java.beans.PropertyVetoException ex) {
+                            ex.printStackTrace();
+                        }
+
                     }
+                    case 5 -> {
+
+                    }
+
+                    case 6 -> {
+
+                    }
+
+                    case 7 -> {
+                        FrmVentasPorFamilia frm = new FrmVentasPorFamilia();
+                        escritorio.add(frm);
+                        frm.setLocation(50, 50);
+                        try {
+                            frm.setSelected(true);
+                        } catch (java.beans.PropertyVetoException ex) {
+                            ex.printStackTrace();
+                        }
+                    }
+
                 }
             });
 

@@ -2,7 +2,7 @@ package modelo;
 
 public class ComisionVendedorDTO {
 
-    private int codigoVendedor; // <- NUEVO
+    private int codigoVendedor;
     private int numeroVentas;
     private String nombreVendedor;
     private double ventaTotal;
@@ -41,4 +41,10 @@ public class ComisionVendedorDTO {
     public double getParticipacion() {
         return participacion;
     }
+
+    // Método setter para actualizar la participación calculada
+    public void setParticipacion(double participacion) {
+        this.participacion = participacion;
+    }
 }
+    

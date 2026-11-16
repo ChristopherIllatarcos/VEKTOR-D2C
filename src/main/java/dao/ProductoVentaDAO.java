@@ -229,4 +229,66 @@ public class ProductoVentaDAO {
             return false;
         }
     }
+
+    public java.util.List<modelo.InventarioItemDTO> listarInventario() {
+        java.util.List<modelo.InventarioItemDTO> listaItems = new java.util.ArrayList<>();
+        // Incluimos PXSTOCK y PXILA en la consulta SQL
+        String sql = "SELECT \"PXBARRA\", \"PXNOMBRE\", \"PXILA\", \"PXSTOCK\", \"PXVENTA0\" FROM pproduc_dbf ORDER BY \"PXNOMBRE\" ASC";
+
+        try (java.sql.Connection conn = conexion.Conexion.getConnection(); java.sql.PreparedStatement pstmt = conn.prepareStatement(sql); java.sql.ResultSet rs = pstmt.executeQuery()) {
+
+            while (rs.next()) {
+                String codigoStr = rs.getString("PXBARRA");
+                String descripcion = rs.getString("PXNOMBRE");
+                String familia = rs.getString("PXILA");
+                String stockStr = rs.getString("PXSTOCK");
+                String venta0Str = rs.getString("PXVENTA0");
+
+                // 1. Limpieza y conversión segura del precio
+                double precioFinal = 0.0;
+                if (venta0Str != null && !venta0Str.trim().isEmpty()) {
+                    try {
+                        String limpio = venta0Str.trim().replace(".", "").replace(",", ".");
+                        precioFinal = Double.parseDouble(limpio);
+                    } catch (Exception e) {
+                        precioFinal = 0.0;
+                    }
+                }
+
+                // 2. Limpieza y conversión segura del stock
+                double stockFinal = 0.0;
+                if (stockStr != null && !stockStr.trim().isEmpty()) {
+                    try {
+                        String stockLimpio = stockStr.trim().replace(".", "").replace(",", ".");
+                        stockFinal = Double.parseDouble(stockLimpio);
+                    } catch (Exception e) {
+                        stockFinal = 0.0;
+                    }
+                }
+
+                int codigo = 0;
+                try {
+                    if (codigoStr != null && !codigoStr.trim().isEmpty()) {
+                        codigo = Integer.parseInt(codigoStr.replaceAll("[^0-9]", ""));
+                    }
+                } catch (Exception e) {
+                    codigo = 0;
+                }
+
+                // 3. Creamos el DTO pasando los datos en el orden correcto que espera el modelo
+                modelo.InventarioItemDTO item = new modelo.InventarioItemDTO(
+                        codigo,
+                        descripcion != null ? descripcion.trim() : "",
+                        familia != null ? familia.trim() : "GENERAL",
+                        String.valueOf(stockFinal), // Stock real parseado
+                        String.valueOf(precioFinal) // Precio real parseado
+                );
+                listaItems.add(item);
+            }
+        } catch (java.sql.SQLException e) {
+            System.err.println("Error al listar inventario: " + e.getMessage());
+            e.printStackTrace();
+        }
+        return listaItems;
+    }
 }

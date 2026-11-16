@@ -30,7 +30,7 @@ public class FrmComisionesVentas extends JInternalFrame {
     private List<ComisionVendedorDTO> listaUltimaConsulta = new ArrayList<>();
 
     public FrmComisionesVentas() {
-        super("VEKTOR D2C - COMISIONES X VENTAS", true, false, false, false);
+        super("COMISIONES X VENTAS", true, false, false, false);
         this.comisionDAO = new ComisionDAO();
 
         initComponents();
@@ -323,10 +323,21 @@ public class FrmComisionesVentas extends JInternalFrame {
 
         try {
             listaUltimaConsulta = comisionDAO.obtenerComisionesPorFecha(fechaIni, fechaFin);
-            double sumaGlobalVentas = 0;
 
+            // PASO 1: Calculamos primero la Venta Total Global sumando a todos los vendedores
+            double sumaGlobalVentas = 0;
             for (ComisionVendedorDTO item : listaUltimaConsulta) {
                 sumaGlobalVentas += item.getVentaTotal();
+            }
+
+            // PASO 2: Recorremos nuevamente para calcular la participación real y rellenar la tabla
+            for (ComisionVendedorDTO item : listaUltimaConsulta) {
+                double participacion = 0.0;
+                if (sumaGlobalVentas > 0) {
+                    participacion = (item.getVentaTotal() / sumaGlobalVentas) * 100.0;
+                }
+                item.setParticipacion(participacion); 
+
                 modeloTabla.addRow(new Object[]{
                     item.getNumeroVentas(),
                     item.getNombreVendedor(),
@@ -336,6 +347,7 @@ public class FrmComisionesVentas extends JInternalFrame {
                 });
             }
 
+            // Mostramos el total global arriba a la derecha tal como en Clipper
             lblVentaTotalGlobal.setText("VENTA TOTAL: " + dfDinero.format(sumaGlobalVentas));
 
         } catch (SQLException ex) {
@@ -343,5 +355,4 @@ public class FrmComisionesVentas extends JInternalFrame {
             mostrarDialogoMsDos("ERROR SQL", "Error al consultar las comisiones en la base de datos.", JOptionPane.ERROR_MESSAGE);
         }
     }
-
 }

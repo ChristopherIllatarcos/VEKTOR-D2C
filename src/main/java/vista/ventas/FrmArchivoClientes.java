@@ -283,40 +283,70 @@ public class FrmArchivoClientes extends javax.swing.JInternalFrame {
             // Obtenemos el RUT de la columna 0 usando el índice del modelo
             String rut = (String) modeloTabla.getValueAt(filaModelo, 0);
 
-            int opcion = JOptionPane.showConfirmDialog(
-                    this,
-                    "¿Desea eliminar al cliente RUT: " + rut + "?",
-                    "Confirmar Eliminación",
-                    JOptionPane.YES_NO_OPTION,
-                    JOptionPane.WARNING_MESSAGE
-            );
+            // Creamos el diálogo modal con estilo Clipper
+            JDialog dialog = new JDialog((Frame) null, "Eliminar Cliente", true);
+            dialog.setSize(440, 160);
+            dialog.setLocationRelativeTo(this);
+            dialog.setResizable(false);
 
-            if (opcion == JOptionPane.YES_OPTION) {
-                // Llamamos al DAO que ya adaptamos para limpiar el RUT y borrar en pcliente_dbf
+            JPanel panel = new JPanel(null);
+            panel.setBackground(new Color(0, 0, 128)); // Azul clásico Clipper
+
+            JLabel lblTit = new JLabel("¿Desea eliminar al cliente RUT: " + rut + "?", JLabel.CENTER);
+            lblTit.setBounds(20, 20, 390, 20);
+            lblTit.setForeground(Color.YELLOW);
+            lblTit.setFont(new Font("Monospaced", Font.BOLD, 12));
+            panel.add(lblTit);
+
+            JButton btnSi = new JButton("[S] Sí, Eliminar");
+            btnSi.setBounds(40, 70, 170, 30);
+            btnSi.setBackground(new Color(128, 0, 0)); // Rojo oscuro consola
+            btnSi.setForeground(Color.WHITE);
+            btnSi.setFont(new Font("Monospaced", Font.BOLD, 11));
+            panel.add(btnSi);
+
+            JButton btnNo = new JButton("[Esc] Cancelar");
+            btnNo.setBounds(225, 70, 170, 30);
+            btnNo.setBackground(new Color(0, 0, 160)); // Azul oscuro
+            btnNo.setForeground(Color.WHITE);
+            btnNo.setFont(new Font("Monospaced", Font.BOLD, 11));
+            panel.add(btnNo);
+
+            // Acción de confirmar eliminación
+            btnSi.addActionListener(e -> {
+                dialog.dispose();
                 boolean exito = clienteDAO.eliminarCliente(rut);
 
                 if (exito) {
-                    // Primero recargamos los datos y la tabla para reflejar el cambio en pantalla
                     cargarClientes();
-
-                    // Luego mostramos la confirmación al usuario
-                    JOptionPane.showMessageDialog(this, "Cliente eliminado correctamente.");
+                    mostrarMensajeClipper("Cliente eliminado correctamente.", "AVISO");
                 } else {
-                    JOptionPane.showMessageDialog(
-                            this,
-                            "No se pudo eliminar el cliente de la base de datos.",
-                            "Error",
-                            JOptionPane.ERROR_MESSAGE
-                    );
+                    mostrarMensajeClipper("No se pudo eliminar el cliente de la base de datos.", "ERROR");
                 }
-            }
+            });
+
+            // Acción de cancelar
+            btnNo.addActionListener(e -> dialog.dispose());
+
+            // Soporte para cerrar con la tecla ESC
+            KeyAdapter escAdapter = new KeyAdapter() {
+                @Override
+                public void keyPressed(KeyEvent e) {
+                    if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
+                        dialog.dispose();
+                    }
+                }
+            };
+
+            dialog.addKeyListener(escAdapter);
+            btnSi.addKeyListener(escAdapter);
+            btnNo.addKeyListener(escAdapter);
+
+            dialog.add(panel);
+            dialog.setVisible(true);
+
         } else {
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Por favor, seleccione un cliente de la lista.",
-                    "Aviso",
-                    JOptionPane.WARNING_MESSAGE
-            );
+            mostrarMensajeClipper("Por favor, seleccione un cliente de la lista.", "AVISO");
         }
     }
 
@@ -324,139 +354,281 @@ public class FrmArchivoClientes extends javax.swing.JInternalFrame {
         int filaSeleccionada = tablaClientes.getSelectedRow();
 
         if (filaSeleccionada == -1) {
-            JOptionPane.showMessageDialog(this, "Selecciona un cliente de la lista para modificar, compadre.", "Atención", JOptionPane.WARNING_MESSAGE);
+            mostrarMensajeClipper("Selecciona un cliente de la lista para modificar.", "AVISO");
             return;
         }
 
-        String rutSeleccionado = tablaClientes.getValueAt(filaSeleccionada, 0).toString();
+        int filaModelo = tablaClientes.convertRowIndexToModel(filaSeleccionada);
+        String rutSeleccionado = (String) modeloTabla.getValueAt(filaModelo, 0);
+
         ClienteDTO clienteActual = clienteDAO.obtenerClientePorRut(rutSeleccionado);
 
         if (clienteActual == null) {
-            JOptionPane.showMessageDialog(this, "No se encontró la información del cliente en la base de datos.", "Error", JOptionPane.ERROR_MESSAGE);
+            mostrarMensajeClipper("No se encontró la información del cliente en la BD.", "ERROR");
             return;
         }
 
-        JPanel panel = new JPanel(new GridLayout(4, 2, 8, 12)); // 4 filas
-        panel.setBackground(new Color(0, 0, 128));
-        panel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+        JDialog dialog = new JDialog((Frame) null, "Modificar Cliente", true);
+        dialog.setSize(520, 310);
+        dialog.setLocationRelativeTo(this);
+        dialog.setResizable(false);
 
-        Font fuenteGrande = new Font("Monospaced", Font.BOLD, 16);
-        Color colorTexto = Color.YELLOW;
+        JPanel panel = new JPanel(null);
+        panel.setBackground(new Color(0, 0, 128));
+
+        JLabel lblTit = new JLabel("--- MODIFICAR CLIENTE ---", JLabel.CENTER);
+        lblTit.setBounds(60, 15, 400, 20);
+        lblTit.setForeground(Color.YELLOW);
+        lblTit.setFont(new Font("Monospaced", Font.BOLD, 14));
+        panel.add(lblTit);
+
+        Font fuenteTexto = new Font("Monospaced", Font.BOLD, 13);
+
+        JLabel lblR = new JLabel("R.U.T. (Fijo):");
+        lblR.setBounds(30, 55, 140, 25);
+        lblR.setForeground(Color.WHITE);
+        lblR.setFont(fuenteTexto);
+        panel.add(lblR);
 
         JTextField txtRutMod = new JTextField(clienteActual.getRut());
-        txtRutMod.setFont(fuenteGrande);
+        txtRutMod.setBounds(180, 55, 290, 26);
+        txtRutMod.setFont(fuenteTexto);
         txtRutMod.setEditable(false);
-        txtRutMod.setBackground(new Color(220, 220, 220));
+        txtRutMod.setBackground(new Color(100, 100, 100));
+        txtRutMod.setForeground(Color.LIGHT_GRAY);
+        panel.add(txtRutMod);
 
-        JTextField txtNombresMod = new JTextField(clienteActual.getNombres()); // Trae todo el CLINOMBRE completo
-        txtNombresMod.setFont(fuenteGrande);
+        JLabel lblNom = new JLabel("NOMBRE COMPLETO:");
+        lblNom.setBounds(30, 95, 140, 25);
+        lblNom.setForeground(Color.WHITE);
+        lblNom.setFont(fuenteTexto);
+        panel.add(lblNom);
+
+        JTextField txtNombresMod = new JTextField(clienteActual.getNombres());
+        txtNombresMod.setBounds(180, 95, 290, 26);
+        txtNombresMod.setBackground(new Color(0, 0, 160));
+        txtNombresMod.setForeground(Color.WHITE);
+        txtNombresMod.setCaretColor(Color.WHITE);
+        txtNombresMod.setFont(fuenteTexto);
+        panel.add(txtNombresMod);
+
+        JLabel lblS = new JLabel("SALDO:");
+        lblS.setBounds(30, 135, 140, 25);
+        lblS.setForeground(Color.WHITE);
+        lblS.setFont(fuenteTexto);
+        panel.add(lblS);
 
         JTextField txtSaldoMod = new JTextField(clienteActual.getSaldoActual() != null ? clienteActual.getSaldoActual().toString() : "0");
-        txtSaldoMod.setFont(fuenteGrande);
+        txtSaldoMod.setBounds(180, 135, 150, 26);
+        txtSaldoMod.setBackground(new Color(0, 0, 160));
+        txtSaldoMod.setForeground(Color.WHITE);
+        txtSaldoMod.setCaretColor(Color.WHITE);
+        txtSaldoMod.setFont(fuenteTexto);
+        panel.add(txtSaldoMod);
+
+        JLabel lblC = new JLabel("CUPO:");
+        lblC.setBounds(30, 175, 140, 25);
+        lblC.setForeground(Color.WHITE);
+        lblC.setFont(fuenteTexto);
+        panel.add(lblC);
 
         JTextField txtCupoMod = new JTextField(clienteActual.getCupo() != null ? clienteActual.getCupo().toString() : "1000000");
-        txtCupoMod.setFont(fuenteGrande);
-
-        JLabel lblR = new JLabel(" R.U.T. (Fijo) :");
-        lblR.setForeground(colorTexto);
-        lblR.setFont(fuenteGrande);
-
-        JLabel lblNom = new JLabel(" NOMBRE COMPLETO :");
-        lblNom.setForeground(colorTexto);
-        lblNom.setFont(fuenteGrande);
-
-        JLabel lblS = new JLabel(" SALDO :");
-        lblS.setForeground(colorTexto);
-        lblS.setFont(fuenteGrande);
-
-        JLabel lblC = new JLabel(" CUPO :");
-        lblC.setForeground(colorTexto);
-        lblC.setFont(fuenteGrande);
-
-        panel.add(lblR);
-        panel.add(txtRutMod);
-        panel.add(lblNom);
-        panel.add(txtNombresMod);
-        panel.add(lblS);
-        panel.add(txtSaldoMod);
-        panel.add(lblC);
+        txtCupoMod.setBounds(180, 175, 150, 26);
+        txtCupoMod.setBackground(new Color(0, 0, 160));
+        txtCupoMod.setForeground(Color.WHITE);
+        txtCupoMod.setCaretColor(Color.WHITE);
+        txtCupoMod.setFont(fuenteTexto);
         panel.add(txtCupoMod);
 
-        JScrollPane scrollPane = new JScrollPane(panel);
-        scrollPane.setPreferredSize(new Dimension(600, 320));
-        scrollPane.setBorder(null);
+        JButton btnGuardar = new JButton("Guardar [Enter]");
+        btnGuardar.setBounds(90, 220, 165, 30);
+        btnGuardar.setBackground(new Color(0, 100, 0));
+        btnGuardar.setForeground(Color.WHITE);
+        btnGuardar.setFont(new Font("Monospaced", Font.BOLD, 12));
+        panel.add(btnGuardar);
 
-        int resultado = JOptionPane.showConfirmDialog(
-                this, scrollPane, "MODIFICAR CLIENTE",
-                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE
-        );
+        JButton btnCancelar = new JButton("Cancelar [Esc]");
+        btnCancelar.setBounds(265, 220, 165, 30);
+        btnCancelar.setBackground(new Color(0, 0, 160));
+        btnCancelar.setForeground(Color.WHITE);
+        btnCancelar.setFont(new Font("Monospaced", Font.BOLD, 12));
+        panel.add(btnCancelar);
 
-        if (resultado == JOptionPane.OK_OPTION) {
+        java.awt.event.ActionListener guardarAccion = e -> {
             String nombresCompleto = txtNombresMod.getText().trim().toUpperCase();
 
             if (nombresCompleto.isEmpty()) {
-                JOptionPane.showMessageDialog(this, "El Nombre Completo no puede quedar vacío.", "Error", JOptionPane.ERROR_MESSAGE);
+                mostrarMensajeClipper("El Nombre Completo no puede quedar vacío.", "ERROR");
                 return;
             }
 
             try {
-                java.math.BigDecimal saldo = new java.math.BigDecimal(txtSaldoMod.getText().trim());
-                java.math.BigDecimal cupo = new java.math.BigDecimal(txtCupoMod.getText().trim());
+                java.math.BigDecimal saldo = new java.math.BigDecimal(txtSaldoMod.getText().trim().replace(",", "."));
+                java.math.BigDecimal cupo = new java.math.BigDecimal(txtCupoMod.getText().trim().replace(",", "."));
 
                 ClienteDTO clienteModificado = new ClienteDTO();
                 clienteModificado.setRut(rutSeleccionado);
-                clienteModificado.setNombres(nombresCompleto); // 👈 Todo el bloque unificado directo a CLINOMBRE
+                clienteModificado.setNombres(nombresCompleto);
                 clienteModificado.setSaldoActual(saldo);
                 clienteModificado.setCupo(cupo);
 
                 boolean exito = clienteDAO.actualizarCliente(clienteModificado);
+                dialog.dispose();
 
                 if (exito) {
-                    JOptionPane.showMessageDialog(this, "¡Cliente modificado correctamente!");
                     cargarClientes();
+                    mostrarMensajeClipper("¡Cliente modificado correctamente!", "AVISO");
                 } else {
-                    JOptionPane.showMessageDialog(this, "No se pudo actualizar el registro en la base de datos.", "Error", JOptionPane.ERROR_MESSAGE);
+                    mostrarMensajeClipper("No se pudo actualizar el registro en la BD.", "ERROR");
                 }
 
-            } catch (NumberFormatException e) {
-                JOptionPane.showMessageDialog(this, "Los campos de Saldo y Cupo deben ser numéricos válidos.", "Error", JOptionPane.ERROR_MESSAGE);
+            } catch (NumberFormatException ex) {
+                mostrarMensajeClipper("Los campos de Saldo y Cupo deben ser numéricos.", "ERROR");
             }
-        }
+        };
+
+        btnGuardar.addActionListener(guardarAccion);
+        txtNombresMod.addActionListener(guardarAccion);
+        txtSaldoMod.addActionListener(guardarAccion);
+        txtCupoMod.addActionListener(guardarAccion);
+        btnCancelar.addActionListener(e -> dialog.dispose());
+
+        // Solución definitiva global para la tecla ESC usando el RootPane de la ventana
+        KeyStroke escapeKeyStroke = KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0, false);
+        dialog.getRootPane().registerKeyboardAction(e -> dialog.dispose(), escapeKeyStroke, JComponent.WHEN_IN_FOCUSED_WINDOW);
+
+        dialog.add(panel);
+        dialog.setVisible(true);
     }
 
     private void buscarCliente() {
-        String rutBuscado = JOptionPane.showInputDialog(this, "Ingrese R.U.T. a buscar (Ej: 12345678-9):");
+        // Creamos un JDialog personalizado estilo Clipper para la entrada de texto
+        JDialog dialog = new JDialog((Frame) null, "Buscar Cliente", true);
+        dialog.setSize(440, 170);
+        dialog.setLocationRelativeTo(this);
+        dialog.setResizable(false);
 
-        if (rutBuscado != null && !rutBuscado.trim().isEmpty()) {
-            String busquedaLimpia = rutBuscado.trim().toLowerCase();
-            boolean encontrado = false;
+        JPanel panel = new JPanel(null);
+        panel.setBackground(new Color(0, 0, 128)); // Azul clásico Clipper
 
-            // 1. Buscamos primero dentro de los registros cargados en la JTable
-            for (int i = 0; i < modeloTabla.getRowCount(); i++) {
-                String rutTabla = (String) modeloTabla.getValueAt(i, 0); // Columna del RUT
-                String nombreTabla = (String) modeloTabla.getValueAt(i, 1); // Columna del Nombre (por si acaso quieren buscar por nombre también)
+        JLabel lblTit = new JLabel("--- BUSCAR CLIENTE (RUT / NOMBRE) ---", JLabel.CENTER);
+        lblTit.setBounds(20, 15, 390, 20);
+        lblTit.setForeground(Color.YELLOW);
+        lblTit.setFont(new Font("Monospaced", Font.BOLD, 12));
+        panel.add(lblTit);
 
-                // Comparamos si coincide el RUT o si contiene parte del texto buscado
-                if ((rutTabla != null && rutTabla.toLowerCase().contains(busquedaLimpia))
-                        || (nombreTabla != null && nombreTabla.toLowerCase().contains(busquedaLimpia))) {
+        JTextField txtBusqueda = new JTextField();
+        txtBusqueda.setBounds(30, 45, 370, 26);
+        txtBusqueda.setBackground(new Color(0, 0, 160));
+        txtBusqueda.setForeground(Color.WHITE);
+        txtBusqueda.setCaretColor(Color.WHITE);
+        txtBusqueda.setFont(new Font("Monospaced", Font.BOLD, 12));
+        panel.add(txtBusqueda);
 
-                    tablaClientes.setRowSelectionInterval(i, i);
-                    tablaClientes.scrollRectToVisible(tablaClientes.getCellRect(i, 0, true));
-                    encontrado = true;
-                    break; // Encontramos la coincidencia y salimos del ciclo
+        JButton btnBuscar = new JButton("Buscar [Enter]");
+        btnBuscar.setBounds(50, 85, 150, 30);
+        btnBuscar.setBackground(new Color(0, 100, 0)); // Verde oscuro clásico
+        btnBuscar.setForeground(Color.WHITE);
+        btnBuscar.setFont(new Font("Monospaced", Font.BOLD, 11));
+        panel.add(btnBuscar);
+
+        JButton btnCancelar = new JButton("Cancelar [Esc]");
+        btnCancelar.setBounds(220, 85, 150, 30);
+        btnCancelar.setBackground(new Color(0, 0, 160));
+        btnCancelar.setForeground(Color.WHITE);
+        btnCancelar.setFont(new Font("Monospaced", Font.BOLD, 11));
+        panel.add(btnCancelar);
+
+        // Lógica de búsqueda al presionar Enter o hacer clic en Buscar
+        java.awt.event.ActionListener realizarBusqueda = e -> {
+            String rutBuscado = txtBusqueda.getText().trim();
+            if (!rutBuscado.isEmpty()) {
+                dialog.dispose();
+                String busquedaLimpia = rutBuscado.toLowerCase();
+                boolean encontrado = false;
+
+                // 1. Buscamos dentro de los registros cargados en la JTable
+                for (int i = 0; i < modeloTabla.getRowCount(); i++) {
+                    String rutTabla = (String) modeloTabla.getValueAt(i, 0);
+                    String nombreTabla = (String) modeloTabla.getValueAt(i, 1);
+
+                    if ((rutTabla != null && rutTabla.toLowerCase().contains(busquedaLimpia))
+                            || (nombreTabla != null && nombreTabla.toLowerCase().contains(busquedaLimpia))) {
+
+                        tablaClientes.setRowSelectionInterval(i, i);
+                        tablaClientes.scrollRectToVisible(tablaClientes.getCellRect(i, 0, true));
+                        encontrado = true;
+                        break;
+                    }
+                }
+
+                // 2. Si no se encontró, mostramos el aviso con estilo Clipper
+                if (!encontrado) {
+                    mostrarMensajeClipper("No se encontró ningún cliente con: " + rutBuscado, "AVISO");
                 }
             }
+        };
 
-            // 2. Si no se encontró en la tabla visual, podemos buscar directamente en el DAO o avisar
-            if (!encontrado) {
-                // Opcional: Podríamos hacer una consulta rápida al DAO si manejas una búsqueda general,
-                // pero por lo pronto avisamos de forma limpia al usuario:
-                JOptionPane.showMessageDialog(this,
-                        "No se encontró ningún cliente con el criterio: " + rutBuscado,
-                        "Cliente no encontrado",
-                        JOptionPane.WARNING_MESSAGE);
+        btnBuscar.addActionListener(realizarBusqueda);
+        txtBusqueda.addActionListener(realizarBusqueda);
+        btnCancelar.addActionListener(e -> dialog.dispose());
+
+        // Soporte para cerrar o cancelar con la tecla ESC
+        java.awt.event.KeyAdapter escAdapter = new java.awt.event.KeyAdapter() {
+            @Override
+            public void keyPressed(java.awt.event.KeyEvent e) {
+                if (e.getKeyCode() == java.awt.event.KeyEvent.VK_ESCAPE) {
+                    dialog.dispose();
+                }
             }
-        }
+        };
+
+        dialog.addKeyListener(escAdapter);
+        txtBusqueda.addKeyListener(escAdapter);
+        btnBuscar.addKeyListener(escAdapter);
+        btnCancelar.addKeyListener(escAdapter);
+
+        dialog.add(panel);
+        dialog.setVisible(true);
+    }
+
+    // Método auxiliar para mostrar alertas y avisos con estilo Clipper en Ficha Clientes
+    private void mostrarMensajeClipper(String mensaje, String tipo) {
+        JDialog dialog = new JDialog((Frame) null, tipo, true);
+        dialog.setSize(380, 130);
+        dialog.setLocationRelativeTo(this);
+        dialog.setResizable(false);
+
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBackground(new Color(0, 0, 128)); // Azul Clipper
+
+        JLabel lbl = new JLabel(mensaje, JLabel.CENTER);
+        lbl.setForeground(Color.WHITE);
+        lbl.setFont(new Font("Monospaced", Font.BOLD, 12));
+        panel.add(lbl, BorderLayout.CENTER);
+
+        JButton btnOk = new JButton("Aceptar [Enter]");
+        btnOk.setBackground(new Color(0, 0, 160));
+        btnOk.setForeground(Color.YELLOW);
+        btnOk.setFont(new Font("Monospaced", Font.BOLD, 11));
+
+        // Acción para cerrar con clic o Enter
+        java.awt.event.ActionListener cerrarAccion = e -> dialog.dispose();
+        btnOk.addActionListener(cerrarAccion);
+
+        // Soporte para cerrar con ESC
+        dialog.addKeyListener(new java.awt.event.KeyAdapter() {
+            @Override
+            public void keyPressed(java.awt.event.KeyEvent e) {
+                if (e.getKeyCode() == java.awt.event.KeyEvent.VK_ESCAPE) {
+                    dialog.dispose();
+                }
+            }
+        });
+
+        panel.add(btnOk, BorderLayout.SOUTH);
+        dialog.add(panel);
+        dialog.setVisible(true);
     }
 
     private void verEstadisticasCliente() {

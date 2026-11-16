@@ -26,12 +26,12 @@ public class CuentaCorrienteDAO {
         stats.setRut(rut.trim());
 
         try {
-            // 1. Compras ordenadas cronológicamente
+            // 1. Compras ordenadas cronológicamente (Corregido 'YYYY-MM-DD' para que lea bien la BD)
             String sqlCompras = "SELECT COUNT(DISTINCT \"VCODIGO\"), "
                     + "COALESCE(SUM(CAST(NULLIF(REPLACE(CAST(\"VPXPRECIO\" AS TEXT), ',', '.'), '') AS NUMERIC)), 0), "
                     + "COALESCE(AVG(CAST(NULLIF(REPLACE(CAST(\"VPXPRECIO\" AS TEXT), ',', '.'), '') AS NUMERIC)), 0), "
                     + "COALESCE(MAX(CAST(NULLIF(REPLACE(CAST(\"VPXPRECIO\" AS TEXT), ',', '.'), '') AS NUMERIC)), 0), "
-                    + "TO_CHAR(MAX(TO_DATE(NULLIF(TRIM(CAST(\"VFECHA\" AS TEXT)), ''), 'DD-MM-YYYY')), 'DD-MM-YYYY') "
+                    + "TO_CHAR(MAX(TO_DATE(NULLIF(TRIM(CAST(\"VFECHA\" AS TEXT)), ''), 'YYYY-MM-DD')), 'DD-MM-YYYY') "
                     + "FROM pventas_dbf WHERE TRIM(CAST(\"VCLIENTE\" AS text)) LIKE ?";
 
             try (PreparedStatement ps = con.prepareStatement(sqlCompras)) {
@@ -50,12 +50,12 @@ public class CuentaCorrienteDAO {
                 }
             }
 
-            // 2. Pagos / Abonos ordenados cronológicamente
+            // 2. Pagos / Abonos ordenados cronológicamente (Corregido 'YYYY-MM-DD' para que lea bien la BD)
             String sqlPagos = "SELECT COUNT(*), "
                     + "COALESCE(SUM(CAST(NULLIF(REPLACE(CAST(\"CTEABONO\" AS TEXT), ',', '.'), '') AS NUMERIC)), 0), "
                     + "COALESCE(AVG(CAST(NULLIF(REPLACE(CAST(\"CTEABONO\" AS TEXT), ',', '.'), '') AS NUMERIC)), 0), "
                     + "COALESCE(MAX(CAST(NULLIF(REPLACE(CAST(\"CTEABONO\" AS TEXT), ',', '.'), '') AS NUMERIC)), 0), "
-                    + "TO_CHAR(MAX(TO_DATE(NULLIF(TRIM(CAST(\"CTEFECHA\" AS TEXT)), ''), 'DD-MM-YYYY')), 'DD-MM-YYYY') "
+                    + "TO_CHAR(MAX(TO_DATE(NULLIF(TRIM(CAST(\"CTEFECHA\" AS TEXT)), ''), 'YYYY-MM-DD')), 'DD-MM-YYYY') "
                     + "FROM pctacte_dbf "
                     + "WHERE TRIM(CAST(\"CTERUT\" AS text)) LIKE ? "
                     + "AND COALESCE(CAST(NULLIF(REPLACE(CAST(\"CTEABONO\" AS TEXT), ',', '.'), '') AS NUMERIC), 0) > 0";
@@ -102,53 +102,81 @@ public class CuentaCorrienteDAO {
     public List<DocumentoCarteraDTO> listarDocumentosCartera(Connection con, String nombreCliente, String fechaInicio, String fechaFin) {
         List<DocumentoCarteraDTO> lista = new ArrayList<>();
 
-        // Limpiamos y separamos el RUT por si el usuario ingresó el dígito verificador con guion (ej: 10542125-7)
+        // Limpiamos y separamos el RUT
         String clienteTrim = nombreCliente != null ? nombreCliente.trim() : "";
         if (clienteTrim.contains("-")) {
-            clienteTrim = clienteTrim.split("-")[0]; // Nos quedamos solo con la parte antes del guion (10542125)
+            clienteTrim = clienteTrim.split("-")[0];
         }
         clienteTrim = clienteTrim.replace(".", "").replace(" ", "");
 
         String filtroCliente = "%" + clienteTrim + "%";
 
-        // SQL limpio enfocado en buscar por el cuerpo base del RUT y el rango de fechas
+        // Variables para las fechas convertidas a formato BD (yyyy-MM-dd)
+        String fechaInicioBD = "";
+        String fechaFinBD = "";
+
+        try {
+            java.time.format.DateTimeFormatter formatoPantalla = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy");
+            java.time.format.DateTimeFormatter formatoBD = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd");
+
+            if (fechaInicio != null && !fechaInicio.trim().isEmpty()) {
+                java.time.LocalDate dIni = java.time.LocalDate.parse(fechaInicio.trim(), formatoPantalla);
+                fechaInicioBD = dIni.format(formatoBD);
+            }
+
+            if (fechaFin != null && !fechaFin.trim().isEmpty()) {
+                java.time.LocalDate dFin = java.time.LocalDate.parse(fechaFin.trim(), formatoPantalla);
+                fechaFinBD = dFin.format(formatoBD);
+            }
+        } catch (Exception e) {
+            // Si el usuario deja las fechas vacías o hay error de formato, se ignora el filtro de fecha
+        }
+
+        boolean filtrarFechas = !fechaInicioBD.isEmpty() && !fechaFinBD.isEmpty();
+
+        // SQL limpio y directo usando el formato yyyy-MM-dd de la BD
         String sql = "SELECT \"CTEFOLIO\", \"CTEFECHA\", \"CTERUT\", \"CTEABONO\" "
                 + "FROM pctacte_dbf "
-                + "WHERE ( "
-                + "    UPPER(CAST(\"CTERUT\" AS TEXT)) LIKE UPPER(?) "
-                + "    OR ? = '' "
-                + ") "
-                + "AND (CASE WHEN TRIM(CAST(\"CTEFECHA\" AS TEXT)) ~ '^\\d{2}-\\d{2}-\\d{4}$' "
-                + "      THEN TO_DATE(TRIM(CAST(\"CTEFECHA\" AS TEXT)), 'DD-MM-YYYY') "
-                + "      ELSE NULL END >= CASE WHEN ? <> '' THEN TO_DATE(?, 'DD-MM-YYYY') ELSE NULL END OR ? = '') "
-                + "AND (CASE WHEN TRIM(CAST(\"CTEFECHA\" AS TEXT)) ~ '^\\d{2}-\\d{2}-\\d{4}$' "
-                + "      THEN TO_DATE(TRIM(CAST(\"CTEFECHA\" AS TEXT)), 'DD-MM-YYYY') "
-                + "      ELSE NULL END <= CASE WHEN ? <> '' THEN TO_DATE(?, 'DD-MM-YYYY') ELSE NULL END OR ? = '') "
-                + "ORDER BY TO_DATE(NULLIF(TRIM(CAST(\"CTEFECHA\" AS TEXT)), ''), 'DD-MM-YYYY') ASC";
+                + "WHERE (UPPER(CAST(\"CTERUT\" AS TEXT)) LIKE UPPER(?) OR ? = '') ";
+
+        if (filtrarFechas) {
+            sql += "AND \"CTEFECHA\" BETWEEN ? AND ? ";
+        }
+
+        sql += "ORDER BY \"CTEFECHA\" ASC, \"CTEFOLIO\" ASC";
 
         try (PreparedStatement ps = con.prepareStatement(sql)) {
-            String iniVal = fechaInicio != null ? fechaInicio.trim() : "";
-            String finVal = fechaFin != null ? fechaFin.trim() : "";
-
-            // 1 y 2: Filtros de Cliente (RUT limpio sin DV y condición de vacío)
             ps.setString(1, filtroCliente);
             ps.setString(2, clienteTrim);
 
-            // 3, 4 y 5: Fecha Inicio
-            ps.setString(3, iniVal);
-            ps.setString(4, iniVal);
-            ps.setString(5, iniVal);
-
-            // 6, 7 y 8: Fecha Fin
-            ps.setString(6, finVal);
-            ps.setString(7, finVal);
-            ps.setString(8, finVal);
+            if (filtrarFechas) {
+                ps.setString(3, fechaInicioBD);
+                ps.setString(4, fechaFinBD);
+            }
 
             try (ResultSet rs = ps.executeQuery()) {
+                java.time.format.DateTimeFormatter formatoPantalla = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy");
+                java.time.format.DateTimeFormatter formatoBD = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd");
+
                 while (rs.next()) {
                     DocumentoCarteraDTO doc = new DocumentoCarteraDTO();
                     doc.setFolio(rs.getString("CTEFOLIO"));
-                    doc.setFecha(rs.getString("CTEFECHA"));
+
+                    // Formateamos la fecha que viene de la BD (yyyy-MM-dd) para mostrarla bonita en pantalla (dd/MM/yyyy)
+                    String fecDb = rs.getString("CTEFECHA");
+                    String fecFormateada = fecDb;
+                    try {
+                        if (fecDb != null && !fecDb.trim().isEmpty()) {
+                            if (fecDb.length() > 10) {
+                                fecDb = fecDb.substring(0, 10);
+                            }
+                            java.time.LocalDate parsed = java.time.LocalDate.parse(fecDb, formatoBD);
+                            fecFormateada = parsed.format(formatoPantalla);
+                        }
+                    } catch (Exception ignored) {
+                    }
+
+                    doc.setFecha(fecFormateada);
                     doc.setCliente(rs.getString("CTERUT"));
                     doc.setMonto(rs.getDouble("CTEABONO"));
                     doc.setEstado("ACTIVO");
@@ -177,13 +205,13 @@ public class CuentaCorrienteDAO {
             cuerpoRut = rutLimpio.substring(0, rutLimpio.length() - 1);
         }
 
-        // Consulta SQL ordenada de la fecha más reciente a la más antigua (DESC)
+        // Consulta SQL con el TO_DATE corregido a 'YYYY-MM-DD' para que la BD ordene bien
         String sql = "SELECT \"CTECPTDOC\", \"CTEDOCUMEN\", \"CTEFECHA\", \"CTEVENCE\", "
                 + "\"CTECREDITO\", \"CTEABONO\", "
                 + "(COALESCE(\"CTECREDITO\", 0) - COALESCE(\"CTEABONO\", 0)) AS saldo "
                 + "FROM pctacte_dbf WHERE REPLACE(REPLACE(REPLACE(\"CTERUT\", '.', ''), '-', ''), ' ', '') = ? "
                 + "OR REPLACE(REPLACE(REPLACE(\"CTERUT\", '.', ''), '-', ''), ' ', '') = ? "
-                + "ORDER BY TO_DATE(\"CTEFECHA\", 'DD-MM-YYYY') DESC, \"CTECOMPROB\" DESC";
+                + "ORDER BY TO_DATE(NULLIF(TRIM(\"CTEFECHA\"), ''), 'YYYY-MM-DD') DESC, \"CTECOMPROB\" DESC";
 
         try (Connection conn = Conexion.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
@@ -191,11 +219,42 @@ public class CuentaCorrienteDAO {
             pstmt.setString(2, cuerpoRut);
 
             try (ResultSet rs = pstmt.executeQuery()) {
+                // Formatter para transformar de la BD (YYYY-MM-DD) a Pantalla (DD/MM/YYYY)
+                java.time.format.DateTimeFormatter formatoBD = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd");
+                java.time.format.DateTimeFormatter formatoPantalla = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
                 while (rs.next()) {
                     String tipoDoc = rs.getString("CTECPTDOC");
                     String nroDoc = rs.getString("CTEDOCUMEN");
-                    String fecEmision = rs.getString("CTEFECHA");
-                    String fecVenc = rs.getString("CTEVENCE");
+
+                    // Formatear Fecha Emisión
+                    String fecEmisionBD = rs.getString("CTEFECHA");
+                    String fecEmisionFormateada = fecEmisionBD != null ? fecEmisionBD.trim() : "";
+                    try {
+                        if (fecEmisionBD != null && !fecEmisionBD.trim().isEmpty()) {
+                            if (fecEmisionBD.length() > 10) {
+                                fecEmisionBD = fecEmisionBD.substring(0, 10);
+                            }
+                            java.time.LocalDate parsed = java.time.LocalDate.parse(fecEmisionBD, formatoBD);
+                            fecEmisionFormateada = parsed.format(formatoPantalla);
+                        }
+                    } catch (Exception ignored) {
+                    }
+
+                    // Formatear Fecha Vencimiento
+                    String fecVencBD = rs.getString("CTEVENCE");
+                    String fecVencFormateada = fecVencBD != null && !fecVencBD.trim().isEmpty() ? fecVencBD.trim() : "-";
+                    try {
+                        if (fecVencBD != null && !fecVencBD.trim().isEmpty()) {
+                            if (fecVencBD.length() > 10) {
+                                fecVencBD = fecVencBD.substring(0, 10);
+                            }
+                            java.time.LocalDate parsed = java.time.LocalDate.parse(fecVencBD, formatoBD);
+                            fecVencFormateada = parsed.format(formatoPantalla);
+                        }
+                    } catch (Exception ignored) {
+                    }
+
                     double cargo = rs.getDouble("CTECREDITO");
                     double abono = rs.getDouble("CTEABONO");
                     double saldo = rs.getDouble("saldo");
@@ -203,8 +262,8 @@ public class CuentaCorrienteDAO {
                     listaMovimientos.add(new Object[]{
                         tipoDoc != null && !tipoDoc.trim().isEmpty() ? tipoDoc.trim() : "DOC",
                         nroDoc != null && !nroDoc.trim().isEmpty() ? nroDoc.trim() : "-",
-                        fecEmision != null ? fecEmision.trim() : "",
-                        fecVenc != null && !fecVenc.trim().isEmpty() ? fecVenc.trim() : "-",
+                        fecEmisionFormateada,
+                        fecVencFormateada,
                         cargo,
                         abono,
                         saldo
@@ -230,7 +289,24 @@ public class CuentaCorrienteDAO {
                 if (rs.next()) {
                     doc = new DocumentoCarteraDTO();
                     doc.setFolio(folio);
-                    doc.setFecha(rs.getString("CTEFECHA"));
+
+                    // Formateamos la fecha de la BD (yyyy-MM-dd) a Pantalla (dd/MM/yyyy)
+                    String fecDb = rs.getString("CTEFECHA");
+                    String fecFormateada = fecDb;
+                    try {
+                        if (fecDb != null && !fecDb.trim().isEmpty()) {
+                            if (fecDb.length() > 10) {
+                                fecDb = fecDb.substring(0, 10);
+                            }
+                            java.time.format.DateTimeFormatter formatoBD = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd");
+                            java.time.format.DateTimeFormatter formatoPantalla = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy");
+                            java.time.LocalDate parsed = java.time.LocalDate.parse(fecDb, formatoBD);
+                            fecFormateada = parsed.format(formatoPantalla);
+                        }
+                    } catch (Exception ignored) {
+                    }
+
+                    doc.setFecha(fecFormateada);
                     doc.setCliente(rs.getString("CTERUT"));
                     doc.setMonto(rs.getDouble("CTEABONO"));
                 }
@@ -257,13 +333,13 @@ public class CuentaCorrienteDAO {
             }
         }
 
-        // CORREGIDO: Apuntando a 'pctacte_dbf_respaldo' para que coincida con el borrado de pruebas
+        // CORREGIDO: Regex y TO_DATE adaptados a 'YYYY-MM-DD' para que el ORDER BY funcione perfecto con la BD
         String sql = "SELECT \"CTEFOLIO\", \"CTEFECHA\", \"CTERUT\", \"CTEABONO\" FROM pctacte_dbf "
                 + "WHERE CAST(\"CTERUT\" AS TEXT) LIKE ? OR CAST(\"CTEFOLIO\" AS TEXT) LIKE ? "
                 + "ORDER BY "
                 + "   CASE "
-                + "       WHEN TRIM(CAST(\"CTEFECHA\" AS TEXT)) ~ '^\\d{2}-\\d{2}-\\d{4}$' "
-                + "       THEN TO_DATE(TRIM(CAST(\"CTEFECHA\" AS TEXT)), 'DD-MM-YYYY') "
+                + "       WHEN TRIM(CAST(\"CTEFECHA\" AS TEXT)) ~ '^\\d{4}-\\d{2}-\\d{2}$' "
+                + "       THEN TO_DATE(TRIM(CAST(\"CTEFECHA\" AS TEXT)), 'YYYY-MM-DD') "
                 + "       ELSE '1900-01-01'::date "
                 + "   END DESC LIMIT 100";
 
@@ -275,10 +351,28 @@ public class CuentaCorrienteDAO {
             ps.setString(2, parametroBusqueda);
 
             try (ResultSet rs = ps.executeQuery()) {
+                java.time.format.DateTimeFormatter formatoBD = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd");
+                java.time.format.DateTimeFormatter formatoPantalla = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
                 while (rs.next()) {
                     DocumentoCarteraDTO doc = new DocumentoCarteraDTO();
                     doc.setFolio(rs.getString("CTEFOLIO"));
-                    doc.setFecha(rs.getString("CTEFECHA"));
+
+                    // Formatear la fecha de la BD (yyyy-MM-dd) a Pantalla (dd/MM/yyyy)
+                    String fecDb = rs.getString("CTEFECHA");
+                    String fecFormateada = fecDb != null ? fecDb.trim() : "";
+                    try {
+                        if (fecDb != null && !fecDb.trim().isEmpty()) {
+                            if (fecDb.length() > 10) {
+                                fecDb = fecDb.substring(0, 10);
+                            }
+                            java.time.LocalDate parsed = java.time.LocalDate.parse(fecDb, formatoBD);
+                            fecFormateada = parsed.format(formatoPantalla);
+                        }
+                    } catch (Exception ignored) {
+                    }
+
+                    doc.setFecha(fecFormateada);
                     doc.setCliente(rs.getString("CTERUT"));
                     doc.setMonto(rs.getDouble("CTEABONO"));
                     lista.add(doc);
@@ -313,16 +407,32 @@ public class CuentaCorrienteDAO {
             ps.setString(3, parametro); // Para CTEFOLIO
 
             try (ResultSet rs = ps.executeQuery()) {
+                java.time.format.DateTimeFormatter formatoBD = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd");
+                java.time.format.DateTimeFormatter formatoPantalla = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
                 while (rs.next()) {
                     DocumentoCarteraDTO doc = new DocumentoCarteraDTO();
-                    // Si el DTO tiene campo para el nombre, lo guardamos o lo unimos en el cliente
                     String nombreCliente = rs.getString("CLINOMBRE");
                     String rutCliente = rs.getString("CTERUT");
 
-                    // Mostramos por ejemplo "Nombre (RUT)" o guardamos en el DTO
                     doc.setCliente(nombreCliente != null ? nombreCliente + " (" + rutCliente + ")" : rutCliente);
                     doc.setFolio(rs.getString("CTEFOLIO"));
-                    doc.setFecha(rs.getString("CTEFECHA"));
+
+                    // Formatear la fecha de la BD (yyyy-MM-dd) a Pantalla (dd/MM/yyyy)
+                    String fecDb = rs.getString("CTEFECHA");
+                    String fecFormateada = fecDb != null ? fecDb.trim() : "";
+                    try {
+                        if (fecDb != null && !fecDb.trim().isEmpty()) {
+                            if (fecDb.length() > 10) {
+                                fecDb = fecDb.substring(0, 10);
+                            }
+                            java.time.LocalDate parsed = java.time.LocalDate.parse(fecDb, formatoBD);
+                            fecFormateada = parsed.format(formatoPantalla);
+                        }
+                    } catch (Exception ignored) {
+                    }
+
+                    doc.setFecha(fecFormateada);
                     doc.setMonto(rs.getDouble("CTEABONO"));
 
                     lista.add(doc);
@@ -333,12 +443,13 @@ public class CuentaCorrienteDAO {
         }
         return lista;
     }
-
 // --- 1. MODO RESUMEN: Ordenado puramente por fecha más reciente ---
+
     public java.util.List<DocumentoCarteraDTO> obtenerCuentasResumen(Connection con, String filtroTexto) {
         java.util.List<DocumentoCarteraDTO> lista = new java.util.ArrayList<>();
         String filtro = filtroTexto.trim();
 
+        // CORREGIDO: Regex y TO_DATE adaptados a 'YYYY-MM-DD' para que el ORDER BY funcione perfecto
         String sql = "SELECT c.\"CLINOMBRE\", p.\"CTERUT\", "
                 + "       COUNT(p.\"CTEFOLIO\") AS total_docs, "
                 + "       SUM(p.\"CTEABONO\") AS suma_abonos, "
@@ -350,8 +461,8 @@ public class CuentaCorrienteDAO {
                 + "GROUP BY c.\"CLINOMBRE\", p.\"CTERUT\" "
                 + "ORDER BY "
                 + "   CASE "
-                + "       WHEN TRIM(CAST(MAX(p.\"CTEFECHA\") AS TEXT)) ~ '^\\d{2}-\\d{2}-\\d{4}$' "
-                + "       THEN TO_DATE(TRIM(CAST(MAX(p.\"CTEFECHA\") AS TEXT)), 'DD-MM-YYYY') "
+                + "       WHEN TRIM(CAST(MAX(p.\"CTEFECHA\") AS TEXT)) ~ '^\\d{4}-\\d{2}-\\d{2}$' "
+                + "       THEN TO_DATE(TRIM(CAST(MAX(p.\"CTEFECHA\") AS TEXT)), 'YYYY-MM-DD') "
                 + "       ELSE '1900-01-01'::date "
                 + "   END DESC LIMIT 200";
 
@@ -361,19 +472,36 @@ public class CuentaCorrienteDAO {
             ps.setString(2, parametro);
 
             try (ResultSet rs = ps.executeQuery()) {
+                java.time.format.DateTimeFormatter formatoBD = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd");
+                java.time.format.DateTimeFormatter formatoPantalla = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
                 while (rs.next()) {
                     DocumentoCarteraDTO doc = new DocumentoCarteraDTO();
                     String nombreCrudo = rs.getString("CLINOMBRE");
                     String rut = rs.getString("CTERUT");
 
-                    // --- AQUÍ ESTÁ EL LLAMADO QUE FALTABA ---
                     String nombreFormateado = formatearNombreApellidosPrimero(nombreCrudo);
 
                     doc.setCliente(nombreFormateado != null && !nombreFormateado.isEmpty()
                             ? nombreFormateado + " (" + rut + ")"
                             : rut);
                     doc.setFolio(rs.getInt("total_docs") + " docs");
-                    doc.setFecha(rs.getString("max_fecha") != null ? rs.getString("max_fecha") : "---");
+
+                    // Formatear la fecha máxima de la BD (yyyy-MM-dd) a Pantalla (dd/MM/yyyy)
+                    String fecDb = rs.getString("max_fecha");
+                    String fecFormateada = "---";
+                    try {
+                        if (fecDb != null && !fecDb.trim().isEmpty()) {
+                            if (fecDb.length() > 10) {
+                                fecDb = fecDb.substring(0, 10);
+                            }
+                            java.time.LocalDate parsed = java.time.LocalDate.parse(fecDb, formatoBD);
+                            fecFormateada = parsed.format(formatoPantalla);
+                        }
+                    } catch (Exception ignored) {
+                    }
+
+                    doc.setFecha(fecFormateada);
                     doc.setMonto(rs.getDouble("suma_abonos"));
                     lista.add(doc);
                 }
@@ -389,6 +517,7 @@ public class CuentaCorrienteDAO {
         java.util.List<DocumentoCarteraDTO> lista = new java.util.ArrayList<>();
         String filtro = filtroTexto.trim();
 
+        // CORREGIDO: Regex y TO_DATE adaptados a 'YYYY-MM-DD' para que el ORDER BY funcione perfecto
         String sql = "SELECT p.\"CTERUT\", p.\"CTEFOLIO\", p.\"CTEFECHA\", p.\"CTEABONO\", c.\"CLINOMBRE\" "
                 + "FROM pctacte_dbf p "
                 + "LEFT JOIN pcliente_dbf c ON CAST(p.\"CTERUT\" AS TEXT) = CAST(c.\"CLIRUT\" AS TEXT) "
@@ -397,8 +526,8 @@ public class CuentaCorrienteDAO {
                 + "   OR CAST(p.\"CTEFOLIO\" AS TEXT) LIKE ? "
                 + "ORDER BY "
                 + "   CASE "
-                + "       WHEN TRIM(CAST(p.\"CTEFECHA\" AS TEXT)) ~ '^\\d{2}-\\d{2}-\\d{4}$' "
-                + "       THEN TO_DATE(TRIM(CAST(p.\"CTEFECHA\" AS TEXT)), 'DD-MM-YYYY') "
+                + "       WHEN TRIM(CAST(p.\"CTEFECHA\" AS TEXT)) ~ '^\\d{4}-\\d{2}-\\d{2}$' "
+                + "       THEN TO_DATE(TRIM(CAST(p.\"CTEFECHA\" AS TEXT)), 'YYYY-MM-DD') "
                 + "       ELSE '1900-01-01'::date "
                 + "   END DESC LIMIT 200";
 
@@ -409,19 +538,36 @@ public class CuentaCorrienteDAO {
             ps.setString(3, parametro);
 
             try (ResultSet rs = ps.executeQuery()) {
+                java.time.format.DateTimeFormatter formatoBD = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd");
+                java.time.format.DateTimeFormatter formatoPantalla = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
                 while (rs.next()) {
                     DocumentoCarteraDTO doc = new DocumentoCarteraDTO();
                     String nombreCrudo = rs.getString("CLINOMBRE");
                     String rut = rs.getString("CTERUT");
 
-                    // --- AQUÍ ESTÁ EL LLAMADO QUE FALTABA ---
                     String nombreFormateado = formatearNombreApellidosPrimero(nombreCrudo);
 
                     doc.setCliente(nombreFormateado != null && !nombreFormateado.isEmpty()
                             ? nombreFormateado + " (" + rut + ")"
                             : rut);
                     doc.setFolio(rs.getString("CTEFOLIO"));
-                    doc.setFecha(rs.getString("CTEFECHA"));
+
+                    // Formatear la fecha de la BD (yyyy-MM-dd) a Pantalla (dd/MM/yyyy)
+                    String fecDb = rs.getString("CTEFECHA");
+                    String fecFormateada = "---";
+                    try {
+                        if (fecDb != null && !fecDb.trim().isEmpty()) {
+                            if (fecDb.length() > 10) {
+                                fecDb = fecDb.substring(0, 10);
+                            }
+                            java.time.LocalDate parsed = java.time.LocalDate.parse(fecDb, formatoBD);
+                            fecFormateada = parsed.format(formatoPantalla);
+                        }
+                    } catch (Exception ignored) {
+                    }
+
+                    doc.setFecha(fecFormateada);
                     doc.setMonto(rs.getDouble("CTEABONO"));
                     lista.add(doc);
                 }
@@ -431,8 +577,8 @@ public class CuentaCorrienteDAO {
         }
         return lista;
     }
-
 // Método auxiliar unificado para poner los apellidos siempre primero
+
     private String formatearNombreApellidosPrimero(String nombreOriginal) {
         if (nombreOriginal == null || nombreOriginal.trim().isEmpty()) {
             return "";
@@ -466,25 +612,58 @@ public class CuentaCorrienteDAO {
     public java.util.List<DocumentoCarteraDTO> obtenerCartolaPorFecha(Connection con, String rutCliente, String fechaDesde, String fechaHasta) {
         java.util.List<DocumentoCarteraDTO> lista = new java.util.ArrayList<>();
 
+        // Convertimos las fechas de pantalla (dd/MM/yyyy) a formato BD (yyyy-MM-dd)
+        String fechaDesdeBD = "";
+        String fechaHastaBD = "";
+
+        try {
+            java.time.format.DateTimeFormatter formatoPantalla = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy");
+            java.time.format.DateTimeFormatter formatoBD = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd");
+
+            if (fechaDesde != null && !fechaDesde.trim().isEmpty()) {
+                java.time.LocalDate dIni = java.time.LocalDate.parse(fechaDesde.trim(), formatoPantalla);
+                fechaDesdeBD = dIni.format(formatoBD);
+            }
+
+            if (fechaHasta != null && !fechaHasta.trim().isEmpty()) {
+                java.time.LocalDate dFin = java.time.LocalDate.parse(fechaHasta.trim(), formatoPantalla);
+                fechaHastaBD = dFin.format(formatoBD);
+            }
+        } catch (Exception e) {
+            // Si hay error en el formato, se dejan vacías para evitar caídas
+        }
+
+        boolean filtrarFechas = !fechaDesdeBD.isEmpty() && !fechaHastaBD.isEmpty();
+
+        // SQL adaptado para trabajar directamente con el formato 'YYYY-MM-DD' de la BD
         String sql = "SELECT p.\"CTERUT\", p.\"CTEFOLIO\", p.\"CTEFECHA\", p.\"CTEABONO\", c.\"CLINOMBRE\" "
                 + "FROM pctacte_dbf p "
                 + "LEFT JOIN pcliente_dbf c ON CAST(p.\"CTERUT\" AS TEXT) = CAST(c.\"CLIRUT\" AS TEXT) "
-                + "WHERE CAST(p.\"CTERUT\" AS TEXT) = ? "
-                + "  AND TO_DATE(TRIM(CAST(p.\"CTEFECHA\" AS TEXT)), 'DD-MM-YYYY') "
-                + "      BETWEEN TO_DATE(?, 'DD-MM-YYYY') AND TO_DATE(?, 'DD-MM-YYYY') "
-                + "ORDER BY c.\"CLINOMBRE\" ASC, "
+                + "WHERE CAST(p.\"CTERUT\" AS TEXT) = ? ";
+
+        if (filtrarFechas) {
+            sql += "  AND p.\"CTEFECHA\" BETWEEN ? AND ? ";
+        }
+
+        sql += "ORDER BY c.\"CLINOMBRE\" ASC, "
                 + "   CASE "
-                + "       WHEN TRIM(CAST(p.\"CTEFECHA\" AS TEXT)) ~ '^\\d{2}-\\d{2}-\\d{4}$' "
-                + "       THEN TO_DATE(TRIM(CAST(p.\"CTEFECHA\" AS TEXT)), 'DD-MM-YYYY') "
+                + "       WHEN TRIM(CAST(p.\"CTEFECHA\" AS TEXT)) ~ '^\\d{4}-\\d{2}-\\d{2}$' "
+                + "       THEN TO_DATE(TRIM(CAST(p.\"CTEFECHA\" AS TEXT)), 'YYYY-MM-DD') "
                 + "       ELSE '1900-01-01'::date "
                 + "   END DESC";
 
         try (PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setString(1, rutCliente.trim());
-            ps.setString(2, fechaDesde.trim());
-            ps.setString(3, fechaHasta.trim());
+
+            if (filtrarFechas) {
+                ps.setString(2, fechaDesdeBD);
+                ps.setString(3, fechaHastaBD);
+            }
 
             try (ResultSet rs = ps.executeQuery()) {
+                java.time.format.DateTimeFormatter formatoBD = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd");
+                java.time.format.DateTimeFormatter formatoPantalla = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
                 while (rs.next()) {
                     DocumentoCarteraDTO doc = new DocumentoCarteraDTO();
                     String nombreCrudo = rs.getString("CLINOMBRE");
@@ -497,9 +676,24 @@ public class CuentaCorrienteDAO {
                             ? nombreFormateado + " (" + rut + ")"
                             : rut);
                     doc.setFolio(rs.getString("CTEFOLIO"));
-                    doc.setFecha(rs.getString("CTEFECHA"));
+
+                    // Formatear la fecha de la BD (yyyy-MM-dd) a Pantalla (dd/MM/yyyy)
+                    String fecDb = rs.getString("CTEFECHA");
+                    String fecFormateada = "---";
+                    try {
+                        if (fecDb != null && !fecDb.trim().isEmpty()) {
+                            if (fecDb.length() > 10) {
+                                fecDb = fecDb.substring(0, 10);
+                            }
+                            java.time.LocalDate parsed = java.time.LocalDate.parse(fecDb, formatoBD);
+                            fecFormateada = parsed.format(formatoPantalla);
+                        }
+                    } catch (Exception ignored) {
+                    }
+
+                    doc.setFecha(fecFormateada);
                     doc.setMonto(rs.getDouble("CTEABONO"));
-                    
+
                     lista.add(doc);
                 }
             }

@@ -14,21 +14,48 @@ public class VentaDAO {
 
     // Método exclusivo para guardar la venta en la base de datos
     public boolean guardarVenta(int folioVenta, int codigoCliente, String fechaActual, int codigoVendedor, List<ItemVentaDTO> items) {
-        // Envolvemos los nombres de las columnas entre comillas dobles para que PostgreSQL respete las mayúsculas
-        String sql = "INSERT INTO pventas_dbf (\"VCODIGO\", \"VCLIENTE\", \"VFECHA\", \"VPXBARRA\", \"VPXCANT\", \"VPXPRECIO\", \"VPXTOTAL\", \"VVENDE\") "
-                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
-        try (Connection conn = Conexion.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+        // Convertimos la fecha de pantalla (dd/MM/yyyy) a formato BD (yyyy-MM-dd)
+        String fechaActualBD = fechaActual;
+        try {
+            if (fechaActual != null && !fechaActual.trim().isEmpty()) {
+                java.time.format.DateTimeFormatter formatoPantalla = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy");
+                java.time.format.DateTimeFormatter formatoBD = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd");
+                java.time.LocalDate d = java.time.LocalDate.parse(fechaActual.trim(), formatoPantalla);
+                fechaActualBD = d.format(formatoBD);
+            }
+        } catch (Exception e) {
+        }
+
+        String sql = "INSERT INTO pventas_dbf (\"VCODIGO\", \"VCLIENTE\", \"VFECHA\", \"VPXBARRA\", \"VPXCANT\", \"VPXPRECIO\", \"VPXTOTAL\", \"VVENDE\", \"VFAMILI\") "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+        // Consulta usando la tabla real pproduc_dbf, PXBARRA y PXFAMILIA
+        String sqlBuscaFamilia = "SELECT \"PXFAMILIA\" FROM \"pproduc_dbf\" WHERE \"PXBARRA\" = ?";
+
+        try (Connection conn = Conexion.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql); PreparedStatement pstmtFamilia = conn.prepareStatement(sqlBuscaFamilia)) {
 
             for (ItemVentaDTO item : items) {
+
+                // 1. Buscamos el código de familia del producto en pproduc_dbf por su barra
+                int codigoFamilia = 0;
+                pstmtFamilia.setString(1, item.getBarra());
+                try (ResultSet rsFam = pstmtFamilia.executeQuery()) {
+                    if (rsFam.next()) {
+                        codigoFamilia = rsFam.getInt(1);
+                    }
+                }
+
+                // 2. Seteamos los parámetros del INSERT de la venta (usando la fecha convertida a la BD)
                 pstmt.setInt(1, folioVenta);
                 pstmt.setInt(2, codigoCliente);
-                pstmt.setString(3, fechaActual);
+                pstmt.setString(3, fechaActualBD); // <-- Fecha formateada correctamente (yyyy-MM-dd)
                 pstmt.setString(4, item.getBarra());
                 pstmt.setInt(5, item.getCantidad());
                 pstmt.setDouble(6, item.getPrecioUnitario());
                 pstmt.setInt(7, (int) item.getTotalItem());
                 pstmt.setInt(8, codigoVendedor);
+                pstmt.setInt(9, codigoFamilia); // <-- Inyectamos la familia encontrada
 
                 pstmt.addBatch();
             }
@@ -75,7 +102,7 @@ public class VentaDAO {
         List<VentaDTO> lista = new ArrayList<>();
         String filtro = "%" + (filtroTexto != null ? filtroTexto.trim() : "") + "%";
 
-        // Ordenamos convirtiendo la fecha de texto (DD/MM/YYYY o YYYY-MM-DD) de forma segura
+        // Mantenemos tu consulta SQL con el ORDER BY inteligente que soporta ambos formatos
         String sql = "SELECT \"VCODIGO\", \"VCLIENTE\", \"VFECHA\", \"VPXBARRA\", \"VPXCANT\", "
                 + "\"VPXPRECIO\", \"VPXDESCTO\", \"VPXTOTAL\", \"VBOLETA\", \"VFACTURA\", "
                 + "\"VGUIA\", \"VVALE\", \"VNOTCRE\", \"VCAJA\" "
@@ -85,8 +112,8 @@ public class VentaDAO {
                 + "   OR COALESCE(CAST(\"VFACTURA\" AS TEXT), '') LIKE ? "
                 + "   OR COALESCE(CAST(\"VCODIGO\" AS TEXT), '') LIKE ? "
                 + "ORDER BY CASE "
-                + "    WHEN \"VFECHA\" ~ '^\\d{2}/\\d{2}/\\d{4}' THEN TO_DATE(\"VFECHA\", 'DD/MM/YYYY') "
                 + "    WHEN \"VFECHA\" ~ '^\\d{4}-\\d{2}-\\d{2}' THEN TO_DATE(\"VFECHA\", 'YYYY-MM-DD') "
+                + "    WHEN \"VFECHA\" ~ '^\\d{2}/\\d{2}/\\d{4}' THEN TO_DATE(\"VFECHA\", 'DD/MM/YYYY') "
                 + "    ELSE NULL "
                 + "END DESC NULLS LAST, \"VCODIGO\" DESC LIMIT 200";
 
@@ -97,11 +124,31 @@ public class VentaDAO {
             ps.setString(4, filtro);
 
             try (ResultSet rs = ps.executeQuery()) {
+                java.time.format.DateTimeFormatter formatoBD = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd");
+                java.time.format.DateTimeFormatter formatoPantalla = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
                 while (rs.next()) {
                     VentaDTO v = new VentaDTO();
                     v.setVcodigo(rs.getLong("VCODIGO"));
                     v.setVcliente(rs.getString("VCLIENTE") != null ? rs.getString("VCLIENTE") : "");
-                    v.setVfecha(rs.getString("VFECHA") != null ? rs.getString("VFECHA") : "");
+
+                    // Formateamos la fecha de la BD (yyyy-MM-dd) a Pantalla (dd/MM/yyyy)
+                    String fecDb = rs.getString("VFECHA");
+                    String fecFormateada = fecDb != null ? fecDb.trim() : "";
+                    try {
+                        if (fecDb != null && !fecDb.trim().isEmpty()) {
+                            if (fecDb.length() > 10) {
+                                fecDb = fecDb.substring(0, 10);
+                            }
+                            java.time.LocalDate parsed = java.time.LocalDate.parse(fecDb, formatoBD);
+                            fecFormateada = parsed.format(formatoPantalla);
+                        }
+                    } catch (Exception ignored) {
+                        // Si viene con otro formato (ej: barras), lo deja como viene
+                        fecFormateada = fecDb;
+                    }
+
+                    v.setVfecha(fecFormateada);
                     v.setVpxbarra(rs.getString("VPXBARRA") != null ? rs.getString("VPXBARRA") : "");
                     v.setVpxcant(rs.getString("VPXCANT") != null ? rs.getString("VPXCANT") : "");
                     v.setVpxprecio(rs.getString("VPXPRECIO") != null ? rs.getString("VPXPRECIO") : "");
