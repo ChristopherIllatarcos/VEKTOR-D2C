@@ -1,6 +1,8 @@
 package vista.ventas;
 
+import conexion.Conexion;
 import dao.ClienteDAO;
+import dao.ParametrosDAO;
 import dao.ProductoVentaDAO;
 import dao.VendedorDAO;
 import dao.VentaDAO;
@@ -16,6 +18,7 @@ import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.sql.Connection;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -37,16 +40,15 @@ import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
 import javax.swing.table.DefaultTableModel;
 import modelo.ItemVentaDTO;
+import modelo.ParametrosDTO;
 
-/**
- * @author caill
- */
 public class FrmVenta extends JInternalFrame {
 
     private static final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(FrmVenta.class.getName());
 
     private JTextField txtVendedor;
     private JLabel lblNombreVendedor;
+    private JLabel lblFecha;
 
     private JTextField txtIngresoRapido;
     private JTextField txtCantidad;
@@ -54,19 +56,19 @@ public class FrmVenta extends JInternalFrame {
     private JTable tablaVenta;
     private DefaultTableModel modeloTablaVenta;
 
-    // Tabla flotante superpuesta para elegir el producto
     private JTable tablaBuscadorFlotante;
     private DefaultTableModel modeloBuscadorFlotante;
     private JScrollPane scrollBuscadorFlotante;
 
     private JLabel lblTotalGeneral;
 
-    // Datos temporales del producto seleccionado
     private String codigoBarraSeleccionado = "";
     private String descripcionSeleccionada = "";
     private double precioUnitarioSeleccionado = 0.0;
 
-    // Campos de texto para los datos del cliente
+    // Fecha de proceso leída desde Parámetros (dd/MM/yyyy)
+    private String fechaProcesoSistema = "";
+
     private JTextField txtRutCliente = new JTextField(15);
     private JTextField txtNombreCliente = new JTextField(25);
     private JTextField txtDireccion = new JTextField(25);
@@ -80,11 +82,26 @@ public class FrmVenta extends JInternalFrame {
     private JTextField txtCodigoProducto = new JTextField(15);
 
     public FrmVenta() {
-        // JInternalFrame: título, resizable, closable, maximizable, iconifiable
         super("Ingreso de Venta", true, true, true, true);
         putClientProperty("JInternalFrame.isPalette", Boolean.FALSE);
 
         initComponentsManual();
+        cargarFechaDesdeParametros();
+    }
+
+    private void cargarFechaDesdeParametros() {
+        try (Connection con = Conexion.getConnection()) {
+            ParametrosDAO pDao = new ParametrosDAO();
+            ParametrosDTO param = pDao.obtenerParametros(con);
+            if (param.getFecha() != null && !param.getFecha().trim().isEmpty()) {
+                fechaProcesoSistema = param.getFecha().trim();
+            } else {
+                fechaProcesoSistema = LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+            }
+        } catch (Exception e) {
+            fechaProcesoSistema = LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+        }
+        lblFecha.setText("Fecha: " + fechaProcesoSistema);
     }
 
     private void initComponentsManual() {
@@ -95,12 +112,9 @@ public class FrmVenta extends JInternalFrame {
         layeredPane.setLayout(null);
         setContentPane(layeredPane);
 
-        // ==========================================
-        // PALETA DE COLORES Y FUENTES ESTILO MS-DOS
-        // ==========================================
-        Color dosBlue = new Color(0, 0, 128);       // Azul Clipper clásico
-        Color dosDarkPanel = new Color(16, 16, 16);   // Fondo negro terminal
-        Color dosYellow = Color.YELLOW;              // Amarillo brillante estilo DOS
+        Color dosBlue = new Color(0, 0, 128);
+        Color dosDarkPanel = new Color(16, 16, 16);
+        Color dosYellow = Color.YELLOW;
         Color dosWhite = Color.WHITE;
 
         Font fuenteConsola = new Font("Consolas", Font.BOLD, 15);
@@ -110,15 +124,12 @@ public class FrmVenta extends JInternalFrame {
 
         layeredPane.setBackground(dosBlue);
 
-        // ==========================================
-        // 1. PANEL SUPERIOR (Cabecera)
-        // ==========================================
+        // 1. PANEL SUPERIOR
         JPanel panelSuperior = new JPanel(new BorderLayout());
         panelSuperior.setBounds(0, 0, 1100, 80);
         panelSuperior.setBackground(dosBlue);
         panelSuperior.setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, Color.WHITE));
 
-        // Vendedor
         JPanel panelVendedor = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 12));
         panelVendedor.setOpaque(false);
 
@@ -147,7 +158,6 @@ public class FrmVenta extends JInternalFrame {
         panelVendedor.add(txtVendedor);
         panelVendedor.add(lblNombreVendedor);
 
-        // Título central
         JPanel panelTitulo = new JPanel();
         panelTitulo.setOpaque(false);
         panelTitulo.setLayout(new BoxLayout(panelTitulo, BoxLayout.Y_AXIS));
@@ -166,14 +176,12 @@ public class FrmVenta extends JInternalFrame {
         panelTitulo.add(lblTituloPrincipal);
         panelTitulo.add(lblEmpresa);
 
-        // Derecha (Fecha y Total)
         JPanel panelDerecha = new JPanel(new GridLayout(2, 1, 0, 2));
         panelDerecha.setOpaque(false);
         panelDerecha.setBorder(BorderFactory.createEmptyBorder(8, 0, 8, 25));
 
-        String fechaHoy = LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
-        JLabel lblFecha = new JLabel("Fecha: " + fechaHoy, JLabel.RIGHT);
-        lblFecha.setForeground(dosWhite);
+        lblFecha = new JLabel("Fecha: --/--/----", JLabel.RIGHT);
+        lblFecha.setForeground(dosYellow);
         lblFecha.setFont(fuenteConsola);
 
         JPanel panelTotalBox = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 0));
@@ -199,9 +207,7 @@ public class FrmVenta extends JInternalFrame {
 
         layeredPane.add(panelSuperior, JLayeredPane.DEFAULT_LAYER);
 
-        // ==========================================
-        // 2. CENTRO (Tabla Principal de Venta)
-        // ==========================================
+        // 2. CENTRO
         String[] columnasVenta = {"N°", "#Barra", "Descripción", "Cantidad", "Neto", "%", "Total"};
         modeloTablaVenta = new DefaultTableModel(columnasVenta, 0);
 
@@ -222,9 +228,7 @@ public class FrmVenta extends JInternalFrame {
         scrollTabla.setBorder(BorderFactory.createLineBorder(Color.GRAY, 1));
         layeredPane.add(scrollTabla, JLayeredPane.DEFAULT_LAYER);
 
-        // ==========================================
-        // 3. TABLA FLOTANTE DE BÚSQUEDA (Superpuesta y Ampliada)
-        // ==========================================
+        // 3. TABLA FLOTANTE DE BÚSQUEDA
         String[] columnasBuscador = {"Barra", "Descripción del Producto", "Precio Público"};
         modeloBuscadorFlotante = new DefaultTableModel(columnasBuscador, 0);
 
@@ -240,7 +244,7 @@ public class FrmVenta extends JInternalFrame {
         tablaBuscadorFlotante.getTableHeader().setForeground(dosYellow);
 
         scrollBuscadorFlotante = new JScrollPane(tablaBuscadorFlotante);
-        scrollBuscadorFlotante.setBounds(150, 120, 800, 350);// Más ancho y más alto
+        scrollBuscadorFlotante.setBounds(150, 120, 800, 350);
         scrollBuscadorFlotante.getViewport().setBackground(dosDarkPanel);
         scrollBuscadorFlotante.setBorder(BorderFactory.createLineBorder(dosYellow, 2));
         scrollBuscadorFlotante.setVisible(false);
@@ -256,9 +260,7 @@ public class FrmVenta extends JInternalFrame {
             }
         });
 
-        // ==========================================
-        // 4. PANEL INFERIOR (Barra de comandos y atajos)
-        // ==========================================
+        // 4. PANEL INFERIOR
         JPanel panelInferior = new JPanel(new BorderLayout());
         panelInferior.setBounds(0, 595, 1100, 105);
         panelInferior.setBackground(dosBlue);
@@ -308,9 +310,6 @@ public class FrmVenta extends JInternalFrame {
 
         layeredPane.add(panelInferior, JLayeredPane.DEFAULT_LAYER);
 
-        // ==========================================
-        // LISTENER RESPONSIVO MÁGICO
-        // ==========================================
         layeredPane.addComponentListener(new ComponentAdapter() {
             @Override
             public void componentResized(ComponentEvent e) {
@@ -328,9 +327,6 @@ public class FrmVenta extends JInternalFrame {
             }
         });
 
-        // ==========================================
-        // ATAJOS GLOBALES DE TECLADO
-        // ==========================================
         getRootPane().registerKeyboardAction(ev -> dispose(),
                 KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0),
                 JComponent.WHEN_IN_FOCUSED_WINDOW);
@@ -587,6 +583,16 @@ public class FrmVenta extends JInternalFrame {
         lblTotalGeneral.setText(String.format("%,.0f", sumaTotal));
     }
 
+    private String convertirFechaParaBD(String fechaDdMmYyyy) {
+        try {
+            DateTimeFormatter entrada = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+            DateTimeFormatter salida = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+            return LocalDate.parse(fechaDdMmYyyy, entrada).format(salida);
+        } catch (Exception e) {
+            return LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+        }
+    }
+
     private void finalizarYGuardarVenta() {
         if (modeloTablaVenta.getRowCount() == 0) {
             JOptionPane.showMessageDialog(this, "No hay productos en la venta actual.", "Error", JOptionPane.ERROR_MESSAGE);
@@ -599,7 +605,7 @@ public class FrmVenta extends JInternalFrame {
             return;
         }
 
-        try {
+        try (Connection con = Conexion.getConnection()) {
             int codigoVendedor = Integer.parseInt(codigoVendedorStr);
             String rutClienteStr = txtRutCliente.getText().trim();
             int codigoCliente = 0;
@@ -610,8 +616,12 @@ public class FrmVenta extends JInternalFrame {
                 }
             }
 
-            String fechaActual = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
-            int folioVenta = (int) (System.currentTimeMillis() % 100000);
+            // 1. Leer Parámetros reales (Fecha de proceso + correlativo de Boleta)
+            ParametrosDAO paramDAO = new ParametrosDAO();
+            ParametrosDTO param = paramDAO.obtenerParametros(con);
+
+            String fechaParaBD = convertirFechaParaBD(fechaProcesoSistema);
+            int folioVenta = (int) (param.getBoleta() + 1);
 
             List<ItemVentaDTO> listaItems = new ArrayList<>();
             for (int i = 0; i < modeloTablaVenta.getRowCount(); i++) {
@@ -627,10 +637,15 @@ public class FrmVenta extends JInternalFrame {
             }
 
             VentaDAO ventaDAO = new VentaDAO();
-            boolean exito = ventaDAO.guardarVenta(folioVenta, codigoCliente, fechaActual, codigoVendedor, listaItems);
+            boolean exito = ventaDAO.guardarVenta(folioVenta, codigoCliente, fechaParaBD, codigoVendedor, listaItems);
 
             if (exito) {
-                JOptionPane.showMessageDialog(this, "¡Venta registrada con éxito! Folio N°: " + folioVenta);
+                // 2. Actualizar correlativo de Boleta en pparam_dbf
+                param.setBoleta(folioVenta);
+                paramDAO.guardarParametros(con, param);
+
+                JOptionPane.showMessageDialog(this,
+                        "¡Venta registrada con éxito!\nBoleta N°: " + folioVenta + "\nFecha Proceso: " + fechaProcesoSistema);
 
                 modeloTablaVenta.setRowCount(0);
                 lblTotalGeneral.setText("0");
@@ -644,6 +659,9 @@ public class FrmVenta extends JInternalFrame {
 
         } catch (NumberFormatException e) {
             JOptionPane.showMessageDialog(this, "Verifique que el código del vendedor y las cantidades sean numéricos válidos.", "Error", JOptionPane.ERROR_MESSAGE);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Error al conectar con la base de datos: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 }

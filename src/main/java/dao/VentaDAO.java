@@ -1,6 +1,7 @@
 package dao;
 
 import conexion.Conexion;
+import static conexion.Conexion.getConnection;
 import java.util.List;
 import modelo.ItemVentaDTO;
 import java.sql.Connection;
@@ -198,6 +199,62 @@ public class VentaDAO {
             ex.printStackTrace();
             return false;
         }
+    }
+
+    public List<modelo.VentaClienteDTO> obtenerVentasPorCliente(String fechaIni, String fechaFin) {
+        List<modelo.VentaClienteDTO> lista = new ArrayList<>();
+
+        String sql = "SELECT "
+                + "    CASE "
+                + "        WHEN COALESCE(NULLIF(TRIM(v.\"VCLIENTE\"), ''), '0') = '0' THEN '0' "
+                + "        WHEN MAX(TRIM(c.\"CLIRUT\")) IS NOT NULL AND COALESCE(MAX(TRIM(c.\"CLIDIGIT\")), '') <> '' "
+                + "            THEN MAX(TRIM(c.\"CLIRUT\")) || '-' || MAX(TRIM(c.\"CLIDIGIT\")) "
+                + "        ELSE TRIM(v.\"VCLIENTE\") "
+                + "    END AS cod_cliente, "
+                + "    CASE "
+                + "        WHEN COALESCE(NULLIF(TRIM(v.\"VCLIENTE\"), ''), '0') = '0' THEN 'CLIENTE CONTADO / GENÉRICO' "
+                + "        ELSE COALESCE(MAX(TRIM(c.\"CLINOMBRE\")), 'CLIENTE NO REGISTRADO (' || TRIM(v.\"VCLIENTE\") || ')') "
+                + "    END AS nom_cliente, "
+                + "    COUNT(DISTINCT COALESCE(NULLIF(TRIM(v.\"VFACTURA\"), ''), NULLIF(TRIM(v.\"VBOLETA\"), ''), NULLIF(TRIM(v.\"VGUIA\"), ''), CAST(v.\"VCODIGO\" AS TEXT))) AS cant_docs, "
+                + "    COALESCE(SUM(CASE "
+                + "        WHEN COALESCE(v.\"VPXTOTAL\", 0) > 0 THEN v.\"VPXTOTAL\" "
+                + "        ELSE CAST(REPLACE(COALESCE(NULLIF(TRIM(v.\"VPXPRECIO\"), ''), '0'), ',', '.') AS NUMERIC) "
+                + "    END), 0) AS total_ventas "
+                + "FROM pventas_dbf v "
+                + "LEFT JOIN pcliente_dbf c ON "
+                + "    UPPER(REPLACE(REPLACE(TRIM(v.\"VCLIENTE\"), '.', ''), '-', '')) IN ( "
+                + "        UPPER(TRIM(c.\"CLIRUT\")), "
+                + "        UPPER(TRIM(c.\"CLIRUT\") || COALESCE(TRIM(c.\"CLIDIGIT\"), '')) "
+                + "    ) "
+                + "WHERE (CASE "
+                + "    WHEN v.\"VFECHA\" ~ '^\\d{4}-\\d{2}-\\d{2}' THEN TO_DATE(SUBSTRING(v.\"VFECHA\", 1, 10), 'YYYY-MM-DD') "
+                + "    WHEN v.\"VFECHA\" ~ '^\\d{2}-\\d{2}-\\d{4}' THEN TO_DATE(SUBSTRING(v.\"VFECHA\", 1, 10), 'DD-MM-YYYY') "
+                + "    WHEN v.\"VFECHA\" ~ '^\\d{2}/\\d{2}/\\d{4}' THEN TO_DATE(SUBSTRING(v.\"VFECHA\", 1, 10), 'DD/MM/YYYY') "
+                + "    ELSE NULL "
+                + "END) BETWEEN TO_DATE(?, 'DD/MM/YYYY') AND TO_DATE(?, 'DD/MM/YYYY') "
+                + "GROUP BY TRIM(v.\"VCLIENTE\") "
+                + "ORDER BY total_ventas DESC";
+
+        try (Connection con = getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
+
+            ps.setString(1, fechaIni);
+            ps.setString(2, fechaFin);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    modelo.VentaClienteDTO dto = new modelo.VentaClienteDTO(
+                            rs.getString("cod_cliente"),
+                            rs.getString("nom_cliente"),
+                            rs.getInt("cant_docs"),
+                            rs.getDouble("total_ventas")
+                    );
+                    lista.add(dto);
+                }
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return lista;
     }
 
 }

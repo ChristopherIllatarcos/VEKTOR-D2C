@@ -17,10 +17,10 @@ public class FrmRegistroFamilias extends JInternalFrame {
 
     public FrmRegistroFamilias() {
         setTitle("REGISTRO DE FAMILIAS");
-        setClosable(true);
-        setIconifiable(true);
-        setMaximizable(true);
-        setResizable(true);
+        setClosable(false);
+        setIconifiable(false);
+        setMaximizable(false);
+        setResizable(false);
         setSize(750, 480);
 
         familiaDAO = new FamiliaDAO();

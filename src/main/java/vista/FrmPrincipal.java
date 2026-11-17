@@ -23,22 +23,24 @@ import javax.swing.JLabel;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
-import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 import javax.swing.UnsupportedLookAndFeelException;
 import vista.archivo.DlgIndexacionDB;
-import vista.bodega.DlgParametrosInventario;
+import vista.archivo.FrmParametros;
 import vista.bodega.DlgProductos;
+import vista.bodega.FrmInventarioCritico;
 import vista.bodega.FrmResultadoInventario;
+import vista.bodega.FrmRotacionVentas;
 import vista.bodega.FrmVentasPorFamilia;
 import vista.compras.DlgProveedores;
+import vista.compras.FrmIngresoCompra;
+import vista.compras.FrmLibroCompras;
 import vista.ctacte.FrmCarteraCheques;
 import vista.ctacte.FrmCartolaCliente;
 import vista.ctacte.FrmCartolaPorFecha;
 import vista.ctacte.FrmCuentasCobrarAlfabetico;
 import vista.ctacte.FrmEliminarRecibo;
-import vista.ventas.DlgParametrosVentaCliente;
 import vista.ventas.FrmComisionesCobranza;
 import vista.ventas.FrmComisionesVentas;
 import vista.ventas.FrmConsultaDocumento;
@@ -224,10 +226,20 @@ public class FrmPrincipal extends javax.swing.JFrame {
 
                     }
                     case 5 -> {
-                        // Le pasamos 'this' (la ventana principal) y el panel de escritorio MDI
-                        DlgParametrosVentaCliente dlgParametros = new DlgParametrosVentaCliente(this, escritorio);
-                        dlgParametros.setLocationRelativeTo(this);
-                        dlgParametros.setVisible(true);
+                        vista.ventas.FrmResultadoVentaCliente frm = new vista.ventas.FrmResultadoVentaCliente();
+                        escritorio.add(frm);
+
+                        // Centrar el JInternalFrame dentro del JDesktopPane
+                        int x = (escritorio.getWidth() - frm.getWidth()) / 2;
+                        int y = (escritorio.getHeight() - frm.getHeight()) / 2;
+                        frm.setLocation(Math.max(0, x), Math.max(0, y));
+
+                        frm.toFront();
+                        try {
+                            frm.setSelected(true);
+                        } catch (java.beans.PropertyVetoException ex) {
+                            ex.printStackTrace();
+                        }
                     }
                     case 6 -> {
                         FrmArchivoClientes frmClientes = new FrmArchivoClientes();
@@ -322,11 +334,23 @@ public class FrmPrincipal extends javax.swing.JFrame {
                         System.out.println("Abriendo Maestro de Proveedores, op: " + indexAccion);
                     }
                     case 2 -> {
+                        FrmIngresoCompra frm = new FrmIngresoCompra();
+                        escritorio.add(frm);
+                        frm.setVisible(true);
+                        try {
+                            frm.setSelected(true);
+                        } catch (java.beans.PropertyVetoException ex) {
+                        }
 
                     }
                     case 3 -> {
-                        // Siguiente opción de tu menú...
-                        System.out.println("Abriendo opción: " + indexAccion);
+                        FrmLibroCompras frm = new FrmLibroCompras();
+                        escritorio.add(frm);
+                        frm.setVisible(true);
+                        try {
+                            frm.setSelected(true);
+                        } catch (java.beans.PropertyVetoException ex) {
+                        }
                     }
                 }
             });
@@ -407,11 +431,26 @@ public class FrmPrincipal extends javax.swing.JFrame {
 
                     }
                     case 2 -> {
-
+                        vista.bodega.FrmIngresoMercaderia frm = new vista.bodega.FrmIngresoMercaderia();
+                        escritorio.add(frm);
+                        frm.setVisible(true);
+                        try {
+                            frm.setSelected(true);
+                        } catch (java.beans.PropertyVetoException ex) {
+                            ex.printStackTrace();
+                        }
                     }
 
                     case 3 -> {
 
+                        vista.bodega.FrmKardexMercaderia frm = new vista.bodega.FrmKardexMercaderia();
+                        escritorio.add(frm);
+                        frm.setVisible(true);
+                        try {
+                            frm.setSelected(true);
+                        } catch (java.beans.PropertyVetoException ex) {
+                            ex.printStackTrace();
+                        }
                     }
 
                     case 4 -> {
@@ -432,10 +471,24 @@ public class FrmPrincipal extends javax.swing.JFrame {
 
                     }
                     case 5 -> {
+                        FrmInventarioCritico frm = new FrmInventarioCritico();
+                        escritorio.add(frm);
+                        frm.setVisible(true);
+                        try {
+                            frm.setSelected(true);
+                        } catch (java.beans.PropertyVetoException ex) {
+                        }
 
                     }
 
                     case 6 -> {
+                        FrmRotacionVentas frm = new FrmRotacionVentas();
+                        escritorio.add(frm);
+                        frm.setVisible(true);
+                        try {
+                            frm.setSelected(true);
+                        } catch (java.beans.PropertyVetoException ex) {
+                        }
 
                     }
 
@@ -639,14 +692,15 @@ public class FrmPrincipal extends javax.swing.JFrame {
 
                     }
                     case 6 -> {
+                        Window parentWindow = SwingUtilities.getWindowAncestor(escritorio);
+                        FrmParametros dialog = new FrmParametros(parentWindow);
+                        dialog.setVisible(true);
 
                     }
                     case 7 -> {
-                        DlgIndexacionDB dlgIndexar = new DlgIndexacionDB(this);
-                        dlgIndexar.setVisible(true);
-                    }
-                    case 8 -> {
-
+                        Window parentWindow = SwingUtilities.getWindowAncestor(escritorio);
+                        DlgIndexacionDB dialog = new DlgIndexacionDB((Frame) parentWindow);
+                        dialog.setVisible(true);
                     }
                 }
             });

@@ -10,6 +10,7 @@ import java.awt.event.KeyEvent;
 import java.sql.Connection;
 import java.util.List;
 import modelo.VentaDTO;
+import utilidades.PDFUtils;
 
 public class FrmMantencionVentas extends JInternalFrame {
 
@@ -39,7 +40,6 @@ public class FrmMantencionVentas extends JInternalFrame {
                 new LineBorder(COLOR_CIAN, 2), " BUSCAR EN REGISTRO DE VENTAS ",
                 0, 0, FUENTE_CONSOLA, COLOR_CIAN
         ));
-        // Forzar color del título del borde
         ((javax.swing.border.TitledBorder) panelFiltro.getBorder()).setTitleColor(COLOR_AMARILLO);
 
         JLabel lblBuscar = new JLabel("Cliente / Boleta / Factura:");
@@ -96,8 +96,10 @@ public class FrmMantencionVentas extends JInternalFrame {
         panelInferior.setBackground(COLOR_ROJO_BARRA);
         panelInferior.setBorder(new LineBorder(COLOR_AMARILLO, 1));
 
-        JLabel lblAtajos = new JLabel("(Esc) Salir   |   (F2) Modificar   |   (Supr) Eliminar");
-        lblAtajos.setForeground(Color.WHITE);
+        JLabel lblAtajos = new JLabel("<html><b style='color:#FFFF55;'>(Esc)</b> <span style='color:FFFFFF;'>Salir</span> &nbsp;&nbsp;|&nbsp;&nbsp; "
+                + "<b style='color:#FFFF55;'>(F2)</b> <span style='color:FFFFFF;'>Modificar</span> &nbsp;&nbsp;|&nbsp;&nbsp; "
+                + "<b style='color:#FFFF55;'>(F4)</b> <span style='color:FFFFFF;'>Exportar PDF</span> &nbsp;&nbsp;|&nbsp;&nbsp; "
+                + "<b style='color:#FFFF55;'>(Supr)</b> <span style='color:FFFFFF;'>Eliminar</span></html>");
         lblAtajos.setFont(FUENTE_CONSOLA);
         panelInferior.add(lblAtajos);
 
@@ -144,22 +146,40 @@ public class FrmMantencionVentas extends JInternalFrame {
             }
         });
 
+        // [F4] Exportar a PDF
+        root.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(KeyEvent.VK_F4, 0), "exportar_pdf");
+        root.getActionMap().put("exportar_pdf", new AbstractAction() {
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                exportarPDF();
+            }
+        });
+
         // [F2] Atajo global interceptado directamente mediante KeyboardFocusManager
         KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(new KeyEventDispatcher() {
             @Override
             public boolean dispatchKeyEvent(KeyEvent e) {
-                // Verificamos que sea el evento de presionar la tecla F2 y que esta ventana sea la activa
                 if (e.getID() == KeyEvent.KEY_PRESSED && e.getKeyCode() == KeyEvent.VK_F2) {
-                    // Validamos que esta ventana (FrmMantencionVentas) sea la que tiene el foco actual
                     if (FrmMantencionVentas.this.isDisplayable() && FrmMantencionVentas.this.isSelected()) {
                         abrirModificacion();
-                        e.consume(); // Consumimos el evento para que la tabla no haga nada más
+                        e.consume();
                         return true;
                     }
                 }
                 return false;
             }
         });
+    }
+
+    private void exportarPDF() {
+        String filtroTexto = txtFiltro.getText().trim();
+        String subtitulo = filtroTexto.isEmpty() ? "Todos los registros" : "Filtro aplicado: " + filtroTexto;
+        PDFUtils.exportarTablaPDF(
+                tablaVentas,
+                "MANTENCIÓN DE VENTAS",
+                subtitulo,
+                "Total Registros Listados: " + tablaVentas.getRowCount()
+        );
     }
 
     private void cargarDatos() {
@@ -230,12 +250,10 @@ public class FrmMantencionVentas extends JInternalFrame {
         String totalStr = modeloTabla.getValueAt(fila, 6).toString().replaceAll("[^0-9]", "");
         v.setVpxtotal(totalStr.isEmpty() ? 0.0 : Double.parseDouble(totalStr));
 
-        // Lanzamos el diálogo flotante modal pasando la ventana principal como referencia
         Window parentWindow = SwingUtilities.getWindowAncestor(this);
         FrmModificarVenta frmMod = new FrmModificarVenta(parentWindow, v);
         frmMod.setVisible(true);
 
-        // Si guardó exitosamente, recargamos la tabla de inmediato
         if (frmMod.isGuardadoExitoso()) {
             cargarDatos();
         }

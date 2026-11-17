@@ -7,6 +7,7 @@ import com.itextpdf.layout.element.Paragraph;
 import com.itextpdf.kernel.font.PdfFont;
 import com.itextpdf.kernel.font.PdfFontFactory;
 import com.itextpdf.io.font.constants.StandardFonts;
+import com.itextpdf.kernel.colors.ColorConstants;
 import com.itextpdf.kernel.colors.DeviceRgb;
 import com.itextpdf.kernel.geom.PageSize;
 import com.itextpdf.layout.element.Cell;
@@ -18,6 +19,7 @@ import javax.swing.table.TableModel;
 import javax.swing.filechooser.FileSystemView;
 import java.awt.Desktop;
 import java.io.File;
+import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -26,6 +28,8 @@ import java.util.Date;
 import java.util.List;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
+import javax.swing.JTable;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.DefaultTableModel;
 import modelo.DocumentoCarteraDTO;
 
@@ -372,4 +376,112 @@ public class PDFUtils {
         }
     }
 
+    public static void exportarTablaPDF(JTable tabla, String tituloReporte, String subtituloFechas, String textoTotal) {
+        if (tabla.getRowCount() == 0) {
+            JOptionPane.showMessageDialog(null, "No hay registros en la tabla para exportar.", "Aviso", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setDialogTitle("Guardar Informe en PDF");
+        fileChooser.setFileFilter(new FileNameExtensionFilter("Archivos PDF (*.pdf)", "pdf"));
+        fileChooser.setSelectedFile(new File("Informe_Mantencion_Ventas.pdf"));
+
+        if (fileChooser.showSaveDialog(null) != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+
+        File archivo = fileChooser.getSelectedFile();
+        if (!archivo.getName().toLowerCase().endsWith(".pdf")) {
+            archivo = new File(archivo.getAbsolutePath() + ".pdf");
+        }
+
+        try {
+            PdfWriter writer = new PdfWriter(archivo);
+            PdfDocument pdf = new PdfDocument(writer);
+            try ( // Usamos tamaño Letter Horizontal (LANDSCAPE) dado que la tabla de ventas tiene muchas columnas
+                    Document documento = new Document(pdf, PageSize.LETTER.rotate())) {
+                documento.setMargins(30, 30, 35, 35);
+                
+                // Título y Subtítulo
+                Paragraph pTitulo = new Paragraph(tituloReporte)
+                        .setBold()
+                        .setFontSize(14)
+                        .setFontColor(ColorConstants.DARK_GRAY)
+                        .setTextAlignment(TextAlignment.CENTER);
+                documento.add(pTitulo);
+                
+                Paragraph pSub = new Paragraph(subtituloFechas)
+                        .setFontSize(10)
+                        .setFontColor(ColorConstants.GRAY)
+                        .setTextAlignment(TextAlignment.CENTER)
+                        .setMarginBottom(15);
+                documento.add(pSub);
+                
+                // Tabla Dinámica adaptada al número de columnas de la JTable
+                int cols = tabla.getColumnCount();
+                float[] columnWidths = new float[cols];
+                for (int i = 0; i < cols; i++) {
+                    columnWidths[i] = 1f; // Distribución equitativa automatizada
+                }
+                Table pdfTable = new Table(UnitValue.createPercentArray(columnWidths))
+                        .useAllAvailableWidth();
+                
+                DeviceRgb colorHeader = new DeviceRgb(0, 0, 140);
+                DeviceRgb colorFilaPar = new DeviceRgb(242, 245, 250);
+                
+                // Cabeceras
+                for (int c = 0; c < cols; c++) {
+                    Cell cell = new Cell()
+                            .add(new Paragraph(tabla.getColumnName(c)).setBold().setFontSize(9).setFontColor(ColorConstants.WHITE))
+                            .setBackgroundColor(colorHeader)
+                            .setTextAlignment(TextAlignment.CENTER)
+                            .setPadding(6);
+                    pdfTable.addHeaderCell(cell);
+                }
+                
+                // Filas visibles de la JTable
+                for (int r = 0; r < tabla.getRowCount(); r++) {
+                    for (int c = 0; c < cols; c++) {
+                        Object val = tabla.getValueAt(r, c);
+                        Paragraph textoCelda = new Paragraph(val != null ? val.toString() : "").setFontSize(9);
+                        
+                        Cell cell = new Cell()
+                                .add(textoCelda)
+                                .setPadding(5);
+                        
+                        // Alinear a la derecha si es la columna de Total ($) o códigos numéricos, al centro fechas/documentos
+                        switch (c) {
+                            case 0, 2, 3, 4, 5 -> cell.setTextAlignment(TextAlignment.CENTER);
+                            case 6 -> cell.setTextAlignment(TextAlignment.RIGHT);
+                            default -> cell.setTextAlignment(TextAlignment.LEFT);
+                        }
+                        
+                        if (r % 2 == 1) {
+                            cell.setBackgroundColor(colorFilaPar);
+                        }
+                        pdfTable.addCell(cell);
+                    }
+                }
+                
+                documento.add(pdfTable);
+                
+                // Pie con el Total / Registros
+                Paragraph pTotal = new Paragraph("\n" + textoTotal)
+                        .setBold()
+                        .setFontSize(11)
+                        .setTextAlignment(TextAlignment.RIGHT);
+                documento.add(pTotal);
+            }
+
+            // Abre automáticamente el PDF generado
+            if (Desktop.isDesktopSupported()) {
+                Desktop.getDesktop().open(archivo);
+            }
+
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(null, "Error al generar PDF: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
 }

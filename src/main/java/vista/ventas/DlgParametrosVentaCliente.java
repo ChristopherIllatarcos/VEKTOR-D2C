@@ -90,7 +90,7 @@ public class DlgParametrosVentaCliente extends JDialog {
 
         btnGenerar = new JButton("Generar");
         estilizarBoton(btnGenerar, new Color(100, 180, 255), Color.BLACK);
-        btnGenerar.addActionListener(e -> generarInforme());
+      //  btnGenerar.addActionListener(e -> generarInforme());
 
         JButton btnCancelar = new JButton("Cancelar");
         estilizarBoton(btnCancelar, new Color(60, 60, 60), Color.WHITE);
@@ -138,27 +138,27 @@ public class DlgParametrosVentaCliente extends JDialog {
         });
     }
 
-    private void generarInforme() {
-        String fi = txtFechaInicial.getText().trim();
-        String ff = txtFechaFinal.getText().trim();
-
-        List<VentaClienteDTO> resultados = controlador.generarInforme(fi, ff);
-
-        if (resultados != null) {
-            dispose();
-            FrmResultadoVentaCliente frmRes = new FrmResultadoVentaCliente(resultados, fi, ff);
-
-            if (desktopPane != null) {
-                desktopPane.add(frmRes);
-                try {
-                    frmRes.setSelected(true);
-                } catch (java.beans.PropertyVetoException ex) {
-                    ex.printStackTrace();
-                }
-                frmRes.setVisible(true);
-            }
-        } else {
-            JOptionPane.showMessageDialog(this, "Error al consultar los datos.", "VEKTOR D2C", JOptionPane.ERROR_MESSAGE);
-        }
-    }
+//    private void generarInforme() {
+//        String fi = txtFechaInicial.getText().trim();
+//        String ff = txtFechaFinal.getText().trim();
+//
+//        List<VentaClienteDTO> resultados = controlador.generarInforme(fi, ff);
+//
+//        if (resultados != null) {
+//            dispose();
+//            FrmResultadoVentaCliente frmRes = new FrmResultadoVentaCliente(resultados, fi, ff);
+//
+//            if (desktopPane != null) {
+//                desktopPane.add(frmRes);
+//                try {
+//                    frmRes.setSelected(true);
+//                } catch (java.beans.PropertyVetoException ex) {
+//                    ex.printStackTrace();
+//                }
+//                frmRes.setVisible(true);
+//            }
+//        } else {
+//            JOptionPane.showMessageDialog(this, "Error al consultar los datos.", "VEKTOR D2C", JOptionPane.ERROR_MESSAGE);
+//        }
+//    }
 }

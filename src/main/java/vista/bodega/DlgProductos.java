@@ -26,7 +26,7 @@ public class DlgProductos extends JInternalFrame {
 
     public DlgProductos() {
         // Configuración como JInternalFrame: título, resizabel, closable, maximizable, iconifiable
-        super("Fichero Productos (Principal)", true, true, true, true);
+        super("Fichero Productos (Principal)", false, false, false, false);
 
         // Ocultar botones modernos y mantener estética limpia de consola si se prefiere
         putClientProperty("JInternalFrame.isPalette", Boolean.FALSE);
