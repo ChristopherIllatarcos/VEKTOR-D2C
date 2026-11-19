@@ -13,8 +13,14 @@ public class ProveedorDAO {
     public List<Object[]> obtenerProveedoresParaTabla() {
         List<Object[]> listaProveedores = new ArrayList<>();
 
-        // Consulta SQL apuntando a los nombres exactos de las columnas de pproveed_dbf
-        String sql = "SELECT \"PRVRUT\", \"PRVDIGIT\", \"PRVNOMBRE\", \"PRVCIUDAD\" FROM pproveed_dbf ORDER BY \"PRVNOMBRE\" ASC";
+        // MODIFICADO: Agregamos un WHERE para ignorar registros fantasma o vacíos (RUT 0/nulo y sin nombre)
+        String sql = """
+            SELECT "PRVRUT", "PRVDIGIT", "PRVNOMBRE", "PRVCIUDAD" 
+            FROM pproveed_dbf 
+            WHERE ("PRVRUT" IS NOT NULL AND "PRVRUT" > 0) 
+               OR ("PRVNOMBRE" IS NOT NULL AND TRIM("PRVNOMBRE") <> '')
+            ORDER BY "PRVNOMBRE" ASC
+        """;
 
         try (Connection conn = Conexion.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql); ResultSet rs = pstmt.executeQuery()) {
 
@@ -28,9 +34,15 @@ public class ProveedorDAO {
                 String nombre = rs.getString("PRVNOMBRE");
                 String ciudad = rs.getString("PRVCIUDAD");
 
+                // Doble validación en Java por si acaso el nombre viene solo con espacios en blanco
+                String nombreTrim = nombre != null ? nombre.trim() : "";
+                if (rut <= 0 && nombreTrim.isEmpty()) {
+                    continue; // Salta filas completamente vacías
+                }
+
                 Object[] fila = new Object[]{
                     rutFormateado,
-                    nombre != null ? nombre.trim() : "",
+                    nombreTrim,
                     ciudad != null ? ciudad.trim() : ""
                 };
                 listaProveedores.add(fila);

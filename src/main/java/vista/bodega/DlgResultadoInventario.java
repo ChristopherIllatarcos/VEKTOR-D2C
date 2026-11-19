@@ -13,7 +13,7 @@ public class DlgResultadoInventario extends JDialog {
     private JButton btnCerrar;
 
     public DlgResultadoInventario(Frame parent, List<InventarioItemDTO> items, String fechaCorte) {
-        super(parent, "VEKTOR D2C - Listado de Inventario al " + fechaCorte, true);
+        super(parent, "Listado de Inventario al " + fechaCorte, true);
         initComponents(items, fechaCorte);
         configurarAtajosTeclado(); // <--- Activamos ESC y Enter global aquí también
         
@@ -83,6 +83,9 @@ public class DlgResultadoInventario extends JDialog {
         panelPrincipal.add(panelInferior, BorderLayout.SOUTH);
 
         add(panelPrincipal);
+          SwingUtilities.invokeLater(() -> {
+            utilidades.IconoUtils.aplicarIcono(this);
+        });
     }
 
     private void configurarAtajosTeclado() {

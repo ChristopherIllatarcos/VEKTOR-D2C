@@ -4,7 +4,9 @@ import conexion.Conexion;
 import dao.VentaDAO;
 import javax.swing.*;
 import javax.swing.border.LineBorder;
+import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableColumnModel;
 import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.sql.Connection;
@@ -17,33 +19,46 @@ public class FrmMantencionVentas extends JInternalFrame {
     private JTextField txtFiltro;
     private JTable tablaVentas;
     private DefaultTableModel modeloTabla;
+    private JButton btnBuscar;
+    private JLabel lblAtajos;
+    private JLabel lblResumenTotales;
 
-    // Estética Clipper Clásica (Azul, Amarillo, Cian y Barra Roja)
-    private final Color COLOR_AZUL_FONDO = new Color(0, 0, 139);      // Azul clásico Clipper
-    private final Color COLOR_AMARILLO = new Color(255, 255, 0);       // Amarillo brillante textos/títulos
-    private final Color COLOR_CIAN = new Color(0, 255, 255);           // Cian para bordes
-    private final Color COLOR_ROJO_BARRA = new Color(178, 0, 0);       // Rojo sólido barra inferior
-    private final Color COLOR_SELECCION = new Color(0, 0, 205);        // Azul selección grilla
+    // Componentes estructurales para actualización dinámica de colores
+    private JPanel panelFiltro, panelInferior, panelResumen, panelSurGeneral;
+    private JScrollPane scroll;
+
+    // Dispatcher global para [F2] (se limpia en dispose() para evitar fugas)
+    private KeyEventDispatcher dispatcherF2;
+
+    // Variables de Colores Actuales del Tema
+    private Color cFondoNegro, cPanelNorte, cEncabezadoTabla, cAcento, cTextoClaro, cSeleccion, cBarraSur;
     private final Font FUENTE_CONSOLA = new Font("Courier New", Font.BOLD, 12);
+
+    // Sistema de Temas Ciclos [F5]
+    private final String[] listaTemas = {"Clipper Clásico", "Naranja Fuego", "Morado Neón", "Esmeralda Terminal", "Turquesa Pro"};
+    private int indiceTemaActual = 0;
 
     public FrmMantencionVentas() {
         super(" 4.- MANTENCIÓN DE VENTAS ", false, true, false, true);
+
+        // Aplicar tema inicial
+        aplicarTema(listaTemas[indiceTemaActual]);
+
         setSize(950, 550);
         setLocation(35, 20);
-        getContentPane().setBackground(COLOR_AZUL_FONDO);
+        getContentPane().setBackground(cFondoNegro);
         setLayout(new BorderLayout());
 
         // 1. PANEL DE BÚSQUEDA / FILTRO
-        JPanel panelFiltro = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
-        panelFiltro.setBackground(COLOR_AZUL_FONDO);
+        panelFiltro = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
+        panelFiltro.setBackground(cPanelNorte);
         panelFiltro.setBorder(BorderFactory.createTitledBorder(
-                new LineBorder(COLOR_CIAN, 2), " BUSCAR EN REGISTRO DE VENTAS ",
-                0, 0, FUENTE_CONSOLA, COLOR_CIAN
+                new LineBorder(cAcento, 2), " BUSCAR EN REGISTRO DE VENTAS ",
+                0, 0, FUENTE_CONSOLA, cAcento
         ));
-        ((javax.swing.border.TitledBorder) panelFiltro.getBorder()).setTitleColor(COLOR_AMARILLO);
 
         JLabel lblBuscar = new JLabel("Cliente / Boleta / Factura:");
-        lblBuscar.setForeground(COLOR_AMARILLO);
+        lblBuscar.setForeground(cAcento);
         lblBuscar.setFont(FUENTE_CONSOLA);
         panelFiltro.add(lblBuscar);
 
@@ -52,14 +67,14 @@ public class FrmMantencionVentas extends JInternalFrame {
         txtFiltro.addActionListener(e -> cargarDatos());
         panelFiltro.add(txtFiltro);
 
-        JButton btnBuscar = new JButton("[ENTER] Buscar");
+        btnBuscar = new JButton("[ENTER] Buscar");
         estilizarBoton(btnBuscar);
         btnBuscar.addActionListener(e -> cargarDatos());
         panelFiltro.add(btnBuscar);
 
         add(panelFiltro, BorderLayout.NORTH);
 
-        // 2. TABLA CON COLUMNAS REALES DE pventas_dbf
+        // 2. TABLA CON FRANJAS HORIZONTALES SUTILES
         String[] columnas = {"Código", "Cliente", "Fecha", "Boleta", "Factura", "Guía", "Total ($)"};
         modeloTabla = new DefaultTableModel(columnas, 0) {
             @Override
@@ -69,60 +84,277 @@ public class FrmMantencionVentas extends JInternalFrame {
         };
 
         tablaVentas = new JTable(modeloTabla);
-        tablaVentas.setBackground(COLOR_AZUL_FONDO);
-        tablaVentas.setForeground(COLOR_AMARILLO);
+        tablaVentas.setBackground(cFondoNegro);
+        tablaVentas.setForeground(cTextoClaro);
         tablaVentas.setFont(FUENTE_CONSOLA);
-        tablaVentas.setSelectionBackground(COLOR_SELECCION);
+        tablaVentas.setSelectionBackground(cSeleccion);
         tablaVentas.setSelectionForeground(Color.WHITE);
-        tablaVentas.getTableHeader().setBackground(COLOR_AZUL_FONDO);
-        tablaVentas.getTableHeader().setForeground(COLOR_AMARILLO);
+        tablaVentas.getTableHeader().setBackground(cEncabezadoTabla);
+        tablaVentas.getTableHeader().setForeground(cAcento);
         tablaVentas.getTableHeader().setFont(FUENTE_CONSOLA);
         tablaVentas.setRowHeight(22);
         tablaVentas.setShowGrid(false);
         tablaVentas.setIntercellSpacing(new Dimension(0, 0));
-        tablaVentas.setGridColor(COLOR_CIAN);
 
-        JScrollPane scroll = new JScrollPane(tablaVentas);
-        scroll.getViewport().setBackground(COLOR_AZUL_FONDO);
+        DefaultTableCellRenderer rendererRayas = new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+                Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+                if (!isSelected) {
+                    if (row % 2 == 0) {
+                        c.setBackground(cFondoNegro);
+                    } else {
+                        c.setBackground(new Color(
+                                Math.min(255, cFondoNegro.getRed() + 15),
+                                Math.min(255, cFondoNegro.getGreen() + 15),
+                                Math.min(255, cFondoNegro.getBlue() + 15)
+                        ));
+                    }
+                    c.setForeground(cTextoClaro);
+                } else {
+                    c.setBackground(cSeleccion);
+                    c.setForeground(Color.WHITE);
+                }
+
+                switch (column) {
+                    case 6, 0 -> setHorizontalAlignment(JLabel.RIGHT);
+                    case 2, 3, 4, 5 -> setHorizontalAlignment(JLabel.CENTER);
+                    default -> setHorizontalAlignment(JLabel.LEFT);
+                }
+                return c;
+            }
+        };
+
+        for (int i = 0; i < tablaVentas.getColumnCount(); i++) {
+            tablaVentas.getColumnModel().getColumn(i).setCellRenderer(rendererRayas);
+        }
+
+        TableColumnModel colModel = tablaVentas.getColumnModel();
+        colModel.getColumn(0).setPreferredWidth(75);
+        colModel.getColumn(1).setPreferredWidth(260);
+        colModel.getColumn(2).setPreferredWidth(105);
+        colModel.getColumn(3).setPreferredWidth(95);
+        colModel.getColumn(4).setPreferredWidth(95);
+        colModel.getColumn(5).setPreferredWidth(95);
+        colModel.getColumn(6).setPreferredWidth(130);
+
+        scroll = new JScrollPane(tablaVentas);
+        scroll.getViewport().setBackground(cFondoNegro);
         scroll.setBorder(BorderFactory.createTitledBorder(
-                new LineBorder(COLOR_CIAN, 2), " REGISTROS DE VENTAS ",
-                0, 0, FUENTE_CONSOLA, COLOR_CIAN
+                new LineBorder(cAcento, 2), " REGISTROS DE VENTAS ",
+                0, 0, FUENTE_CONSOLA, cAcento
         ));
-        ((javax.swing.border.TitledBorder) scroll.getBorder()).setTitleColor(COLOR_AMARILLO);
         add(scroll, BorderLayout.CENTER);
 
-        // 3. BARRA INFERIOR ROJA CON ATAJOS (Estilo Clipper Auténtico)
-        JPanel panelInferior = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 6));
-        panelInferior.setBackground(COLOR_ROJO_BARRA);
-        panelInferior.setBorder(new LineBorder(COLOR_AMARILLO, 1));
+        // 3. ZONA INFERIOR: RESUMEN DE TOTALES + BARRA DE ATAJOS
+        panelSurGeneral = new JPanel(new BorderLayout());
+        panelSurGeneral.setBackground(cFondoNegro);
 
-        JLabel lblAtajos = new JLabel("<html><b style='color:#FFFF55;'>(Esc)</b> <span style='color:FFFFFF;'>Salir</span> &nbsp;&nbsp;|&nbsp;&nbsp; "
-                + "<b style='color:#FFFF55;'>(F2)</b> <span style='color:FFFFFF;'>Modificar</span> &nbsp;&nbsp;|&nbsp;&nbsp; "
-                + "<b style='color:#FFFF55;'>(F4)</b> <span style='color:FFFFFF;'>Exportar PDF</span> &nbsp;&nbsp;|&nbsp;&nbsp; "
-                + "<b style='color:#FFFF55;'>(Supr)</b> <span style='color:FFFFFF;'>Eliminar</span></html>");
+        panelResumen = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 5));
+        panelResumen.setBackground(cFondoNegro);
+
+        lblResumenTotales = new JLabel("Registros: 0  |  Total Listado: $ 0");
+        lblResumenTotales.setFont(FUENTE_CONSOLA);
+        lblResumenTotales.setForeground(cAcento);
+        panelResumen.add(lblResumenTotales);
+
+        panelInferior = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 6));
+        panelInferior.setBackground(cBarraSur);
+        panelInferior.setBorder(new LineBorder(cAcento, 1));
+
+        lblAtajos = new JLabel();
         lblAtajos.setFont(FUENTE_CONSOLA);
+        actualizarTextoAtajos();
         panelInferior.add(lblAtajos);
 
-        add(panelInferior, BorderLayout.SOUTH);
+        panelSurGeneral.add(panelResumen, BorderLayout.NORTH);
+        panelSurGeneral.add(panelInferior, BorderLayout.SOUTH);
+        add(panelSurGeneral, BorderLayout.SOUTH);
+
+        // Asignar el icono del cubo azul a la ventana interna
+        try {
+            java.net.URL urlIcono = getClass().getResource("/vektor/cubo-azul-16.png");
+            if (urlIcono != null) {
+                setFrameIcon(new ImageIcon(urlIcono));
+            }
+        } catch (Exception e) {
+            System.out.println("No se pudo cargar el icono interno: " + e.getMessage());
+        }
 
         configurarAtajos();
         cargarDatos();
+
+        SwingUtilities.invokeLater(() -> {
+            utilidades.IconoUtils.aplicarIcono(this);
+            txtFiltro.requestFocusInWindow();
+        });
+    }
+
+    // ==========================================
+    // SISTEMA DE CAMBIO DE TEMAS [F5]
+    // ==========================================
+    private void aplicarTema(String nombreTema) {
+        switch (nombreTema) {
+            case "Morado Neón":
+                cFondoNegro = new Color(10, 10, 15);
+                cPanelNorte = new Color(45, 10, 55);
+                cEncabezadoTabla = new Color(90, 10, 120);
+                cAcento = new Color(255, 110, 220);
+                cTextoClaro = new Color(255, 230, 255);
+                cSeleccion = new Color(140, 20, 160);
+                cBarraSur = new Color(130, 0, 70);
+                break;
+            case "Esmeralda Terminal":
+                cFondoNegro = new Color(5, 20, 15);
+                cPanelNorte = new Color(10, 45, 30);
+                cEncabezadoTabla = new Color(15, 80, 50);
+                cAcento = new Color(0, 255, 128);
+                cTextoClaro = new Color(220, 255, 240);
+                cSeleccion = new Color(0, 140, 80);
+                cBarraSur = new Color(0, 60, 35);
+                break;
+            case "Clipper Clásico":
+                cFondoNegro = Color.BLACK;
+                cPanelNorte = new Color(0, 0, 168);
+                cEncabezadoTabla = new Color(0, 0, 168);
+                cAcento = new Color(255, 255, 85);
+                cTextoClaro = Color.WHITE;
+                cSeleccion = new Color(0, 168, 168);
+                cBarraSur = new Color(168, 0, 0);
+                break;
+            case "Naranja Fuego":
+                cFondoNegro = new Color(15, 10, 8);
+                cPanelNorte = new Color(40, 18, 12);
+                cEncabezadoTabla = new Color(80, 28, 18);
+                cAcento = new Color(245, 73, 39);
+                cTextoClaro = new Color(255, 235, 225);
+                cSeleccion = new Color(130, 42, 22);
+                cBarraSur = new Color(60, 20, 12);
+                break;
+            case "Turquesa Pro":
+            default:
+                cFondoNegro = new Color(5, 15, 20);
+                cPanelNorte = new Color(10, 40, 50);
+                cEncabezadoTabla = new Color(0, 80, 95);
+                cAcento = new Color(0, 245, 255);
+                cTextoClaro = new Color(220, 255, 255);
+                cSeleccion = new Color(0, 120, 140);
+                cBarraSur = new Color(0, 60, 70);
+                break;
+        }
+    }
+
+    private void ciclarSiguienteTema() {
+        indiceTemaActual = (indiceTemaActual + 1) % listaTemas.length;
+        String nuevoTema = listaTemas[indiceTemaActual];
+        aplicarTema(nuevoTema);
+
+        getContentPane().setBackground(cFondoNegro);
+
+        if (panelFiltro != null) {
+            panelFiltro.setBackground(cPanelNorte);
+            panelFiltro.setBorder(BorderFactory.createTitledBorder(
+                    new LineBorder(cAcento, 2), " BUSCAR EN REGISTRO DE VENTAS ",
+                    0, 0, FUENTE_CONSOLA, cAcento
+            ));
+            for (Component comp : panelFiltro.getComponents()) {
+                if (comp instanceof JLabel) {
+                    comp.setForeground(cAcento);
+                }
+            }
+        }
+
+        estilizarCampo(txtFiltro);
+        estilizarBoton(btnBuscar);
+
+        if (tablaVentas != null) {
+            tablaVentas.setBackground(cFondoNegro);
+            tablaVentas.setForeground(cTextoClaro);
+            tablaVentas.setSelectionBackground(cSeleccion);
+            tablaVentas.getTableHeader().setBackground(cEncabezadoTabla);
+            tablaVentas.getTableHeader().setForeground(cAcento);
+            tablaVentas.repaint();
+        }
+
+        if (scroll != null) {
+            scroll.getViewport().setBackground(cFondoNegro);
+            scroll.setBorder(BorderFactory.createTitledBorder(
+                    new LineBorder(cAcento, 2), " REGISTROS DE VENTAS ",
+                    0, 0, FUENTE_CONSOLA, cAcento
+            ));
+        }
+
+        if (panelSurGeneral != null) {
+            panelSurGeneral.setBackground(cFondoNegro);
+        }
+        if (panelResumen != null) {
+            panelResumen.setBackground(cFondoNegro);
+        }
+        if (lblResumenTotales != null) {
+            lblResumenTotales.setForeground(cAcento);
+        }
+        if (panelInferior != null) {
+            panelInferior.setBackground(cBarraSur);
+            panelInferior.setBorder(new LineBorder(cAcento, 1));
+        }
+
+        actualizarTextoAtajos();
+
+        revalidate();
+        repaint();
+    }
+
+    private void actualizarTextoAtajos() {
+        String temaActual = listaTemas[indiceTemaActual];
+        if (lblAtajos != null) {
+            lblAtajos.setText("<html><b style='color:#FFFF55;'>(Esc)</b> <span style='color:#FFFFFF;'>Salir</span> &nbsp;&nbsp;|&nbsp;&nbsp; "
+                    + "<b style='color:#FFFF55;'>(F2)</b> <span style='color:#FFFFFF;'>Modificar</span> &nbsp;&nbsp;|&nbsp;&nbsp; "
+                    + "<b style='color:#FFFF55;'>(F4)</b> <span style='color:#FFFFFF;'>PDF</span> &nbsp;&nbsp;|&nbsp;&nbsp; "
+                    + "<b style='color:#FFFF55;'>(Supr)</b> <span style='color:#FFFFFF;'>Eliminar</span> &nbsp;&nbsp;|&nbsp;&nbsp; "
+                    + "<b style='color:#FFFF55;'>(F5): Tema: " + temaActual + "</b></html>");
+        }
+    }
+
+    private void actualizarResumenTotales() {
+        if (lblResumenTotales == null) {
+            return;
+        }
+        int totalFilas = modeloTabla.getRowCount();
+        double suma = 0.0;
+        for (int i = 0; i < totalFilas; i++) {
+            Object val = modeloTabla.getValueAt(i, 6);
+            if (val != null) {
+                String limpio = val.toString().replaceAll("[^0-9]", "");
+                if (!limpio.isEmpty()) {
+                    try {
+                        suma += Double.parseDouble(limpio);
+                    } catch (NumberFormatException ignored) {
+                    }
+                }
+            }
+        }
+        lblResumenTotales.setText(String.format("Registros: %d  |  Total Listado: $ %,.0f", totalFilas, suma));
     }
 
     private void estilizarCampo(JTextField campo) {
-        campo.setBackground(COLOR_AZUL_FONDO);
-        campo.setForeground(COLOR_AMARILLO);
-        campo.setCaretColor(COLOR_AMARILLO);
-        campo.setFont(FUENTE_CONSOLA);
-        campo.setBorder(new LineBorder(COLOR_CIAN, 1));
+        if (campo != null) {
+            campo.setBackground(cFondoNegro);
+            campo.setForeground(cTextoClaro);
+            campo.setCaretColor(cAcento);
+            campo.setFont(FUENTE_CONSOLA);
+            campo.setBorder(new LineBorder(cAcento, 1));
+        }
     }
 
     private void estilizarBoton(JButton boton) {
-        boton.setBackground(COLOR_AZUL_FONDO);
-        boton.setForeground(COLOR_AMARILLO);
-        boton.setFont(FUENTE_CONSOLA);
-        boton.setBorder(new LineBorder(COLOR_CIAN, 1));
-        boton.setFocusPainted(false);
+        if (boton != null) {
+            boton.setBackground(cEncabezadoTabla);
+            boton.setForeground(cTextoClaro);
+            boton.setFont(FUENTE_CONSOLA);
+            boton.setBorder(new LineBorder(cAcento, 1));
+            boton.setFocusPainted(false);
+            boton.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        }
     }
 
     private void configurarAtajos() {
@@ -155,20 +387,36 @@ public class FrmMantencionVentas extends JInternalFrame {
             }
         });
 
-        // [F2] Atajo global interceptado directamente mediante KeyboardFocusManager
-        KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(new KeyEventDispatcher() {
+        // [F5] Ciclar Tema
+        root.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(KeyEvent.VK_F5, 0), "cambiar_tema_f5");
+        root.getActionMap().put("cambiar_tema_f5", new AbstractAction() {
             @Override
-            public boolean dispatchKeyEvent(KeyEvent e) {
-                if (e.getID() == KeyEvent.KEY_PRESSED && e.getKeyCode() == KeyEvent.VK_F2) {
-                    if (FrmMantencionVentas.this.isDisplayable() && FrmMantencionVentas.this.isSelected()) {
-                        abrirModificacion();
-                        e.consume();
-                        return true;
-                    }
-                }
-                return false;
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                ciclarSiguienteTema();
             }
         });
+
+        // [F2] Atajo global interceptado mediante KeyboardFocusManager (limpiado en dispose())
+        dispatcherF2 = e -> {
+            if (e.getID() == KeyEvent.KEY_PRESSED && e.getKeyCode() == KeyEvent.VK_F2) {
+                if (FrmMantencionVentas.this.isDisplayable() && FrmMantencionVentas.this.isSelected()) {
+                    abrirModificacion();
+                    e.consume();
+                    return true;
+                }
+            }
+            return false;
+        };
+        KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(dispatcherF2);
+    }
+
+    @Override
+    public void dispose() {
+        if (dispatcherF2 != null) {
+            KeyboardFocusManager.getCurrentKeyboardFocusManager().removeKeyEventDispatcher(dispatcherF2);
+            dispatcherF2 = null;
+        }
+        super.dispose();
     }
 
     private void exportarPDF() {
@@ -178,7 +426,7 @@ public class FrmMantencionVentas extends JInternalFrame {
                 tablaVentas,
                 "MANTENCIÓN DE VENTAS",
                 subtitulo,
-                "Total Registros Listados: " + tablaVentas.getRowCount()
+                lblResumenTotales != null ? lblResumenTotales.getText() : "Total Registros Listados: " + tablaVentas.getRowCount()
         );
     }
 
@@ -201,22 +449,36 @@ public class FrmMantencionVentas extends JInternalFrame {
                     String.format("$ %,.0f", v.getVpxtotal())
                 });
             }
+            actualizarResumenTotales();
         } catch (Exception ex) {
             ex.printStackTrace();
+            actualizarResumenTotales();
             JOptionPane.showMessageDialog(this, "Error al cargar ventas: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 
     private void eliminarSeleccionado() {
-        int fila = tablaVentas.getSelectedRow();
-        if (fila == -1) {
+        int filaVista = tablaVentas.getSelectedRow();
+        if (filaVista == -1) {
             JOptionPane.showMessageDialog(this, "Seleccione un registro de venta para eliminar.", "Aviso", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
-        long codigo = (long) modeloTabla.getValueAt(fila, 0);
+        int filaModelo = tablaVentas.convertRowIndexToModel(filaVista);
+        Object valorCodigo = modeloTabla.getValueAt(filaModelo, 0);
+        if (!(valorCodigo instanceof Number)) {
+            JOptionPane.showMessageDialog(this, "Código de venta inválido.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        long codigo = ((Number) valorCodigo).longValue();
 
-        int confirm = JOptionPane.showConfirmDialog(this, "¿Está seguro de eliminar el registro ID: " + codigo + "?", "Confirmar Eliminación", JOptionPane.YES_NO_OPTION);
+        int confirm = JOptionPane.showConfirmDialog(
+                this,
+                "¿Está seguro de eliminar el registro ID: " + codigo + "?",
+                "Confirmar Eliminación",
+                JOptionPane.YES_NO_OPTION
+        );
+
         if (confirm == JOptionPane.YES_OPTION) {
             try (Connection con = Conexion.getConnection()) {
                 VentaDAO dao = new VentaDAO();
@@ -228,26 +490,31 @@ public class FrmMantencionVentas extends JInternalFrame {
                 }
             } catch (Exception ex) {
                 ex.printStackTrace();
+                JOptionPane.showMessageDialog(this, "Error al eliminar la venta: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
             }
         }
     }
 
     private void abrirModificacion() {
-        int fila = tablaVentas.getSelectedRow();
-        if (fila == -1) {
+        int filaVista = tablaVentas.getSelectedRow();
+        if (filaVista == -1) {
             JOptionPane.showMessageDialog(this, "Seleccione un registro de venta en la tabla para modificar.", "Aviso", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
-        VentaDTO v = new VentaDTO();
-        v.setVcodigo((long) modeloTabla.getValueAt(fila, 0));
-        v.setVcliente((String) modeloTabla.getValueAt(fila, 1));
-        v.setVfecha((String) modeloTabla.getValueAt(fila, 2));
-        v.setVboleta((String) modeloTabla.getValueAt(fila, 3));
-        v.setVfactura((String) modeloTabla.getValueAt(fila, 4));
-        v.setVguia((String) modeloTabla.getValueAt(fila, 5));
+        int filaModelo = tablaVentas.convertRowIndexToModel(filaVista);
+        Object valorCodigo = modeloTabla.getValueAt(filaModelo, 0);
 
-        String totalStr = modeloTabla.getValueAt(fila, 6).toString().replaceAll("[^0-9]", "");
+        VentaDTO v = new VentaDTO();
+        v.setVcodigo(valorCodigo instanceof Number ? ((Number) valorCodigo).longValue() : 0L);
+        v.setVcliente((String) modeloTabla.getValueAt(filaModelo, 1));
+        v.setVfecha((String) modeloTabla.getValueAt(filaModelo, 2));
+        v.setVboleta((String) modeloTabla.getValueAt(filaModelo, 3));
+        v.setVfactura((String) modeloTabla.getValueAt(filaModelo, 4));
+        v.setVguia((String) modeloTabla.getValueAt(filaModelo, 5));
+
+        Object valTotal = modeloTabla.getValueAt(filaModelo, 6);
+        String totalStr = valTotal != null ? valTotal.toString().replaceAll("[^0-9]", "") : "";
         v.setVpxtotal(totalStr.isEmpty() ? 0.0 : Double.parseDouble(totalStr));
 
         Window parentWindow = SwingUtilities.getWindowAncestor(this);

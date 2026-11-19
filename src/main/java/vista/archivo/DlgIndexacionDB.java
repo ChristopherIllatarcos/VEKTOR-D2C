@@ -23,10 +23,28 @@ public class DlgIndexacionDB extends JDialog {
     private JLabel lblTablaActual;
     private JButton btnIniciar;
     private JButton btnCerrar;
+    private JLabel lblTitulo;
+    private JLabel lblAtajos;
     private boolean enProceso = false;
+
+    // Componentes estructurales para actualización dinámica de colores
+    private JPanel panelPrincipal;
+    private JPanel panelCajaProceso;
+    private JPanel panelComandos;
+
+    // Variables de Colores Actuales del Tema
+    private Color cFondo, cCajaFondo, cBordeCian, cAmarilloClipper, cVerdeFosforo, cRojoBarra;
+
+    // Sistema de Temas Ciclos [F6]
+    private final String[] listaTemas = {"Clipper Azul", "Morado Neón", "Turquesa Pro", "Esmeralda Terminal", "Naranja Fuego"};
+    private int indiceTemaActual = 0; // Empieza en Clipper Azul por defecto
 
     public DlgIndexacionDB(Frame parent) {
         super(parent, "VEKTOR D2C - INDEXACIÓN Y RESPALDO DE BASE DE DATOS", true);
+
+        // Aplicar tema inicial
+        aplicarTema(listaTemas[indiceTemaActual]);
+
         initComponents();
         configurarAtajosTeclado();
 
@@ -36,21 +54,135 @@ public class DlgIndexacionDB extends JDialog {
         setResizable(false);
     }
 
+    // ==========================================
+    // SISTEMA DE CAMBIO DE TEMAS [F6]
+    // ==========================================
+    private void aplicarTema(String nombreTema) {
+        switch (nombreTema) {
+            case "Morado Neón":
+                cFondo = new Color(10, 10, 15);
+                cCajaFondo = new Color(25, 12, 35);
+                cBordeCian = new Color(255, 110, 220);
+                cAmarilloClipper = new Color(255, 180, 240);
+                cVerdeFosforo = new Color(255, 150, 255);
+                cRojoBarra = new Color(130, 0, 70);
+                break;
+            case "Turquesa Pro":
+                cFondo = new Color(5, 15, 20);
+                cCajaFondo = new Color(8, 30, 40);
+                cBordeCian = new Color(0, 245, 255);
+                cAmarilloClipper = new Color(180, 255, 255);
+                cVerdeFosforo = new Color(100, 255, 255);
+                cRojoBarra = new Color(0, 60, 70);
+                break;
+            case "Esmeralda Terminal":
+                cFondo = new Color(5, 20, 15);
+                cCajaFondo = new Color(8, 35, 22);
+                cBordeCian = new Color(0, 255, 128);
+                cAmarilloClipper = new Color(180, 255, 200);
+                cVerdeFosforo = new Color(120, 255, 180);
+                cRojoBarra = new Color(0, 60, 35);
+                break;
+            case "Naranja Fuego":
+                cFondo = new Color(15, 10, 8);
+                cCajaFondo = new Color(32, 16, 10);
+                cBordeCian = new Color(245, 73, 39);
+                cAmarilloClipper = new Color(255, 200, 150);
+                cVerdeFosforo = new Color(255, 220, 180);
+                cRojoBarra = new Color(60, 20, 12);
+                break;
+            case "Clipper Azul":
+            default:
+                cFondo = new Color(0, 0, 168);
+                cCajaFondo = new Color(0, 0, 120);
+                cBordeCian = new Color(85, 255, 255);
+                cAmarilloClipper = new Color(255, 255, 85);
+                cVerdeFosforo = new Color(85, 255, 85);
+                cRojoBarra = new Color(168, 0, 0);
+                break;
+        }
+    }
+
+    private void ciclarSiguienteTema() {
+        indiceTemaActual = (indiceTemaActual + 1) % listaTemas.length;
+        aplicarTema(listaTemas[indiceTemaActual]);
+
+        if (panelPrincipal != null) {
+            panelPrincipal.setBackground(cFondo);
+            panelPrincipal.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(cBordeCian, 2),
+                    new EmptyBorder(15, 15, 15, 15)
+            ));
+        }
+
+        if (lblTitulo != null) {
+            lblTitulo.setForeground(cAmarilloClipper);
+        }
+
+        if (panelCajaProceso != null) {
+            panelCajaProceso.setBackground(cCajaFondo);
+            panelCajaProceso.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createTitledBorder(
+                            BorderFactory.createLineBorder(cAmarilloClipper, 1),
+                            " PROCESO DE INDEXACIÓN Y RESPALDO ",
+                            javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION,
+                            javax.swing.border.TitledBorder.DEFAULT_POSITION,
+                            new Font("Monospaced", Font.BOLD, 12),
+                            cAmarilloClipper
+                    ),
+                    new EmptyBorder(15, 15, 15, 15)
+            ));
+        }
+
+        if (lblEstado != null) {
+            lblEstado.setForeground(Color.WHITE);
+        }
+        if (lblTablaActual != null) {
+            lblTablaActual.setForeground(cVerdeFosforo);
+        }
+
+        if (progressBar != null) {
+            progressBar.setForeground(cVerdeFosforo);
+            progressBar.setBackground(cFondo);
+        }
+
+        estilizarBotonConsola(btnIniciar, new Color(0, 140, 0));
+        estilizarBotonConsola(btnCerrar, new Color(140, 0, 0));
+
+        if (panelComandos != null) {
+            panelComandos.setBackground(cRojoBarra);
+            panelComandos.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, cAmarilloClipper));
+        }
+
+        actualizarTextoAtajos();
+
+        revalidate();
+        repaint();
+    }
+
+    private void actualizarTextoAtajos() {
+        String temaActual = listaTemas[indiceTemaActual];
+        if (lblAtajos != null) {
+            lblAtajos.setText("<html><b style='color:#FFFF55;'>(Enter)</b> <span style='color:FFFFFF;'>Comenzar</span> &nbsp;|&nbsp; "
+                    + "<b style='color:#FFFF55;'>(F6)</b> <span style='color:FFFFFF;'>Tema: " + temaActual + "</span> &nbsp;|&nbsp; "
+                    + "<b style='color:#FFFF55;'>(Esc)</b> <span style='color:FFFFFF;'>Salir</span></html>");
+        }
+    }
+
     private void initComponents() {
-        // Panel principal estilo Clipper (Azul oscuro clásico MS-DOS)
-        JPanel panelPrincipal = new JPanel(new BorderLayout(10, 10));
-        panelPrincipal.setBackground(new Color(0, 0, 168));
+        panelPrincipal = new JPanel(new BorderLayout(10, 10));
+        panelPrincipal.setBackground(cFondo);
         panelPrincipal.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(85, 255, 255), 2), // Borde cian claro
+                BorderFactory.createLineBorder(cBordeCian, 2),
                 new EmptyBorder(15, 15, 15, 15)
         ));
 
         // ==========================================
         // 1. ZONA SUPERIOR (Título)
         // ==========================================
-        JLabel lblTitulo = new JLabel("UTILITARIO DE MANTENIMIENTO Y RESPALDO");
+        lblTitulo = new JLabel("UTILITARIO DE MANTENIMIENTO Y RESPALDO");
         lblTitulo.setFont(new Font("Monospaced", Font.BOLD, 15));
-        lblTitulo.setForeground(new Color(255, 255, 85)); // Amarillo Clipper
+        lblTitulo.setForeground(cAmarilloClipper);
         lblTitulo.setHorizontalAlignment(SwingConstants.CENTER);
 
         JPanel panelNorte = new JPanel(new FlowLayout(FlowLayout.CENTER));
@@ -62,18 +194,18 @@ public class DlgIndexacionDB extends JDialog {
         // 2. ZONA CENTRAL (Cajita de proceso robusta)
         // ==========================================
         JPanel panelCentroContainer = new JPanel(new GridBagLayout());
-        panelCentroContainer.setBackground(new Color(0, 0, 168));
+        panelCentroContainer.setBackground(cFondo);
 
-        JPanel panelCajaProceso = new JPanel(new GridLayout(3, 1, 6, 10));
-        panelCajaProceso.setBackground(new Color(0, 0, 120));
+        panelCajaProceso = new JPanel(new GridLayout(3, 1, 6, 10));
+        panelCajaProceso.setBackground(cCajaFondo);
         panelCajaProceso.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createTitledBorder(
-                        BorderFactory.createLineBorder(new Color(255, 255, 85), 1),
+                        BorderFactory.createLineBorder(cAmarilloClipper, 1),
                         " PROCESO DE INDEXACIÓN Y RESPALDO ",
                         javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION,
                         javax.swing.border.TitledBorder.DEFAULT_POSITION,
                         new Font("Monospaced", Font.BOLD, 12),
-                        new Color(255, 255, 85)
+                        cAmarilloClipper
                 ),
                 new EmptyBorder(15, 15, 15, 15)
         ));
@@ -86,15 +218,15 @@ public class DlgIndexacionDB extends JDialog {
 
         lblTablaActual = new JLabel("Estado: Listo para iniciar el mantenimiento.");
         lblTablaActual.setFont(new Font("Monospaced", Font.PLAIN, 12));
-        lblTablaActual.setForeground(new Color(85, 255, 85)); // Verde fósforo
+        lblTablaActual.setForeground(cVerdeFosforo);
         panelCajaProceso.add(lblTablaActual);
 
         progressBar = new JProgressBar(0, 100);
         progressBar.setValue(0);
         progressBar.setStringPainted(true);
         progressBar.setFont(new Font("Monospaced", Font.BOLD, 13));
-        progressBar.setForeground(new Color(0, 220, 0)); // Verde brillante
-        progressBar.setBackground(new Color(0, 0, 80));   // Fondo azul oscuro
+        progressBar.setForeground(cVerdeFosforo);
+        progressBar.setBackground(cFondo);
         progressBar.setOpaque(true);
         panelCajaProceso.add(progressBar);
 
@@ -102,20 +234,20 @@ public class DlgIndexacionDB extends JDialog {
         panelPrincipal.add(panelCentroContainer, BorderLayout.CENTER);
 
         // ==========================================
-        // 3. ZONA INFERIOR (Botones y Barra Roja de Comandos)
+        // 3. ZONA INFERIOR (Botones y Barra de Comandos)
         // ==========================================
         JPanel panelSurGeneral = new JPanel(new BorderLayout(5, 5));
-        panelSurGeneral.setBackground(new Color(0, 0, 168));
+        panelSurGeneral.setBackground(cFondo);
 
         JPanel panelBotones = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 5));
         panelBotones.setOpaque(false);
 
         btnIniciar = new JButton("[ ENTER ] Iniciar Proceso");
-        estilizarBotonConsola(btnIniciar, new Color(0, 168, 0));
+        estilizarBotonConsola(btnIniciar, new Color(0, 140, 0));
         btnIniciar.addActionListener(e -> iniciarProcesoMantenimiento());
 
         btnCerrar = new JButton("[ ESC ] Salir");
-        estilizarBotonConsola(btnCerrar, new Color(168, 0, 0));
+        estilizarBotonConsola(btnCerrar, new Color(140, 0, 0));
         btnCerrar.addActionListener(e -> {
             if (!enProceso) {
                 dispose();
@@ -126,37 +258,40 @@ public class DlgIndexacionDB extends JDialog {
         panelBotones.add(btnCerrar);
         panelSurGeneral.add(panelBotones, BorderLayout.NORTH);
 
-        // Franja inferior roja de comandos tipo Clipper
-        JPanel panelComandos = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 6));
-        panelComandos.setBackground(new Color(168, 0, 0));
-        panelComandos.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(255, 255, 85)));
+        // Franja inferior de comandos tipo Clipper
+        panelComandos = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 6));
+        panelComandos.setBackground(cRojoBarra);
+        panelComandos.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, cAmarilloClipper));
 
-        JLabel lblAtajos = new JLabel("<html><b style='color:#FFFF55;'>(Enter)</b> <span style='color:FFFFFF;'>Comenzar</span> &nbsp;&nbsp;|&nbsp;&nbsp; "
-                + "<b style='color:#FFFF55;'>(Esc)</b> <span style='color:FFFFFF;'>Cancelar / Salir</span></html>");
+        lblAtajos = new JLabel();
         lblAtajos.setFont(new Font("Monospaced", Font.BOLD, 12));
+        actualizarTextoAtajos();
         panelComandos.add(lblAtajos);
 
         panelSurGeneral.add(panelComandos, BorderLayout.SOUTH);
         panelPrincipal.add(panelSurGeneral, BorderLayout.SOUTH);
 
         add(panelPrincipal);
-    }   
+    }
 
     private void estilizarBotonConsola(JButton btn, Color bg) {
-        btn.setFont(new Font("Monospaced", Font.BOLD, 13));
-        btn.setBackground(bg);
-        btn.setForeground(Color.WHITE);
-        btn.setFocusPainted(false);
-        btn.setBorder(BorderFactory.createLineBorder(new Color(255, 255, 85), 1));
-        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        btn.setPreferredSize(new Dimension(220, 32));
+        if (btn != null) {
+            btn.setFont(new Font("Monospaced", Font.BOLD, 13));
+            btn.setBackground(bg);
+            btn.setForeground(Color.WHITE);
+            btn.setFocusPainted(false);
+            btn.setBorder(BorderFactory.createLineBorder(cAmarilloClipper, 1));
+            btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+            btn.setPreferredSize(new Dimension(220, 32));
+        }
     }
 
     private void configurarAtajosTeclado() {
         JRootPane rootPane = this.getRootPane();
+        int cond = JComponent.WHEN_IN_FOCUSED_WINDOW;
 
         KeyStroke strokeEsc = KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0);
-        rootPane.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(strokeEsc, "SALIR");
+        rootPane.getInputMap(cond).put(strokeEsc, "SALIR");
         rootPane.getActionMap().put("SALIR", new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -167,13 +302,22 @@ public class DlgIndexacionDB extends JDialog {
         });
 
         KeyStroke strokeEnter = KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0);
-        rootPane.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(strokeEnter, "INICIAR");
+        rootPane.getInputMap(cond).put(strokeEnter, "INICIAR");
         rootPane.getActionMap().put("INICIAR", new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 if (!enProceso) {
                     btnIniciar.doClick();
                 }
+            }
+        });
+
+        KeyStroke strokeF6 = KeyStroke.getKeyStroke(KeyEvent.VK_F6, 0);
+        rootPane.getInputMap(cond).put(strokeF6, "CICLAR_TEMA");
+        rootPane.getActionMap().put("CICLAR_TEMA", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                ciclarSiguienteTema();
             }
         });
     }

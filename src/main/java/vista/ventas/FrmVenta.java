@@ -6,19 +6,21 @@ import dao.ParametrosDAO;
 import dao.ProductoVentaDAO;
 import dao.VendedorDAO;
 import dao.VentaDAO;
-
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridLayout;
 import java.awt.Window;
+import java.awt.event.ActionEvent;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.sql.Connection;
+import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -28,6 +30,7 @@ import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
+import javax.swing.JDialog;
 import javax.swing.JInternalFrame;
 import javax.swing.JLabel;
 import javax.swing.JLayeredPane;
@@ -38,6 +41,7 @@ import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
+import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import modelo.ItemVentaDTO;
 import modelo.ParametrosDTO;
@@ -55,19 +59,32 @@ public class FrmVenta extends JInternalFrame {
 
     private JTable tablaVenta;
     private DefaultTableModel modeloTablaVenta;
+    private JScrollPane scrollTabla;
 
     private JTable tablaBuscadorFlotante;
     private DefaultTableModel modeloBuscadorFlotante;
     private JScrollPane scrollBuscadorFlotante;
 
     private JLabel lblTotalGeneral;
+    private JLabel lblAtajos;
+
+    // Componentes estructurales para actualización dinámica de colores
+    private JLayeredPane layeredPane;
+    private JPanel panelSuperior, panelInferior;
+
+    // Variables de Colores Actuales del Tema
+    private Color cFondoNegro, cPanelSuperior, cEncabezadoTabla, cAcento, cTextoClaro, cSeleccion, cBarraSur, cPanelTablas;
+    private final Font FUENTE_CONSOLA = new Font("Consolas", Font.BOLD, 15);
+
+    // Sistema de Temas Ciclos [F5]
+    private final String[] listaTemas = {"Clipper Clásico", "Morado Neón", "Turquesa Pro", "Esmeralda Terminal", "Naranja Fuego"};
+    private int indiceTemaActual = 0;
 
     private String codigoBarraSeleccionado = "";
     private String descripcionSeleccionada = "";
     private double precioUnitarioSeleccionado = 0.0;
-
-    // Fecha de proceso leída desde Parámetros (dd/MM/yyyy)
     private String fechaProcesoSistema = "";
+    private double porcentajeDescuentoGlobal = 0.0; // Descuento aplicado con F10
 
     private JTextField txtRutCliente = new JTextField(15);
     private JTextField txtNombreCliente = new JTextField(25);
@@ -82,11 +99,149 @@ public class FrmVenta extends JInternalFrame {
     private JTextField txtCodigoProducto = new JTextField(15);
 
     public FrmVenta() {
-        super("Ingreso de Venta", true, true, true, true);
+        super("1.- Ingreso de Venta", false, false, false, false);
         putClientProperty("JInternalFrame.isPalette", Boolean.FALSE);
+
+        aplicarTema(listaTemas[indiceTemaActual]);
 
         initComponentsManual();
         cargarFechaDesdeParametros();
+
+        try {
+            setFrameIcon(new javax.swing.ImageIcon(getClass().getResource("/vektor/cubo-azul-16.png")));
+        } catch (Exception e) {
+            System.out.println("No se pudo cargar el icono interno: " + e.getMessage());
+        }
+    }
+
+    private void aplicarTema(String nombreTema) {
+        switch (nombreTema) {
+            case "Morado Neón":
+                cFondoNegro = new Color(10, 10, 15);
+                cPanelSuperior = new Color(45, 10, 55);
+                cPanelTablas = new Color(15, 10, 20);
+                cEncabezadoTabla = new Color(90, 10, 120);
+                cAcento = new Color(255, 110, 220);
+                cTextoClaro = new Color(255, 230, 255);
+                cSeleccion = new Color(140, 20, 160);
+                cBarraSur = new Color(130, 0, 70);
+                break;
+            case "Turquesa Pro":
+                cFondoNegro = new Color(5, 15, 20);
+                cPanelSuperior = new Color(10, 40, 50);
+                cPanelTablas = new Color(5, 20, 25);
+                cEncabezadoTabla = new Color(0, 80, 95);
+                cAcento = new Color(0, 245, 255);
+                cTextoClaro = new Color(220, 255, 255);
+                cSeleccion = new Color(0, 120, 140);
+                cBarraSur = new Color(0, 60, 70);
+                break;
+            case "Esmeralda Terminal":
+                cFondoNegro = new Color(5, 20, 15);
+                cPanelSuperior = new Color(10, 45, 30);
+                cPanelTablas = new Color(5, 25, 18);
+                cEncabezadoTabla = new Color(15, 80, 50);
+                cAcento = new Color(0, 255, 128);
+                cTextoClaro = new Color(220, 255, 240);
+                cSeleccion = new Color(0, 140, 80);
+                cBarraSur = new Color(0, 60, 35);
+                break;
+            case "Clipper Clásico":
+                cFondoNegro = Color.BLACK;
+                cPanelSuperior = new Color(0, 0, 168);
+                cPanelTablas = new Color(0, 0, 120);
+                cEncabezadoTabla = new Color(0, 0, 168);
+                cAcento = new Color(255, 255, 85);
+                cTextoClaro = Color.WHITE;
+                cSeleccion = new Color(0, 168, 168);
+                cBarraSur = new Color(168, 0, 0);
+                break;
+            case "Naranja Fuego":
+            default:
+                cFondoNegro = new Color(15, 10, 8);
+                cPanelSuperior = new Color(40, 18, 12);
+                cPanelTablas = new Color(25, 12, 10);
+                cEncabezadoTabla = new Color(80, 28, 18);
+                cAcento = new Color(245, 73, 39);
+                cTextoClaro = new Color(255, 235, 225);
+                cSeleccion = new Color(130, 42, 22);
+                cBarraSur = new Color(60, 20, 12);
+                break;
+        }
+    }
+
+    private void ciclarSiguienteTema() {
+        indiceTemaActual = (indiceTemaActual + 1) % listaTemas.length;
+        String nuevoTema = listaTemas[indiceTemaActual];
+        aplicarTema(nuevoTema);
+
+        if (layeredPane != null) {
+            layeredPane.setBackground(cFondoNegro);
+        }
+        if (panelSuperior != null) {
+            panelSuperior.setBackground(cPanelSuperior);
+            panelSuperior.setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, cAcento));
+        }
+        if (panelInferior != null) {
+            panelInferior.setBackground(cPanelSuperior);
+            panelInferior.setBorder(BorderFactory.createMatteBorder(2, 0, 0, 0, cAcento));
+        }
+        if (lblNombreVendedor != null) {
+            lblNombreVendedor.setForeground(cAcento);
+        }
+        if (lblFecha != null) {
+            lblFecha.setForeground(cAcento);
+        }
+        if (lblTotalGeneral != null) {
+            lblTotalGeneral.setForeground(cAcento);
+        }
+
+        if (tablaVenta != null) {
+            tablaVenta.setBackground(cPanelTablas);
+            tablaVenta.setForeground(cTextoClaro);
+            tablaVenta.setSelectionBackground(cSeleccion);
+            tablaVenta.getTableHeader().setBackground(cEncabezadoTabla);
+            tablaVenta.getTableHeader().setForeground(cAcento);
+            tablaVenta.repaint();
+        }
+
+        if (scrollTabla != null) {
+            scrollTabla.getViewport().setBackground(cPanelTablas);
+            scrollTabla.setBorder(BorderFactory.createLineBorder(cAcento, 1));
+        }
+
+        if (tablaBuscadorFlotante != null) {
+            tablaBuscadorFlotante.setBackground(cPanelTablas);
+            tablaBuscadorFlotante.setForeground(cTextoClaro);
+            tablaBuscadorFlotante.setSelectionBackground(cSeleccion);
+            tablaBuscadorFlotante.getTableHeader().setBackground(cEncabezadoTabla);
+            tablaBuscadorFlotante.getTableHeader().setForeground(cAcento);
+            tablaBuscadorFlotante.repaint();
+        }
+
+        if (scrollBuscadorFlotante != null) {
+            scrollBuscadorFlotante.getViewport().setBackground(cPanelTablas);
+            scrollBuscadorFlotante.setBorder(BorderFactory.createLineBorder(cAcento, 2));
+        }
+
+        estilizarCampoTexto(txtVendedor);
+        estilizarCampoTexto(txtIngresoRapido);
+        estilizarCampoTexto(txtCantidad);
+
+        actualizarTextoAtajos();
+
+        if (layeredPane != null) {
+            layeredPane.revalidate();
+            layeredPane.repaint();
+        }
+    }
+
+    private void actualizarTextoAtajos() {
+        String temaActual = listaTemas[indiceTemaActual];
+        String descTexto = porcentajeDescuentoGlobal > 0 ? " (" + porcentajeDescuentoGlobal + "%)" : "";
+        if (lblAtajos != null) {
+            lblAtajos.setText("<html>(Esc)apar &nbsp;&nbsp; (F4): Eliminar &nbsp;&nbsp; (F8): Cliente &nbsp;&nbsp; (F10): Descto" + descTexto + " &nbsp;&nbsp; (F11): PDF &nbsp;&nbsp; (F12): Guardar &nbsp;&nbsp;|&nbsp;&nbsp; <b style='color:#FFFF55;'>(F5): Tema: " + temaActual + "</b></html>");
+        }
     }
 
     private void cargarFechaDesdeParametros() {
@@ -108,42 +263,28 @@ public class FrmVenta extends JInternalFrame {
         setSize(1100, 700);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 
-        JLayeredPane layeredPane = new JLayeredPane();
+        layeredPane = new JLayeredPane();
         layeredPane.setLayout(null);
         setContentPane(layeredPane);
+        layeredPane.setBackground(cFondoNegro);
 
-        Color dosBlue = new Color(0, 0, 128);
-        Color dosDarkPanel = new Color(16, 16, 16);
-        Color dosYellow = Color.YELLOW;
-        Color dosWhite = Color.WHITE;
-
-        Font fuenteConsola = new Font("Consolas", Font.BOLD, 15);
-        if (fuenteConsola.getFamily().equals("Dialog")) {
-            fuenteConsola = new Font("Monospaced", Font.BOLD, 15);
-        }
-
-        layeredPane.setBackground(dosBlue);
+        Font fuenteConsola = FUENTE_CONSOLA;
 
         // 1. PANEL SUPERIOR
-        JPanel panelSuperior = new JPanel(new BorderLayout());
+        panelSuperior = new JPanel(new BorderLayout());
         panelSuperior.setBounds(0, 0, 1100, 80);
-        panelSuperior.setBackground(dosBlue);
-        panelSuperior.setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, Color.WHITE));
+        panelSuperior.setBackground(cPanelSuperior);
+        panelSuperior.setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, cAcento));
 
         JPanel panelVendedor = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 12));
         panelVendedor.setOpaque(false);
 
         JLabel lblVende = new JLabel("Vende:");
-        lblVende.setForeground(dosWhite);
+        lblVende.setForeground(cTextoClaro);
         lblVende.setFont(fuenteConsola);
 
         txtVendedor = new JTextField(6);
-        txtVendedor.setFont(fuenteConsola);
-        txtVendedor.setBackground(Color.BLACK);
-        txtVendedor.setForeground(dosYellow);
-        txtVendedor.setCaretColor(dosYellow);
-        txtVendedor.setBorder(BorderFactory.createLineBorder(Color.LIGHT_GRAY, 1));
-        txtVendedor.setText("");
+        estilizarCampoTexto(txtVendedor);
         txtVendedor.addActionListener(e -> {
             buscarVendedor();
             txtIngresoRapido.requestFocusInWindow();
@@ -151,7 +292,7 @@ public class FrmVenta extends JInternalFrame {
         });
 
         lblNombreVendedor = new JLabel("");
-        lblNombreVendedor.setForeground(dosYellow);
+        lblNombreVendedor.setForeground(cAcento);
         lblNombreVendedor.setFont(fuenteConsola);
 
         panelVendedor.add(lblVende);
@@ -164,12 +305,12 @@ public class FrmVenta extends JInternalFrame {
         panelTitulo.setBorder(BorderFactory.createEmptyBorder(10, 0, 0, 0));
 
         JLabel lblTituloPrincipal = new JLabel("INGRESO DE VENTA");
-        lblTituloPrincipal.setForeground(dosYellow);
+        lblTituloPrincipal.setForeground(cAcento);
         lblTituloPrincipal.setFont(new Font(fuenteConsola.getFamily(), Font.BOLD, 17));
         lblTituloPrincipal.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         JLabel lblEmpresa = new JLabel("— CASA VICTORIA —");
-        lblEmpresa.setForeground(dosWhite);
+        lblEmpresa.setForeground(cTextoClaro);
         lblEmpresa.setFont(fuenteConsola);
         lblEmpresa.setAlignmentX(Component.CENTER_ALIGNMENT);
 
@@ -181,18 +322,18 @@ public class FrmVenta extends JInternalFrame {
         panelDerecha.setBorder(BorderFactory.createEmptyBorder(8, 0, 8, 25));
 
         lblFecha = new JLabel("Fecha: --/--/----", JLabel.RIGHT);
-        lblFecha.setForeground(dosYellow);
+        lblFecha.setForeground(cAcento);
         lblFecha.setFont(fuenteConsola);
 
         JPanel panelTotalBox = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 0));
         panelTotalBox.setOpaque(false);
 
         JLabel lblTextoTotal = new JLabel("TOTAL: $");
-        lblTextoTotal.setForeground(dosWhite);
+        lblTextoTotal.setForeground(cTextoClaro);
         lblTextoTotal.setFont(fuenteConsola);
 
         lblTotalGeneral = new JLabel("0");
-        lblTotalGeneral.setForeground(dosYellow);
+        lblTotalGeneral.setForeground(cAcento);
         lblTotalGeneral.setFont(new Font(fuenteConsola.getFamily(), Font.BOLD, 18));
 
         panelTotalBox.add(lblTextoTotal);
@@ -207,46 +348,100 @@ public class FrmVenta extends JInternalFrame {
 
         layeredPane.add(panelSuperior, JLayeredPane.DEFAULT_LAYER);
 
-        // 2. CENTRO
+        // 2. CENTRO (Tabla de Ventas)
         String[] columnasVenta = {"N°", "#Barra", "Descripción", "Cantidad", "Neto", "%", "Total"};
-        modeloTablaVenta = new DefaultTableModel(columnasVenta, 0);
+        modeloTablaVenta = new DefaultTableModel(columnasVenta, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
 
         tablaVenta = new JTable(modeloTablaVenta);
         tablaVenta.setFont(fuenteConsola);
-        tablaVenta.setBackground(dosDarkPanel);
-        tablaVenta.setForeground(dosWhite);
-        tablaVenta.setGridColor(Color.DARK_GRAY);
+        tablaVenta.setBackground(cPanelTablas);
+        tablaVenta.setForeground(cTextoClaro);
+        tablaVenta.setGridColor(cAcento);
         tablaVenta.setRowHeight(26);
+        tablaVenta.setShowGrid(false);
+        tablaVenta.setIntercellSpacing(new Dimension(0, 0));
+        tablaVenta.setSelectionBackground(cSeleccion);
+        tablaVenta.setSelectionForeground(Color.WHITE);
 
         tablaVenta.getTableHeader().setFont(fuenteConsola);
-        tablaVenta.getTableHeader().setBackground(dosBlue);
-        tablaVenta.getTableHeader().setForeground(dosYellow);
+        tablaVenta.getTableHeader().setBackground(cEncabezadoTabla);
+        tablaVenta.getTableHeader().setForeground(cAcento);
+        tablaVenta.getTableHeader().setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, cAcento));
 
-        JScrollPane scrollTabla = new JScrollPane(tablaVenta);
+        DefaultTableCellRenderer rendererRayasVenta = new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+                Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+                if (!isSelected) {
+                    if (row % 2 == 0) {
+                        c.setBackground(cPanelTablas);
+                    } else {
+                        c.setBackground(new Color(
+                                Math.min(255, cPanelTablas.getRed() + 15),
+                                Math.min(255, cPanelTablas.getGreen() + 15),
+                                Math.min(255, cPanelTablas.getBlue() + 15)
+                        ));
+                    }
+                    c.setForeground(cTextoClaro);
+                } else {
+                    c.setBackground(cSeleccion);
+                    c.setForeground(Color.WHITE);
+                }
+
+                switch (column) {
+                    case 3, 4, 5, 6 ->
+                        setHorizontalAlignment(JLabel.RIGHT);
+                    case 0 ->
+                        setHorizontalAlignment(JLabel.CENTER);
+                    default ->
+                        setHorizontalAlignment(JLabel.LEFT);
+                }
+                return c;
+            }
+        };
+
+        for (int i = 0; i < tablaVenta.getColumnCount(); i++) {
+            tablaVenta.getColumnModel().getColumn(i).setCellRenderer(rendererRayasVenta);
+        }
+
+        scrollTabla = new JScrollPane(tablaVenta);
         scrollTabla.setBounds(0, 80, 1100, 515);
-        scrollTabla.getViewport().setBackground(dosDarkPanel);
-        scrollTabla.setBorder(BorderFactory.createLineBorder(Color.GRAY, 1));
+        scrollTabla.getViewport().setBackground(cPanelTablas);
+        scrollTabla.setBorder(BorderFactory.createLineBorder(cAcento, 1));
         layeredPane.add(scrollTabla, JLayeredPane.DEFAULT_LAYER);
 
         // 3. TABLA FLOTANTE DE BÚSQUEDA
         String[] columnasBuscador = {"Barra", "Descripción del Producto", "Precio Público"};
-        modeloBuscadorFlotante = new DefaultTableModel(columnasBuscador, 0);
+        modeloBuscadorFlotante = new DefaultTableModel(columnasBuscador, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
 
         tablaBuscadorFlotante = new JTable(modeloBuscadorFlotante);
         tablaBuscadorFlotante.setFont(fuenteConsola);
-        tablaBuscadorFlotante.setBackground(dosDarkPanel);
-        tablaBuscadorFlotante.setForeground(dosWhite);
-        tablaBuscadorFlotante.setGridColor(Color.DARK_GRAY);
+        tablaBuscadorFlotante.setBackground(cPanelTablas);
+        tablaBuscadorFlotante.setForeground(cTextoClaro);
+        tablaBuscadorFlotante.setGridColor(cAcento);
         tablaBuscadorFlotante.setRowHeight(26);
+        tablaBuscadorFlotante.setSelectionBackground(cSeleccion);
+        tablaBuscadorFlotante.setSelectionForeground(Color.WHITE);
 
         tablaBuscadorFlotante.getTableHeader().setFont(fuenteConsola);
-        tablaBuscadorFlotante.getTableHeader().setBackground(dosBlue);
-        tablaBuscadorFlotante.getTableHeader().setForeground(dosYellow);
+        tablaBuscadorFlotante.getTableHeader().setBackground(cEncabezadoTabla);
+        tablaBuscadorFlotante.getTableHeader().setForeground(cAcento);
+        tablaBuscadorFlotante.getTableHeader().setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, cAcento));
 
         scrollBuscadorFlotante = new JScrollPane(tablaBuscadorFlotante);
         scrollBuscadorFlotante.setBounds(150, 120, 800, 350);
-        scrollBuscadorFlotante.getViewport().setBackground(dosDarkPanel);
-        scrollBuscadorFlotante.setBorder(BorderFactory.createLineBorder(dosYellow, 2));
+        scrollBuscadorFlotante.getViewport().setBackground(cPanelTablas);
+        scrollBuscadorFlotante.setBorder(BorderFactory.createLineBorder(cAcento, 2));
         scrollBuscadorFlotante.setVisible(false);
         layeredPane.add(scrollBuscadorFlotante, JLayeredPane.PALETTE_LAYER);
 
@@ -261,36 +456,28 @@ public class FrmVenta extends JInternalFrame {
         });
 
         // 4. PANEL INFERIOR
-        JPanel panelInferior = new JPanel(new BorderLayout());
+        panelInferior = new JPanel(new BorderLayout());
         panelInferior.setBounds(0, 595, 1100, 105);
-        panelInferior.setBackground(dosBlue);
-        panelInferior.setBorder(BorderFactory.createMatteBorder(2, 0, 0, 0, Color.WHITE));
+        panelInferior.setBackground(cPanelSuperior);
+        panelInferior.setBorder(BorderFactory.createMatteBorder(2, 0, 0, 0, cAcento));
 
         JPanel panelInputsLinea = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 10));
         panelInputsLinea.setOpaque(false);
 
         JLabel lblIngreso = new JLabel("Barra/Prod:");
-        lblIngreso.setForeground(dosWhite);
+        lblIngreso.setForeground(cTextoClaro);
         lblIngreso.setFont(fuenteConsola);
 
         txtIngresoRapido = new JTextField(20);
-        txtIngresoRapido.setFont(fuenteConsola);
-        txtIngresoRapido.setBackground(Color.BLACK);
-        txtIngresoRapido.setForeground(dosYellow);
-        txtIngresoRapido.setCaretColor(dosYellow);
-        txtIngresoRapido.setBorder(BorderFactory.createLineBorder(Color.LIGHT_GRAY, 1));
+        estilizarCampoTexto(txtIngresoRapido);
         txtIngresoRapido.addActionListener(e -> filtrarYMostrarBuscador());
 
         JLabel lblCant = new JLabel("uni:");
-        lblCant.setForeground(dosWhite);
+        lblCant.setForeground(cTextoClaro);
         lblCant.setFont(fuenteConsola);
 
         txtCantidad = new JTextField(5);
-        txtCantidad.setFont(fuenteConsola);
-        txtCantidad.setBackground(Color.BLACK);
-        txtCantidad.setForeground(dosYellow);
-        txtCantidad.setCaretColor(dosYellow);
-        txtCantidad.setBorder(BorderFactory.createLineBorder(Color.LIGHT_GRAY, 1));
+        estilizarCampoTexto(txtCantidad);
         txtCantidad.setText("1");
         txtCantidad.setEnabled(false);
         txtCantidad.addActionListener(e -> confirmarYAgregarItemTabla());
@@ -300,10 +487,11 @@ public class FrmVenta extends JInternalFrame {
         panelInputsLinea.add(lblCant);
         panelInputsLinea.add(txtCantidad);
 
-        JLabel lblAtajos = new JLabel("  (Esc)apar    (F4): Eliminar    (F8): Cliente    (F10): Descto    (F11): PDF    (F12): Guardar");
-        lblAtajos.setForeground(dosYellow);
+        lblAtajos = new JLabel();
+        lblAtajos.setForeground(cAcento);
         lblAtajos.setFont(new Font(fuenteConsola.getFamily(), Font.BOLD, 13));
         lblAtajos.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
+        actualizarTextoAtajos();
 
         panelInferior.add(panelInputsLinea, BorderLayout.NORTH);
         panelInferior.add(lblAtajos, BorderLayout.SOUTH);
@@ -333,10 +521,20 @@ public class FrmVenta extends JInternalFrame {
 
         atajof8();
         atajof4();
+        atajof10Descuento(); // NUEVO: Atajo F10 activado
+
+        // Atajos de teclado generales (F5, F11, F12)
+        getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
+                .put(KeyStroke.getKeyStroke(KeyEvent.VK_F5, 0), "cambiarTemaF5");
+        getRootPane().getActionMap().put("cambiarTemaF5", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                ciclarSiguienteTema();
+            }
+        });
 
         getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
                 .put(KeyStroke.getKeyStroke(KeyEvent.VK_F12, 0), "guardarVentaF12");
-
         getRootPane().getActionMap().put("guardarVentaF12", new AbstractAction() {
             @Override
             public void actionPerformed(java.awt.event.ActionEvent e) {
@@ -346,7 +544,6 @@ public class FrmVenta extends JInternalFrame {
 
         getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
                 .put(KeyStroke.getKeyStroke(KeyEvent.VK_F11, 0), "exportarPDFF11");
-
         getRootPane().getActionMap().put("exportarPDFF11", new AbstractAction() {
             @Override
             public void actionPerformed(java.awt.event.ActionEvent e) {
@@ -356,6 +553,18 @@ public class FrmVenta extends JInternalFrame {
 
         buscarVendedor();
         txtIngresoRapido.requestFocusInWindow();
+
+        SwingUtilities.invokeLater(() -> {
+            utilidades.IconoUtils.aplicarIcono(this);
+        });
+    }
+
+    private void estilizarCampoTexto(JTextField txt) {
+        txt.setFont(FUENTE_CONSOLA);
+        txt.setBackground(cPanelTablas);
+        txt.setForeground(cAcento);
+        txt.setCaretColor(cAcento);
+        txt.setBorder(BorderFactory.createLineBorder(cAcento, 1));
     }
 
     private void atajof8() {
@@ -431,18 +640,37 @@ public class FrmVenta extends JInternalFrame {
         });
     }
 
+    private void atajof10Descuento() {
+        getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
+                .put(KeyStroke.getKeyStroke(KeyEvent.VK_F10, 0), "aplicarDescuentoF10");
+
+        getRootPane().getActionMap().put("aplicarDescuentoF10", new AbstractAction() {
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                Window ventanaPadre = SwingUtilities.getWindowAncestor(FrmVenta.this);
+
+                // Instanciamos la clase interna directamente
+                DlgDescuentoGlobal dlg = new DlgDescuentoGlobal(ventanaPadre);
+                dlg.setVisible(true);
+
+                double resultado = dlg.getDescuentoSeleccionado();
+                if (resultado >= 0) {
+                    porcentajeDescuentoGlobal = resultado;
+                    actualizarTotalGeneral();
+                    actualizarTextoAtajos();
+                    JOptionPane.showMessageDialog(FrmVenta.this, "Descuento de " + resultado + "% aplicado con éxito.");
+                }
+            }
+        });
+    }
+
     private void exportarVentaPDF() {
         if (modeloTablaVenta.getRowCount() == 0) {
-            JOptionPane.showMessageDialog(this,
-                    "No hay productos en la venta actual para exportar.",
-                    "Aviso",
-                    JOptionPane.WARNING_MESSAGE);
+            JOptionPane.showMessageDialog(this, "No hay productos en la venta actual para exportar.", "Aviso", JOptionPane.WARNING_MESSAGE);
             return;
         }
-
         String vendedor = lblNombreVendedor.getText() != null ? lblNombreVendedor.getText() : "Desconocido";
         String total = lblTotalGeneral.getText();
-
         utilidades.PDFUtils.generarComprobanteVenta(vendedor, total, modeloTablaVenta);
     }
 
@@ -453,7 +681,6 @@ public class FrmVenta extends JInternalFrame {
                 lblNombreVendedor.setText("INGRESE CÓDIGO");
                 return;
             }
-
             int codigoVendedor = Integer.parseInt(textoCodigo);
             VendedorDAO dao = new VendedorDAO();
             String nombreVendedor = dao.obtenerNombreVendedor(codigoVendedor);
@@ -467,7 +694,6 @@ public class FrmVenta extends JInternalFrame {
                 txtVendedor.requestFocusInWindow();
                 txtVendedor.selectAll();
             }
-
         } catch (NumberFormatException e) {
             lblNombreVendedor.setText("CÓDIGO INVÁLIDO");
         } catch (Exception e) {
@@ -484,6 +710,12 @@ public class FrmVenta extends JInternalFrame {
             }
 
             double totalItem = precioUnitarioSeleccionado * cantidad;
+
+            // Aplicar descuento global si está activo
+            if (porcentajeDescuentoGlobal > 0) {
+                totalItem = totalItem * (1 - (porcentajeDescuentoGlobal / 100.0));
+            }
+
             double netoItem = totalItem / 1.19;
 
             modeloTablaVenta.addRow(new Object[]{
@@ -492,7 +724,7 @@ public class FrmVenta extends JInternalFrame {
                 descripcionSeleccionada,
                 cantidad,
                 String.format("$%,.0f", netoItem),
-                "19%",
+                porcentajeDescuentoGlobal > 0 ? porcentajeDescuentoGlobal + "%" : "19%",
                 String.format("$%,.0f", totalItem)
             });
 
@@ -534,11 +766,7 @@ public class FrmVenta extends JInternalFrame {
                 precio = 0.0;
             }
 
-            modeloBuscadorFlotante.addRow(new Object[]{
-                barra,
-                desc,
-                String.format("$%,.2f", precio)
-            });
+            modeloBuscadorFlotante.addRow(new Object[]{barra, desc, String.format("$%,.2f", precio)});
         }
 
         if (modeloBuscadorFlotante.getRowCount() > 0) {
@@ -605,7 +833,11 @@ public class FrmVenta extends JInternalFrame {
             return;
         }
 
-        try (Connection con = Conexion.getConnection()) {
+        Connection con = null;
+        try {
+            con = Conexion.getConnection();
+            con.setAutoCommit(false); // <--- Iniciamos transacción segura
+
             int codigoVendedor = Integer.parseInt(codigoVendedorStr);
             String rutClienteStr = txtRutCliente.getText().trim();
             int codigoCliente = 0;
@@ -616,7 +848,6 @@ public class FrmVenta extends JInternalFrame {
                 }
             }
 
-            // 1. Leer Parámetros reales (Fecha de proceso + correlativo de Boleta)
             ParametrosDAO paramDAO = new ParametrosDAO();
             ParametrosDTO param = paramDAO.obtenerParametros(con);
 
@@ -636,13 +867,14 @@ public class FrmVenta extends JInternalFrame {
                 listaItems.add(new ItemVentaDTO(barra, cant, precioUnit, totalItem));
             }
 
-            VentaDAO ventaDAO = new VentaDAO();
-            boolean exito = ventaDAO.guardarVenta(folioVenta, codigoCliente, fechaParaBD, codigoVendedor, listaItems);
+            VentaDAO ventaDAO = new VendedorDAO() != null ? new VentaDAO() : new VentaDAO();
+            boolean exitoVenta = ventaDAO.guardarVenta(folioVenta, codigoCliente, fechaParaBD, codigoVendedor, listaItems);
 
-            if (exito) {
-                // 2. Actualizar correlativo de Boleta en pparam_dbf
+            if (exitoVenta) {
                 param.setBoleta(folioVenta);
                 paramDAO.guardarParametros(con, param);
+
+                con.commit(); // <--- Confirmamos cambios si todo sale bien
 
                 JOptionPane.showMessageDialog(this,
                         "¡Venta registrada con éxito!\nBoleta N°: " + folioVenta + "\nFecha Proceso: " + fechaProcesoSistema);
@@ -652,16 +884,122 @@ public class FrmVenta extends JInternalFrame {
                 txtIngresoRapido.setText("");
                 txtVendedor.setText("");
                 lblNombreVendedor.setText("");
+                porcentajeDescuentoGlobal = 0.0;
+                actualizarTextoAtajos();
                 txtVendedor.requestFocusInWindow();
             } else {
+                con.rollback(); // <--- Revertimos si falló el guardado
                 JOptionPane.showMessageDialog(this, "No se pudo guardar la venta en la base de datos.", "Error", JOptionPane.ERROR_MESSAGE);
             }
 
-        } catch (NumberFormatException e) {
-            JOptionPane.showMessageDialog(this, "Verifique que el código del vendedor y las cantidades sean numéricos válidos.", "Error", JOptionPane.ERROR_MESSAGE);
         } catch (Exception ex) {
+            if (con != null) {
+                try {
+                    con.rollback(); // <--- Revertimos ante cualquier excepción inesperada
+                } catch (SQLException rollbackEx) {
+                    rollbackEx.printStackTrace();
+                }
+            }
             ex.printStackTrace();
-            JOptionPane.showMessageDialog(this, "Error al conectar con la base de datos: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Error crítico en la transacción: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        } finally {
+            if (con != null) {
+                try {
+                    con.setAutoCommit(true);
+                    con.close();
+                } catch (SQLException closeEx) {
+                    closeEx.printStackTrace();
+                }
+            }
         }
     }
+    
+    private class DlgDescuentoGlobal extends JDialog {
+        private JTextField txtDescuento;
+        private double descuentoSeleccionado = -1.0;
+
+        public DlgDescuentoGlobal(Window parent) {
+            super(parent, " Descuento Global ", ModalityType.APPLICATION_MODAL);
+            setSize(400, 180);
+            setLocationRelativeTo(parent);
+            setUndecorated(true); // Estilo ventana limpia / retro
+
+            JPanel panelContenedor = new JPanel(new BorderLayout());
+            panelContenedor.setBackground(cFondoNegro);
+            panelContenedor.setBorder(BorderFactory.createLineBorder(cAcento, 2));
+
+            // Título superior estilo Clipper
+            JPanel panelNorte = new JPanel(new FlowLayout(FlowLayout.CENTER));
+            panelNorte.setBackground(cPanelSuperior);
+            panelNorte.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
+            
+            JLabel lblTitulo = new JLabel("=== APLICAR DESCUENTO GLOBAL ===");
+            lblTitulo.setForeground(cAcento);
+            lblTitulo.setFont(new Font(FUENTE_CONSOLA.getFamily(), Font.BOLD, 14));
+            panelNorte.add(lblTitulo);
+            panelContenedor.add(panelNorte, BorderLayout.NORTH);
+
+            // Centro con el campo de texto
+            JPanel panelCentro = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 20));
+            panelCentro.setBackground(cFondoNegro);
+
+            JLabel lblEtiqueta = new JLabel("Porcentaje (%):");
+            lblEtiqueta.setForeground(cTextoClaro);
+            lblEtiqueta.setFont(FUENTE_CONSOLA);
+
+            txtDescuento = new JTextField(8);
+            txtDescuento.setFont(FUENTE_CONSOLA);
+            txtDescuento.setBackground(cPanelSuperior);
+            txtDescuento.setForeground(cAcento);
+            txtDescuento.setCaretColor(cAcento);
+            txtDescuento.setBorder(BorderFactory.createLineBorder(cAcento, 1));
+            txtDescuento.addActionListener(e -> confirmarDescuento());
+
+            panelCentro.add(lblEtiqueta);
+            panelCentro.add(txtDescuento);
+            panelContenedor.add(panelCentro, BorderLayout.CENTER);
+
+            // Barra inferior de atajos estilo Clipper
+            JPanel panelSur = new JPanel(new FlowLayout(FlowLayout.CENTER));
+            panelSur.setBackground(cPanelSuperior);
+            panelSur.setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
+
+            JLabel lblAtajos = new JLabel("[ENTER] Aceptar   |   [ESC] Cancelar");
+            lblAtajos.setForeground(cTextoClaro);
+            lblAtajos.setFont(new Font(FUENTE_CONSOLA.getFamily(), Font.BOLD, 12));
+            panelSur.add(lblAtajos);
+            panelContenedor.add(panelSur, BorderLayout.SOUTH);
+
+            add(panelContenedor);
+
+            // Atajos de teclado (Escape para cerrar)
+            getRootPane().registerKeyboardAction(ev -> dispose(),
+                    KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0),
+                    JComponent.WHEN_IN_FOCUSED_WINDOW);
+
+            SwingUtilities.invokeLater(() -> txtDescuento.requestFocusInWindow());
+        }
+
+        private void confirmarDescuento() {
+            try {
+                double valor = Double.parseDouble(txtDescuento.getText().trim());
+                if (valor < 0 || valor > 100) {
+                    JOptionPane.showMessageDialog(this, "El descuento debe estar entre 0% y 100%.", "Error", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+                descuentoSeleccionado = valor;
+                dispose();
+            } catch (NumberFormatException e) {
+                JOptionPane.showMessageDialog(this, "Por favor ingrese un valor numérico válido.", "Error", JOptionPane.ERROR_MESSAGE);
+                txtDescuento.requestFocusInWindow();
+                txtDescuento.selectAll();
+            }
+        }
+
+        public double getDescuentoSeleccionado() {
+            return descuentoSeleccionado;
+        }
+    }
+    
+    
 }

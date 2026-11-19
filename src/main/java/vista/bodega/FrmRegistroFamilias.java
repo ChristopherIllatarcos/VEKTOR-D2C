@@ -15,30 +15,169 @@ public class FrmRegistroFamilias extends JInternalFrame {
     private DefaultTableModel modeloTabla;
     private FamiliaDAO familiaDAO;
 
+    // Componentes estructurales para actualización dinámica de colores
+    private JPanel panelPrincipal, panelNorte, panelSur;
+    private JScrollPane scrollPane;
+    private JLabel lblEncabezado, lblComandos, lblSalir;
+
+    // Variables de Colores Actuales del Tema
+    private Color cFondo, cPanelNorte, cEncabezadoTabla, cAcento, cTextoCrema, cBarraSur, cSeleccion;
+    private final Font FUENTE_CONSOLA = new Font("Monospaced", Font.BOLD, 15);
+
+    // Sistema de Temas Ciclos [F6]
+    private final String[] listaTemas = {"Clipper Clásico", "Turquesa Pro", "Esmeralda Terminal","Morado Neón" , "Naranja Fuego"};
+    private int indiceTemaActual = 0; // Empieza en Morado Neón por defecto
+
     public FrmRegistroFamilias() {
-        setTitle("REGISTRO DE FAMILIAS");
+        setTitle("2.- REGISTRO DE FAMILIAS");
         setClosable(false);
         setIconifiable(false);
         setMaximizable(false);
         setResizable(false);
-        setSize(750, 480);
+        setSize(780, 500);
 
         familiaDAO = new FamiliaDAO();
+
+        // Aplicar tema inicial
+        aplicarTema(listaTemas[indiceTemaActual]);
+
         initComponents();
         cargarDatosTabla();
         configurarAtajosTeclado();
+         // Asignar el icono de Nexum directamente a este JInternalFrame
+        try {
+            setFrameIcon(new javax.swing.ImageIcon(getClass().getResource("/vektor/cubo-azul-16.png")));
+        } catch (Exception e) {
+            System.out.println("No se pudo cargar el icono interno: " + e.getMessage());
+        }
+    }
+
+    // ==========================================
+    // SISTEMA DE CAMBIO DE TEMAS [F6]
+    // ==========================================
+    private void aplicarTema(String nombreTema) {
+        switch (nombreTema) {
+            case "Turquesa Pro":
+                cFondo = new Color(5, 15, 20);
+                cPanelNorte = new Color(10, 40, 50);
+                cEncabezadoTabla = new Color(0, 80, 95);
+                cAcento = new Color(0, 245, 255);
+                cTextoCrema = new Color(220, 255, 255);
+                cBarraSur = new Color(0, 60, 70);
+                cSeleccion = new Color(0, 120, 140);
+                break;
+            case "Esmeralda Terminal":
+                cFondo = new Color(5, 20, 15);
+                cPanelNorte = new Color(10, 45, 30);
+                cEncabezadoTabla = new Color(15, 80, 50);
+                cAcento = new Color(0, 255, 128);
+                cTextoCrema = new Color(220, 255, 240);
+                cBarraSur = new Color(0, 60, 35);
+                cSeleccion = new Color(0, 140, 80);
+                break;
+            case "Clipper Clásico":
+                cFondo = Color.BLACK;
+                cPanelNorte = new Color(0, 0, 120);
+                cEncabezadoTabla = new Color(0, 0, 168);
+                cAcento = new Color(255, 255, 85);
+                cTextoCrema = Color.WHITE;
+                cBarraSur = new Color(168, 0, 0);
+                cSeleccion = new Color(0, 168, 168);
+                break;
+            case "Naranja Fuego":
+                cFondo = new Color(15, 10, 8);
+                cPanelNorte = new Color(40, 18, 12);
+                cEncabezadoTabla = new Color(80, 28, 18);
+                cAcento = new Color(245, 73, 39);
+                cTextoCrema = new Color(255, 235, 225);
+                cBarraSur = new Color(60, 20, 12);
+                cSeleccion = new Color(130, 42, 22);
+                break;
+            case "Morado Neón":
+            default:
+                cFondo = new Color(10, 10, 15);
+                cPanelNorte = new Color(45, 10, 55);
+                cEncabezadoTabla = new Color(90, 10, 120);
+                cAcento = new Color(255, 110, 220);
+                cTextoCrema = new Color(255, 230, 255);
+                cBarraSur = new Color(130, 0, 70);
+                cSeleccion = new Color(140, 20, 160);
+                break;
+        }
+    }
+
+    private void ciclarSiguienteTema() {
+        indiceTemaActual = (indiceTemaActual + 1) % listaTemas.length;
+        aplicarTema(listaTemas[indiceTemaActual]);
+
+        if (panelPrincipal != null) {
+            panelPrincipal.setBackground(cFondo);
+        }
+        if (panelNorte != null) {
+            panelNorte.setBackground(cPanelNorte);
+            panelNorte.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createMatteBorder(0, 0, 2, 0, cAcento),
+                    BorderFactory.createEmptyBorder(12, 10, 12, 10)
+            ));
+        }
+        if (lblEncabezado != null) {
+            lblEncabezado.setForeground(cAcento);
+        }
+
+        if (tabla != null) {
+            tabla.setBackground(cFondo);
+            tabla.setForeground(cTextoCrema);
+            tabla.setSelectionBackground(cSeleccion);
+            tabla.setGridColor(new Color(
+                    Math.max(0, cFondo.getRed() + 20),
+                    Math.max(0, cFondo.getGreen() + 10),
+                    Math.max(0, cFondo.getBlue() + 25)
+            ));
+            tabla.getTableHeader().setBackground(cEncabezadoTabla);
+            tabla.getTableHeader().setForeground(cAcento);
+            tabla.getTableHeader().setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, cAcento));
+            tabla.repaint();
+        }
+
+        if (scrollPane != null) {
+            scrollPane.getViewport().setBackground(cFondo);
+            scrollPane.setBorder(BorderFactory.createLineBorder(cEncabezadoTabla, 2));
+        }
+
+        if (panelSur != null) {
+            panelSur.setBackground(cBarraSur);
+            panelSur.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createMatteBorder(2, 0, 0, 0, cAcento),
+                    BorderFactory.createEmptyBorder(8, 12, 8, 12)
+            ));
+        }
+        actualizarTextoComandos();
+
+        revalidate();
+        repaint();
+    }
+
+    private void actualizarTextoComandos() {
+        String temaActual = listaTemas[indiceTemaActual];
+        if (lblComandos != null) {
+            lblComandos.setText("(Ins)erta. (Supr)ime. (M)odifica. (F6) Tema: " + temaActual + ".");
+        }
     }
 
     private void initComponents() {
-        JPanel panelPrincipal = new JPanel(new BorderLayout());
-        panelPrincipal.setBackground(Color.BLACK); // Fondo Negro Estilo Consola
+        panelPrincipal = new JPanel(new BorderLayout());
+        panelPrincipal.setBackground(cFondo);
 
-        JPanel panelNorte = new JPanel(new FlowLayout(FlowLayout.CENTER));
-        panelNorte.setBackground(Color.DARK_GRAY);
-        panelNorte.setBorder(BorderFactory.createEmptyBorder(15, 10, 15, 10));
+        // --- PANEL NORTE (Encabezado) ---
+        panelNorte = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        panelNorte.setBackground(cPanelNorte);
+        panelNorte.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 0, 2, 0, cAcento),
+                BorderFactory.createEmptyBorder(12, 10, 12, 10)
+        ));
 
-        JLabel lblEncabezado = new JLabel("=== FAMILIAS ===", JLabel.CENTER);
-        lblEncabezado.setForeground(Color.YELLOW);
+        lblEncabezado = new JLabel("=== REGISTRO DE FAMILIAS ===", JLabel.CENTER);
+        lblEncabezado.setForeground(cAcento);
         lblEncabezado.setFont(new Font("Monospaced", Font.BOLD, 18));
         panelNorte.add(lblEncabezado);
         panelPrincipal.add(panelNorte, BorderLayout.NORTH);
@@ -51,19 +190,13 @@ public class FrmRegistroFamilias extends JInternalFrame {
             }
         };
 
-        // --- TABLA PERSONALIZADA PARA LÍNEAS VERTICALES DE EXTREMO A EXTREMO ---
+        // --- TABLA PERSONALIZADA ---
         tabla = new JTable(modeloTabla) {
             @Override
             protected void paintComponent(Graphics g) {
                 super.paintComponent(g);
-
-                // Color gris oscuro (dark_grey) para las líneas verticales
-                g.setColor(new Color(60, 60, 60));
-
-                // Tomamos la altura total visible del área de la tabla
+                g.setColor(new Color(60, 20, 70));
                 int alturaTotal = Math.max(getHeight(), getParent() != null ? getParent().getHeight() : getHeight());
-
-                // Dibujamos las líneas verticales en los límites de cada columna abarcando todo el alto
                 int x = 0;
                 for (int i = 0; i < getColumnCount() - 1; i++) {
                     x += getColumnModel().getColumn(i).getWidth();
@@ -72,43 +205,46 @@ public class FrmRegistroFamilias extends JInternalFrame {
             }
         };
 
-        tabla.setBackground(new Color(15, 15, 15));
-        tabla.setForeground(Color.WHITE);
-        tabla.setFont(new Font("Monospaced", Font.PLAIN, 16));
-        tabla.setRowHeight(22);
-
-        // Hacer que las columnas ocupen todo el ancho de la tabla y rellenen el alto si sobra espacio
+        tabla.setBackground(cFondo);
+        tabla.setForeground(cTextoCrema);
+        tabla.setFont(FUENTE_CONSOLA);
+        tabla.setRowHeight(24);
         tabla.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
         tabla.setFillsViewportHeight(true);
 
-        // Apagamos las líneas nativas ya que las pintamos de extremo a extremo a medida
         tabla.setShowGrid(false);
-        tabla.setShowHorizontalLines(false);
-        tabla.setShowVerticalLines(false);
-        tabla.setIntercellSpacing(new Dimension(1, 1));
+        tabla.setShowHorizontalLines(true);
+        tabla.setGridColor(new Color(40, 15, 50));
+        tabla.setSelectionBackground(cSeleccion);
+        tabla.setSelectionForeground(Color.WHITE);
 
-        // Encabezado de la tabla en Azul Clipper
-        tabla.getTableHeader().setBackground(new Color(0, 0, 140));
-        tabla.getTableHeader().setForeground(Color.YELLOW);
-        tabla.getTableHeader().setFont(new Font("Monospaced", Font.BOLD, 16));
+        tabla.getTableHeader().setBackground(cEncabezadoTabla);
+        tabla.getTableHeader().setForeground(cAcento);
+        tabla.getTableHeader().setFont(new Font("Monospaced", Font.BOLD, 15));
+        tabla.getTableHeader().setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, cAcento));
 
-        JScrollPane scrollPane = new JScrollPane(tabla);
-        scrollPane.getViewport().setBackground(Color.BLACK);
-        scrollPane.setBorder(BorderFactory.createLineBorder(new Color(0, 0, 100)));
+        scrollPane = new JScrollPane(tabla);
+        scrollPane.getViewport().setBackground(cFondo);
+        scrollPane.setBorder(BorderFactory.createLineBorder(cEncabezadoTabla, 2));
         panelPrincipal.add(scrollPane, BorderLayout.CENTER);
 
-        JPanel panelSur = new JPanel(new BorderLayout());
-        panelSur.setBackground(new Color(160, 0, 0)); // Rojo Clipper Abajo
-        panelSur.setBorder(BorderFactory.createEmptyBorder(8, 10, 8, 10));
+        // --- PANEL SUR (Barra de comandos estilo Clipper) ---
+        panelSur = new JPanel(new BorderLayout());
+        panelSur.setBackground(cBarraSur);
+        panelSur.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(2, 0, 0, 0, cAcento),
+                BorderFactory.createEmptyBorder(8, 12, 8, 12)
+        ));
 
-        JLabel lblComandos = new JLabel("(Ins)erta.  (Supr)ime.  (M)odifica.", JLabel.LEFT);
+        lblComandos = new JLabel("", JLabel.LEFT);
         lblComandos.setForeground(Color.WHITE);
-        lblComandos.setFont(new Font("Monospaced", Font.BOLD, 14));
+        lblComandos.setFont(new Font("Monospaced", Font.BOLD, 13));
+        actualizarTextoComandos();
         panelSur.add(lblComandos, BorderLayout.WEST);
 
-        JLabel lblSalir = new JLabel("(ESC) Salir", JLabel.RIGHT);
-        lblSalir.setForeground(Color.WHITE);
-        lblSalir.setFont(new Font("Monospaced", Font.BOLD, 14));
+        lblSalir = new JLabel("(ESC) Salir", JLabel.RIGHT);
+        lblSalir.setForeground(cTextoCrema);
+        lblSalir.setFont(new Font("Monospaced", Font.BOLD, 13));
         panelSur.add(lblSalir, BorderLayout.EAST);
 
         panelPrincipal.add(panelSur, BorderLayout.SOUTH);
@@ -129,9 +265,9 @@ public class FrmRegistroFamilias extends JInternalFrame {
 
     private void configurarAtajosTeclado() {
         JComponent root = getRootPane();
+        int cond = JComponent.WHEN_IN_FOCUSED_WINDOW;
 
-        // ESC para salir
-        root.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), "salir");
+        root.getInputMap(cond).put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), "salir");
         root.getActionMap().put("salir", new AbstractAction() {
             @Override
             public void actionPerformed(java.awt.event.ActionEvent e) {
@@ -139,8 +275,16 @@ public class FrmRegistroFamilias extends JInternalFrame {
             }
         });
 
-        // INSERT para insertar
-        root.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(KeyEvent.VK_INSERT, 0), "insertar");
+        // [F6] Ciclar Tema
+        root.getInputMap(cond).put(KeyStroke.getKeyStroke(KeyEvent.VK_F6, 0), "ciclar_tema");
+        root.getActionMap().put("ciclar_tema", new AbstractAction() {
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                ciclarSiguienteTema();
+            }
+        });
+
+        root.getInputMap(cond).put(KeyStroke.getKeyStroke(KeyEvent.VK_INSERT, 0), "insertar");
         root.getActionMap().put("insertar", new AbstractAction() {
             @Override
             public void actionPerformed(java.awt.event.ActionEvent e) {
@@ -148,8 +292,7 @@ public class FrmRegistroFamilias extends JInternalFrame {
             }
         });
 
-        // SUPR / DELETE para eliminar
-        root.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0), "eliminar");
+        root.getInputMap(cond).put(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0), "eliminar");
         root.getActionMap().put("eliminar", new AbstractAction() {
             @Override
             public void actionPerformed(java.awt.event.ActionEvent e) {
@@ -157,8 +300,7 @@ public class FrmRegistroFamilias extends JInternalFrame {
             }
         });
 
-        // M para modificar
-        root.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(KeyEvent.VK_M, 0), "modificar");
+        root.getInputMap(cond).put(KeyStroke.getKeyStroke(KeyEvent.VK_M, 0), "modificar");
         root.getActionMap().put("modificar", new AbstractAction() {
             @Override
             public void actionPerformed(java.awt.event.ActionEvent e) {
@@ -168,7 +310,7 @@ public class FrmRegistroFamilias extends JInternalFrame {
     }
 
     // ==========================================
-    // ACCIONES Y MODALES ESTILO CLIPPER
+    // ACCIONES Y MODALES (DINÁMICOS SEGÚN TEMA)
     // ==========================================
     private void accionInsertar() {
         JDialog dialogo = crearDialogoClipper(" INSERTA FAMILIA ");
@@ -177,41 +319,40 @@ public class FrmRegistroFamilias extends JInternalFrame {
 
         JLabel lbl1 = new JLabel("Código     :");
         lbl1.setBounds(30, 25, 100, 25);
-        lbl1.setForeground(Color.YELLOW);
+        lbl1.setForeground(cAcento);
         lbl1.setFont(new Font("Monospaced", Font.BOLD, 13));
         panel.add(lbl1);
 
         JTextField txtCodigo = new JTextField();
-        txtCodigo.setBounds(140, 25, 80, 25);
+        txtCodigo.setBounds(140, 25, 90, 25);
         estilizarCampoTexto(txtCodigo);
         panel.add(txtCodigo);
 
         JLabel lbl2 = new JLabel("Descripción:");
         lbl2.setBounds(30, 65, 100, 25);
-        lbl2.setForeground(Color.YELLOW);
+        lbl2.setForeground(cAcento);
         lbl2.setFont(new Font("Monospaced", Font.BOLD, 13));
         panel.add(lbl2);
 
         JTextField txtDesc = new JTextField();
-        txtDesc.setBounds(140, 65, 240, 25);
+        txtDesc.setBounds(140, 65, 250, 25);
         estilizarCampoTexto(txtDesc);
         panel.add(txtDesc);
 
         JLabel lbl3 = new JLabel("IVA Adic.  :");
         lbl3.setBounds(30, 105, 100, 25);
-        lbl3.setForeground(Color.YELLOW);
+        lbl3.setForeground(cAcento);
         lbl3.setFont(new Font("Monospaced", Font.BOLD, 13));
         panel.add(lbl3);
 
         JTextField txtIva = new JTextField("0");
-        txtIva.setBounds(140, 105, 80, 25);
+        txtIva.setBounds(140, 105, 90, 25);
         estilizarCampoTexto(txtIva);
         panel.add(txtIva);
 
-        // Indicador de (ENTER) en el cuadro modal inferior
         JLabel lblAccion = new JLabel("[ENTER] Guardar   [ESC] Cancelar", JLabel.CENTER);
-        lblAccion.setBounds(30, 145, 350, 20);
-        lblAccion.setForeground(Color.WHITE);
+        lblAccion.setBounds(30, 145, 360, 20);
+        lblAccion.setForeground(cTextoCrema);
         lblAccion.setFont(new Font("Monospaced", Font.BOLD, 11));
         panel.add(lblAccion);
 
@@ -259,37 +400,36 @@ public class FrmRegistroFamilias extends JInternalFrame {
         panel.setLayout(null);
 
         JLabel lbl1 = new JLabel("Código     : " + codigoActual);
-        lbl1.setBounds(30, 25, 300, 25);
-        lbl1.setForeground(Color.YELLOW);
+        lbl1.setBounds(30, 25, 320, 25);
+        lbl1.setForeground(cAcento);
         lbl1.setFont(new Font("Monospaced", Font.BOLD, 13));
         panel.add(lbl1);
 
         JLabel lbl2 = new JLabel("Descripción:");
         lbl2.setBounds(30, 65, 100, 25);
-        lbl2.setForeground(Color.YELLOW);
+        lbl2.setForeground(cAcento);
         lbl2.setFont(new Font("Monospaced", Font.BOLD, 13));
         panel.add(lbl2);
 
         JTextField txtDesc = new JTextField(descActual);
-        txtDesc.setBounds(140, 65, 240, 25);
+        txtDesc.setBounds(140, 65, 250, 25);
         estilizarCampoTexto(txtDesc);
         panel.add(txtDesc);
 
         JLabel lbl3 = new JLabel("IVA Adic.  :");
         lbl3.setBounds(30, 105, 100, 25);
-        lbl3.setForeground(Color.YELLOW);
+        lbl3.setForeground(cAcento);
         lbl3.setFont(new Font("Monospaced", Font.BOLD, 13));
         panel.add(lbl3);
 
         JTextField txtIva = new JTextField(ivaActual);
-        txtIva.setBounds(140, 105, 80, 25);
+        txtIva.setBounds(140, 105, 90, 25);
         estilizarCampoTexto(txtIva);
         panel.add(txtIva);
 
-        // Indicador de (ENTER) en el cuadro modal inferior
         JLabel lblAccion = new JLabel("[ENTER] Guardar   [ESC] Cancelar", JLabel.CENTER);
-        lblAccion.setBounds(30, 145, 350, 20);
-        lblAccion.setForeground(Color.WHITE);
+        lblAccion.setBounds(30, 145, 360, 20);
+        lblAccion.setForeground(cTextoCrema);
         lblAccion.setFont(new Font("Monospaced", Font.BOLD, 11));
         panel.add(lblAccion);
 
@@ -336,14 +476,14 @@ public class FrmRegistroFamilias extends JInternalFrame {
         panel.setLayout(null);
 
         JLabel lbl = new JLabel("¿Confirma eliminar: " + desc + "?");
-        lbl.setBounds(20, 30, 390, 25);
-        lbl.setForeground(Color.YELLOW);
+        lbl.setBounds(20, 30, 400, 25);
+        lbl.setForeground(cAcento);
         lbl.setFont(new Font("Monospaced", Font.BOLD, 12));
         panel.add(lbl);
 
         JLabel lblOpciones = new JLabel("[S] Sí (ENTER)    [N] No (ESC)", JLabel.CENTER);
-        lblOpciones.setBounds(20, 80, 390, 25);
-        lblOpciones.setForeground(Color.WHITE);
+        lblOpciones.setBounds(20, 80, 400, 25);
+        lblOpciones.setForeground(cTextoCrema);
         lblOpciones.setFont(new Font("Monospaced", Font.BOLD, 12));
         panel.add(lblOpciones);
 
@@ -376,23 +516,27 @@ public class FrmRegistroFamilias extends JInternalFrame {
 
     private JDialog crearDialogoClipper(String titulo) {
         JDialog dialogo = new JDialog(javax.swing.SwingUtilities.getWindowAncestor(this), titulo, Dialog.ModalityType.APPLICATION_MODAL);
-        dialogo.setSize(440, 195); // Altura justa para que entre la etiqueta de [ENTER]
+        dialogo.setSize(440, 195);
         dialogo.setLocationRelativeTo(this);
         dialogo.setUndecorated(true);
 
         JPanel panel = new JPanel();
-        panel.setBackground(Color.BLACK);
-        panel.setBorder(BorderFactory.createLineBorder(new Color(0, 0, 180), 2));
+        panel.setBackground(cFondo);
+        panel.setBorder(BorderFactory.createLineBorder(cEncabezadoTabla, 2));
         dialogo.setContentPane(panel);
         return dialogo;
     }
 
     private void estilizarCampoTexto(JTextField txt) {
-        txt.setBackground(new Color(25, 25, 25));
-        txt.setForeground(Color.WHITE);
-        txt.setCaretColor(Color.WHITE);
+        txt.setBackground(new Color(
+                Math.max(0, cFondo.getRed() + 15),
+                Math.max(0, cFondo.getGreen() + 5),
+                Math.max(0, cFondo.getBlue() + 20)
+        ));
+        txt.setForeground(cTextoCrema);
+        txt.setCaretColor(cTextoCrema);
         txt.setFont(new Font("Monospaced", Font.BOLD, 13));
-        txt.setBorder(BorderFactory.createLineBorder(new Color(0, 0, 120)));
+        txt.setBorder(BorderFactory.createLineBorder(cEncabezadoTabla));
     }
 
     private void agregarAccionTecladoDialogo(JDialog dialogo, JTextField ultimoCampo, JButton btnGuardar) {
@@ -417,19 +561,19 @@ public class FrmRegistroFamilias extends JInternalFrame {
         dialogo.setUndecorated(true);
 
         JPanel panel = new JPanel(new BorderLayout());
-        panel.setBackground(Color.BLACK);
+        panel.setBackground(cFondo);
         panel.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(0, 0, 180), 2),
+                BorderFactory.createLineBorder(cEncabezadoTabla, 2),
                 BorderFactory.createEmptyBorder(15, 15, 15, 15)
         ));
 
         JLabel lbl = new JLabel(mensaje, JLabel.CENTER);
-        lbl.setForeground(Color.YELLOW); // Mensajes de alerta en amarillo brillante
+        lbl.setForeground(cAcento);
         lbl.setFont(new Font("Monospaced", Font.BOLD, 12));
         panel.add(lbl, BorderLayout.CENTER);
 
         JLabel lblEnter = new JLabel("[ ENTER / ESC: Continuar ]", JLabel.CENTER);
-        lblEnter.setForeground(Color.WHITE);
+        lblEnter.setForeground(cTextoCrema);
         lblEnter.setFont(new Font("Monospaced", Font.PLAIN, 11));
         panel.add(lblEnter, BorderLayout.SOUTH);
 

@@ -3,6 +3,8 @@ package vista.ventas;
 import dao.VendedorDAO;
 import modelo.VendedorDTO;
 import javax.swing.*;
+import javax.swing.border.LineBorder;
+import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.awt.event.ActionListener;
@@ -17,32 +19,163 @@ public class FrmFichaVendedores extends javax.swing.JInternalFrame {
     private JTable tablaVendedores;
     private DefaultTableModel modeloTabla;
     private VendedorDAO vendedorDAO;
+    private JLabel lblAyuda;
+
+    // Componentes estructurales para actualización dinámica de colores
+    private JPanel panelPrincipal, panelCentro, panelInferior;
+    private JScrollPane scrollPane;
+
+    // Variables de Colores Actuales del Tema
+    private Color cFondoNegro, cPanelSuperior, cEncabezadoTabla, cAcento, cTextoClaro, cSeleccion, cBarraSur;
+    private final Font FUENTE_CONSOLA = new Font("Monospaced", Font.BOLD, 14);
+
+    // Sistema de Temas Ciclos [F5]
+    private final String[] listaTemas = {"Clipper Clásico", "Morado Neón", "Turquesa Pro", "Esmeralda Terminal", "Naranja Fuego"};
+    private int indiceTemaActual = 0; // Empieza en Naranja Fuego por defecto
 
     public FrmFichaVendedores() {
         vendedorDAO = new VendedorDAO();
+
+        // Aplicar tema inicial
+        aplicarTema(listaTemas[indiceTemaActual]);
+
         initComponentsCustom();
+        // Asignar el icono Nexum a la ventana interna (JInternalFrame)
+        try {
+            setFrameIcon(new javax.swing.ImageIcon(getClass().getResource("/vektor/cubo-azul-16.png")));
+        } catch (Exception e) {
+            System.out.println("No se pudo cargar el icono interno: " + e.getMessage());
+        }
         cargarDatos();
+        SwingUtilities.invokeLater(() -> {
+            utilidades.IconoUtils.aplicarIcono(this);
+        });
+
+    }
+
+    // ==========================================
+    // SISTEMA DE CAMBIO DE TEMAS [F5]
+    // ==========================================
+    private void aplicarTema(String nombreTema) {
+        switch (nombreTema) {
+            case "Morado Neón":
+                cFondoNegro = new Color(10, 10, 15);
+                cPanelSuperior = new Color(45, 10, 55);
+                cEncabezadoTabla = new Color(90, 10, 120);
+                cAcento = new Color(255, 110, 220);
+                cTextoClaro = new Color(255, 230, 255);
+                cSeleccion = new Color(140, 20, 160);
+                cBarraSur = new Color(130, 0, 70);
+                break;
+            case "Turquesa Pro":
+                cFondoNegro = new Color(5, 15, 20);
+                cPanelSuperior = new Color(10, 40, 50);
+                cEncabezadoTabla = new Color(0, 80, 95);
+                cAcento = new Color(0, 245, 255);
+                cTextoClaro = new Color(220, 255, 255);
+                cSeleccion = new Color(0, 120, 140);
+                cBarraSur = new Color(0, 60, 70);
+                break;
+            case "Esmeralda Terminal":
+                cFondoNegro = new Color(5, 20, 15);
+                cPanelSuperior = new Color(10, 45, 30);
+                cEncabezadoTabla = new Color(15, 80, 50);
+                cAcento = new Color(0, 255, 128);
+                cTextoClaro = new Color(220, 255, 240);
+                cSeleccion = new Color(0, 140, 80);
+                cBarraSur = new Color(0, 60, 35);
+                break;
+            case "Clipper Clásico":
+                cFondoNegro = Color.BLACK;
+                cPanelSuperior = new Color(0, 0, 168);
+                cEncabezadoTabla = new Color(0, 0, 168);
+                cAcento = new Color(255, 255, 85);
+                cTextoClaro = Color.WHITE;
+                cSeleccion = new Color(0, 168, 168);
+                cBarraSur = new Color(168, 0, 0);
+                break;
+            case "Naranja Fuego":
+            default:
+                cFondoNegro = new Color(15, 10, 8);
+                cPanelSuperior = new Color(40, 18, 12);
+                cEncabezadoTabla = new Color(80, 28, 18);
+                cAcento = new Color(245, 73, 39);
+                cTextoClaro = new Color(255, 235, 225);
+                cSeleccion = new Color(130, 42, 22);
+                cBarraSur = new Color(60, 20, 12);
+                break;
+        }
+    }
+
+    private void ciclarSiguienteTema() {
+        indiceTemaActual = (indiceTemaActual + 1) % listaTemas.length;
+        String nuevoTema = listaTemas[indiceTemaActual];
+        aplicarTema(nuevoTema);
+
+        // Refrescar componentes visuales en tiempo de ejecución
+        panelPrincipal.setBackground(cFondoNegro);
+        panelPrincipal.setBorder(BorderFactory.createLineBorder(cAcento, 2));
+
+        if (panelCentro != null) {
+            panelCentro.setBackground(cFondoNegro);
+        }
+
+        if (tablaVendedores != null) {
+            tablaVendedores.setBackground(cFondoNegro);
+            tablaVendedores.setForeground(cTextoClaro);
+            tablaVendedores.setSelectionBackground(cSeleccion);
+            tablaVendedores.getTableHeader().setBackground(cEncabezadoTabla);
+            tablaVendedores.getTableHeader().setForeground(cAcento);
+            tablaVendedores.getTableHeader().setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, cAcento));
+            tablaVendedores.repaint();
+        }
+
+        if (scrollPane != null) {
+            scrollPane.getViewport().setBackground(cFondoNegro);
+            scrollPane.setBorder(BorderFactory.createLineBorder(cAcento, 1));
+        }
+
+        if (panelInferior != null) {
+            panelInferior.setBackground(cBarraSur);
+            panelInferior.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, cAcento));
+        }
+
+        actualizarTextoAtajos();
+
+        panelPrincipal.revalidate();
+        panelPrincipal.repaint();
+    }
+
+    private void actualizarTextoAtajos() {
+        String temaActual = listaTemas[indiceTemaActual];
+        if (lblAyuda != null) {
+            lblAyuda.setText("<html>(Esc) Salir | (Ins) Insertar | (Supr) Eliminar | (M) Modificar &nbsp;|&nbsp; <b style='color:#FFFF55;'>(F5) Tema: " + temaActual + "</b></html>");
+        }
     }
 
     private void initComponentsCustom() {
-        setTitle("FICHA DE VENDEDORES");
+        setTitle("9.- FICHA DE VENDEDORES");
         setClosable(true);
         setIconifiable(false);
         setMaximizable(false);
         setResizable(false);
         setSize(850, 500);
 
-        // Panel principal con estilo retro (Azul Clipper)
-        JPanel panelPrincipal = new JPanel(new BorderLayout());
-        panelPrincipal.setBackground(new Color(0, 0, 128)); // Azul clásico
+        panelPrincipal = new JPanel(new BorderLayout());
+        panelPrincipal.setBackground(cFondoNegro);
+        panelPrincipal.setBorder(BorderFactory.createLineBorder(cAcento, 2));
 
-        // Título superior
         JLabel lblTitulo = new JLabel(" V E N D E D O R E S ", JLabel.CENTER);
-        lblTitulo.setForeground(Color.RED);
+        lblTitulo.setForeground(cAcento);
         lblTitulo.setFont(new Font("Monospaced", Font.BOLD, 18));
+        lblTitulo.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 0, 2, 0, cAcento),
+                BorderFactory.createEmptyBorder(10, 10, 10, 10)
+        ));
+        lblTitulo.setBackground(cPanelSuperior);
+        lblTitulo.setOpaque(true);
         panelPrincipal.add(lblTitulo, BorderLayout.NORTH);
 
-        // Configuración de la Tabla (Grilla)
         String[] columnas = {"CODIGO", "NOMBRE DEL VENDEDOR", "COMISION"};
         modeloTabla = new DefaultTableModel(columnas, 0) {
             @Override
@@ -52,27 +185,77 @@ public class FrmFichaVendedores extends javax.swing.JInternalFrame {
         };
 
         tablaVendedores = new JTable(modeloTabla);
-        tablaVendedores.setBackground(new Color(0, 0, 160));
-        tablaVendedores.setForeground(Color.WHITE);
+        tablaVendedores.setBackground(cFondoNegro);
+        tablaVendedores.setForeground(cTextoClaro);
         tablaVendedores.setFont(new Font("Monospaced", Font.PLAIN, 16));
-        tablaVendedores.getTableHeader().setBackground(new Color(0, 0, 100));
-        tablaVendedores.getTableHeader().setForeground(Color.YELLOW);
+        tablaVendedores.setRowHeight(25);
+        tablaVendedores.setShowGrid(false);
+        tablaVendedores.setIntercellSpacing(new Dimension(0, 0));
+        tablaVendedores.setSelectionBackground(cSeleccion);
+        tablaVendedores.setSelectionForeground(Color.WHITE);
+
+        tablaVendedores.getTableHeader().setBackground(cEncabezadoTabla);
+        tablaVendedores.getTableHeader().setForeground(cAcento);
         tablaVendedores.getTableHeader().setFont(new Font("Monospaced", Font.BOLD, 16));
+        tablaVendedores.getTableHeader().setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, cAcento));
 
-        JScrollPane scrollPane = new JScrollPane(tablaVendedores);
-        scrollPane.getViewport().setBackground(new Color(0, 0, 128));
-        panelPrincipal.add(scrollPane, BorderLayout.CENTER);
+        // Renderizador para franjas horizontales alternadas transparentes
+        DefaultTableCellRenderer rendererRayas = new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+                Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+                if (!isSelected) {
+                    if (row % 2 == 0) {
+                        c.setBackground(cFondoNegro);
+                    } else {
+                        c.setBackground(new Color(
+                                Math.min(255, cFondoNegro.getRed() + 15),
+                                Math.min(255, cFondoNegro.getGreen() + 15),
+                                Math.min(255, cFondoNegro.getBlue() + 15)
+                        ));
+                    }
+                    c.setForeground(cTextoClaro);
+                } else {
+                    c.setBackground(cSeleccion);
+                    c.setForeground(Color.WHITE);
+                }
 
-        // Barra inferior con las opciones estilo Clipper
-        JLabel lblAyuda = new JLabel("(Esc) Salir   |   (Ins) Insertar   |   (Supr) Eliminar   |   (M) Modificar", JLabel.CENTER);
-        lblAyuda.setForeground(Color.WHITE);
+                if (column == 0 || column == 2) {
+                    setHorizontalAlignment(JLabel.CENTER);
+                } else {
+                    setHorizontalAlignment(JLabel.LEFT);
+                }
+                return c;
+            }
+        };
+
+        for (int i = 0; i < tablaVendedores.getColumnCount(); i++) {
+            tablaVendedores.getColumnModel().getColumn(i).setCellRenderer(rendererRayas);
+        }
+
+        scrollPane = new JScrollPane(tablaVendedores);
+        scrollPane.getViewport().setBackground(cFondoNegro);
+        scrollPane.setBorder(BorderFactory.createLineBorder(cAcento, 1));
+
+        panelCentro = new JPanel(new BorderLayout());
+        panelCentro.setBackground(cFondoNegro);
+        panelCentro.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        panelCentro.add(scrollPane, BorderLayout.CENTER);
+        panelPrincipal.add(panelCentro, BorderLayout.CENTER);
+
+        panelInferior = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 8));
+        panelInferior.setBackground(cBarraSur);
+        panelInferior.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, cAcento));
+
+        lblAyuda = new JLabel();
         lblAyuda.setFont(new Font("Monospaced", Font.BOLD, 13));
-        lblAyuda.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-        panelPrincipal.add(lblAyuda, BorderLayout.SOUTH);
+        lblAyuda.setForeground(Color.WHITE);
+        actualizarTextoAtajos();
+        panelInferior.add(lblAyuda);
+        panelPrincipal.add(panelInferior, BorderLayout.SOUTH);
 
         add(panelPrincipal);
 
-        // Eventos de teclado globales para las acciones rápidas
         KeyAdapter keyAdapter = new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) {
@@ -85,6 +268,8 @@ public class FrmFichaVendedores extends javax.swing.JInternalFrame {
                         dialogoEliminar();
                     case KeyEvent.VK_M ->
                         dialogoModificar();
+                    case KeyEvent.VK_F5 ->
+                        ciclarSiguienteTema(); // 👈 Cambio de tema dinámico con F5
                     default -> {
                     }
                 }
@@ -113,7 +298,7 @@ public class FrmFichaVendedores extends javax.swing.JInternalFrame {
     }
 
     // ==========================================
-    // DIÁLOGOS ESTILO CLIPPER (AZUL / RETRO)
+    // DIÁLOGOS ESTILO CLIPPER
     // ==========================================
     private void dialogoInsertar() {
         JDialog dialog = new JDialog((Frame) null, "Insertar Vendedor", true);
@@ -122,60 +307,59 @@ public class FrmFichaVendedores extends javax.swing.JInternalFrame {
         dialog.setResizable(false);
 
         JPanel panel = new JPanel(null);
-        panel.setBackground(new Color(0, 0, 128));
+        panel.setBackground(cFondoNegro);
 
         JLabel lblTit = new JLabel("--- INGRESO DE VENDEDOR ---");
         lblTit.setBounds(70, 10, 280, 20);
-        lblTit.setForeground(Color.YELLOW);
+        lblTit.setForeground(cAcento);
         lblTit.setFont(new Font("Monospaced", Font.BOLD, 13));
         panel.add(lblTit);
 
         JLabel lbl1 = new JLabel("Código:");
         lbl1.setBounds(30, 50, 90, 20);
-        lbl1.setForeground(Color.WHITE);
+        lbl1.setForeground(cTextoClaro);
         lbl1.setFont(new Font("Monospaced", Font.BOLD, 12));
         panel.add(lbl1);
 
         JTextField txtCodigo = new JTextField();
         txtCodigo.setBounds(130, 50, 80, 25);
-        txtCodigo.setBackground(new Color(0, 0, 160));
-        txtCodigo.setForeground(Color.WHITE);
-        txtCodigo.setCaretColor(Color.WHITE);
+        txtCodigo.setBackground(cEncabezadoTabla);
+        txtCodigo.setForeground(cTextoClaro);
+        txtCodigo.setCaretColor(cAcento);
         txtCodigo.setFont(new Font("Monospaced", Font.BOLD, 12));
         panel.add(txtCodigo);
 
         JLabel lbl2 = new JLabel("Nombre:");
         lbl2.setBounds(30, 85, 90, 20);
-        lbl2.setForeground(Color.WHITE);
+        lbl2.setForeground(cTextoClaro);
         lbl2.setFont(new Font("Monospaced", Font.BOLD, 12));
         panel.add(lbl2);
 
         JTextField txtNombre = new JTextField();
         txtNombre.setBounds(130, 85, 230, 25);
-        txtNombre.setBackground(new Color(0, 0, 160));
-        txtNombre.setForeground(Color.WHITE);
-        txtNombre.setCaretColor(Color.WHITE);
+        txtNombre.setBackground(cEncabezadoTabla);
+        txtNombre.setForeground(cTextoClaro);
+        txtNombre.setCaretColor(cAcento);
         txtNombre.setFont(new Font("Monospaced", Font.BOLD, 12));
         panel.add(txtNombre);
 
         JLabel lbl3 = new JLabel("Comisión (%):");
         lbl3.setBounds(30, 120, 100, 20);
-        lbl3.setForeground(Color.WHITE);
+        lbl3.setForeground(cTextoClaro);
         lbl3.setFont(new Font("Monospaced", Font.BOLD, 12));
         panel.add(lbl3);
 
         JTextField txtComision = new JTextField("0.00");
         txtComision.setBounds(130, 120, 80, 25);
-        txtComision.setBackground(new Color(0, 0, 160));
-        txtComision.setForeground(Color.WHITE);
-        txtComision.setCaretColor(Color.WHITE);
+        txtComision.setBackground(cEncabezadoTabla);
+        txtComision.setForeground(cTextoClaro);
+        txtComision.setCaretColor(cAcento);
         txtComision.setFont(new Font("Monospaced", Font.BOLD, 12));
         panel.add(txtComision);
 
-        // Botón Agregar / Guardar estilo Clipper
         JButton btnAgregar = new JButton("Agregar [Enter]");
         btnAgregar.setBounds(130, 155, 160, 28);
-        btnAgregar.setBackground(new Color(0, 100, 0)); // Verde oscuro clásico
+        btnAgregar.setBackground(new Color(0, 100, 0));
         btnAgregar.setForeground(Color.WHITE);
         btnAgregar.setFont(new Font("Monospaced", Font.BOLD, 11));
         panel.add(btnAgregar);
@@ -200,7 +384,6 @@ public class FrmFichaVendedores extends javax.swing.JInternalFrame {
         txtNombre.addActionListener(guardarAccion);
         txtComision.addActionListener(guardarAccion);
 
-        // Listener global de teclado para cerrar con ESC en cualquier campo del diálogo
         KeyAdapter escAdapter = new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) {
@@ -238,43 +421,42 @@ public class FrmFichaVendedores extends javax.swing.JInternalFrame {
         dialog.setResizable(false);
 
         JPanel panel = new JPanel(null);
-        panel.setBackground(new Color(0, 0, 128));
+        panel.setBackground(cFondoNegro);
 
         JLabel lblTit = new JLabel("--- MODIFICAR (Cód: " + codigoActual + ") ---");
         lblTit.setBounds(70, 10, 280, 20);
-        lblTit.setForeground(Color.YELLOW);
+        lblTit.setForeground(cAcento);
         lblTit.setFont(new Font("Monospaced", Font.BOLD, 13));
         panel.add(lblTit);
 
         JLabel lbl2 = new JLabel("Nombre:");
         lbl2.setBounds(30, 50, 90, 20);
-        lbl2.setForeground(Color.WHITE);
+        lbl2.setForeground(cTextoClaro);
         lbl2.setFont(new Font("Monospaced", Font.BOLD, 12));
         panel.add(lbl2);
 
         JTextField txtNombre = new JTextField(nombreActual);
         txtNombre.setBounds(130, 50, 230, 25);
-        txtNombre.setBackground(new Color(0, 0, 160));
-        txtNombre.setForeground(Color.WHITE);
-        txtNombre.setCaretColor(Color.WHITE);
+        txtNombre.setBackground(cEncabezadoTabla);
+        txtNombre.setForeground(cTextoClaro);
+        txtNombre.setCaretColor(cAcento);
         txtNombre.setFont(new Font("Monospaced", Font.BOLD, 12));
         panel.add(txtNombre);
 
         JLabel lbl3 = new JLabel("Comisión (%):");
         lbl3.setBounds(30, 85, 100, 20);
-        lbl3.setForeground(Color.WHITE);
+        lbl3.setForeground(cTextoClaro);
         lbl3.setFont(new Font("Monospaced", Font.BOLD, 12));
         panel.add(lbl3);
 
         JTextField txtComision = new JTextField(String.valueOf(comisionActual));
         txtComision.setBounds(130, 85, 80, 25);
-        txtComision.setBackground(new Color(0, 0, 160));
-        txtComision.setForeground(Color.WHITE);
-        txtComision.setCaretColor(Color.WHITE);
+        txtComision.setBackground(cEncabezadoTabla);
+        txtComision.setForeground(cTextoClaro);
+        txtComision.setCaretColor(cAcento);
         txtComision.setFont(new Font("Monospaced", Font.BOLD, 12));
         panel.add(txtComision);
 
-        // Botón o Enter para guardar cambios
         JButton btnGuardar = new JButton("Guardar [Enter]");
         btnGuardar.setBounds(130, 125, 150, 25);
         btnGuardar.setBackground(new Color(0, 100, 0));
@@ -319,24 +501,24 @@ public class FrmFichaVendedores extends javax.swing.JInternalFrame {
         dialog.setResizable(false);
 
         JPanel panel = new JPanel(null);
-        panel.setBackground(new Color(0, 0, 128));
+        panel.setBackground(cFondoNegro);
 
         JLabel lblTit = new JLabel("¿Eliminar a " + nombre + "?", JLabel.CENTER);
         lblTit.setBounds(20, 20, 390, 20);
-        lblTit.setForeground(Color.YELLOW);
+        lblTit.setForeground(cAcento);
         lblTit.setFont(new Font("Monospaced", Font.BOLD, 12));
         panel.add(lblTit);
 
         JButton btnSi = new JButton("[S] Sí, Eliminar");
         btnSi.setBounds(40, 70, 170, 30);
-        btnSi.setBackground(new Color(128, 0, 0));
+        btnSi.setBackground(cBarraSur);
         btnSi.setForeground(Color.WHITE);
         btnSi.setFont(new Font("Monospaced", Font.BOLD, 11));
         panel.add(btnSi);
 
         JButton btnNo = new JButton("[Esc] Cancelar");
         btnNo.setBounds(225, 70, 170, 30);
-        btnNo.setBackground(new Color(0, 0, 160));
+        btnNo.setBackground(cEncabezadoTabla);
         btnNo.setForeground(Color.WHITE);
         btnNo.setFont(new Font("Monospaced", Font.BOLD, 11));
         panel.add(btnNo);
@@ -354,7 +536,6 @@ public class FrmFichaVendedores extends javax.swing.JInternalFrame {
 
         btnNo.addActionListener(e -> dialog.dispose());
 
-        // Listener global de teclado para cerrar con ESC en el diálogo de eliminar
         KeyAdapter escAdapter = new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) {
@@ -378,16 +559,16 @@ public class FrmFichaVendedores extends javax.swing.JInternalFrame {
         dialog.setLocationRelativeTo(this);
 
         JPanel panel = new JPanel(new BorderLayout());
-        panel.setBackground(new Color(0, 0, 128));
+        panel.setBackground(cFondoNegro);
 
         JLabel lbl = new JLabel(mensaje, JLabel.CENTER);
-        lbl.setForeground(Color.WHITE);
+        lbl.setForeground(cTextoClaro);
         lbl.setFont(new Font("Monospaced", Font.BOLD, 12));
         panel.add(lbl, BorderLayout.CENTER);
 
         JButton btnOk = new JButton("Aceptar [Enter]");
-        btnOk.setBackground(new Color(0, 0, 160));
-        btnOk.setForeground(Color.YELLOW);
+        btnOk.setBackground(cEncabezadoTabla);
+        btnOk.setForeground(cAcento);
         btnOk.addActionListener(e -> dialog.dispose());
         panel.add(btnOk, BorderLayout.SOUTH);
 

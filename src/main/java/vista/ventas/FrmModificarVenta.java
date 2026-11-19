@@ -1,10 +1,8 @@
-
 package vista.ventas;
 
 import conexion.Conexion;
 import dao.VentaDAO;
 import modelo.VentaDTO;
-
 
 import javax.swing.*;
 import javax.swing.border.LineBorder;
@@ -28,6 +26,7 @@ public class FrmModificarVenta extends JDialog {
     public FrmModificarVenta(Window parent, VentaDTO venta) {
         super(parent, " MODIFICACIÓN DE VENTA ", ModalityType.APPLICATION_MODAL);
         this.codigoVenta = venta.getVcodigo();
+        
 
         setSize(480, 320);
         setLocationRelativeTo(parent);
@@ -57,25 +56,50 @@ public class FrmModificarVenta extends JDialog {
         txtTotal = crearCampo(String.valueOf(venta.getVpxtotal()), 12);
 
         // Fila 0: Cliente
-        gbc.gridx = 0; gbc.gridy = 0; panelContenedor.add(crearEtiqueta("Cliente:"), gbc);
-        gbc.gridx = 1; gbc.gridy = 0; gbc.gridwidth = 3; panelContenedor.add(txtCliente, gbc);
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        panelContenedor.add(crearEtiqueta("Cliente:"), gbc);
+        gbc.gridx = 1;
+        gbc.gridy = 0;
+        gbc.gridwidth = 3;
+        panelContenedor.add(txtCliente, gbc);
         gbc.gridwidth = 1;
 
         // Fila 1: Fecha y Boleta
-        gbc.gridx = 0; gbc.gridy = 1; panelContenedor.add(crearEtiqueta("Fecha:"), gbc);
-        gbc.gridx = 1; gbc.gridy = 1; panelContenedor.add(txtFecha, gbc);
-        gbc.gridx = 2; gbc.gridy = 1; panelContenedor.add(crearEtiqueta("Boleta:"), gbc);
-        gbc.gridx = 3; gbc.gridy = 1; panelContenedor.add(txtBoleta, gbc);
+        gbc.gridx = 0;
+        gbc.gridy = 1;
+        panelContenedor.add(crearEtiqueta("Fecha:"), gbc);
+        gbc.gridx = 1;
+        gbc.gridy = 1;
+        panelContenedor.add(txtFecha, gbc);
+        gbc.gridx = 2;
+        gbc.gridy = 1;
+        panelContenedor.add(crearEtiqueta("Boleta:"), gbc);
+        gbc.gridx = 3;
+        gbc.gridy = 1;
+        panelContenedor.add(txtBoleta, gbc);
 
         // Fila 2: Factura y Guía
-        gbc.gridx = 0; gbc.gridy = 2; panelContenedor.add(crearEtiqueta("Factura:"), gbc);
-        gbc.gridx = 1; gbc.gridy = 2; panelContenedor.add(txtFactura, gbc);
-        gbc.gridx = 2; gbc.gridy = 2; panelContenedor.add(crearEtiqueta("Guía:"), gbc);
-        gbc.gridx = 3; gbc.gridy = 2; panelContenedor.add(txtGuia, gbc);
+        gbc.gridx = 0;
+        gbc.gridy = 2;
+        panelContenedor.add(crearEtiqueta("Factura:"), gbc);
+        gbc.gridx = 1;
+        gbc.gridy = 2;
+        panelContenedor.add(txtFactura, gbc);
+        gbc.gridx = 2;
+        gbc.gridy = 2;
+        panelContenedor.add(crearEtiqueta("Guía:"), gbc);
+        gbc.gridx = 3;
+        gbc.gridy = 2;
+        panelContenedor.add(txtGuia, gbc);
 
         // Fila 3: Total ($)
-        gbc.gridx = 0; gbc.gridy = 3; panelContenedor.add(crearEtiqueta("Total ($):"), gbc);
-        gbc.gridx = 1; gbc.gridy = 3; panelContenedor.add(txtTotal, gbc);
+        gbc.gridx = 0;
+        gbc.gridy = 3;
+        panelContenedor.add(crearEtiqueta("Total ($):"), gbc);
+        gbc.gridx = 1;
+        gbc.gridy = 3;
+        panelContenedor.add(txtTotal, gbc);
 
         // Panel central para mantenerlo compacto
         JPanel panelCentro = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 10));
@@ -94,8 +118,12 @@ public class FrmModificarVenta extends JDialog {
         panelInferior.add(lblAtajos);
 
         add(panelInferior, BorderLayout.SOUTH);
+        SwingUtilities.invokeLater(() -> {
+            utilidades.IconoUtils.aplicarIcono(this);
+        });
+      
 
-        configurarAtajos();
+
     }
 
     private JLabel crearEtiqueta(String texto) {
@@ -121,13 +149,17 @@ public class FrmModificarVenta extends JDialog {
         root.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), "cancelar");
         root.getActionMap().put("cancelar", new AbstractAction() {
             @Override
-            public void actionPerformed(java.awt.event.ActionEvent e) { dispose(); }
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                dispose();
+            }
         });
 
         root.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), "guardar");
         root.getActionMap().put("guardar", new AbstractAction() {
             @Override
-            public void actionPerformed(java.awt.event.ActionEvent e) { guardarCambios(); }
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                guardarCambios();
+            }
         });
     }
 

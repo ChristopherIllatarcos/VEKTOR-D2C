@@ -16,50 +16,213 @@ public class FrmResultadoInventario extends JInternalFrame {
     private JTextField txtFechaCorte;
     private JCheckBox chkSaldoCero;
     private JLabel lblTotalValor;
+    private JLabel lblEncabezado;
+    private JLabel lblAyuda;
+    private JLabel lblBuscar;
+    private JLabel lblFecha;
+
+    // Componentes estructurales para actualización dinámica de colores
+    private JPanel panelPrincipal;
+    private JPanel panelNorte;
+    private JPanel panelFiltrosSup;
+    private JPanel panelFiltrosInf;
+    private JPanel panelSur;
+    private JScrollPane scrollPane;
+
+    // Variables de Colores Actuales del Tema
+    private Color cFondo, cPanelNorte, cPanelTabla, cAcento, cTextoClaro, cBarraSur, cSeleccion;
+    private final Font FUENTE_MONOSPACED = new Font("Monospaced", Font.BOLD, 15);
+
+    // Sistema de Temas Ciclos [F6]
+    private final String[] listaTemas = {"Clipper Clásico", "Morado Neón", "Turquesa Pro", "Esmeralda Terminal", "Naranja Fuego"};
+    private int indiceTemaActual = 0; // Empieza en Clipper Clásico por defecto
+
+    private List<InventarioItemDTO> cacheItems;
+    private String cacheFechaCorte;
 
     public FrmResultadoInventario(List<InventarioItemDTO> items, String fechaCorteInicial) {
-        setTitle("VEKTOR D2C - INVENTARIO DE PRODUCTOS");
+        setTitle("5.- INVENTARIO DE PRODUCTOS");
         setClosable(true);
         setIconifiable(true);
         setMaximizable(true);
         setResizable(true);
         setSize(950, 580);
 
+        this.cacheItems = items;
+        this.cacheFechaCorte = fechaCorteInicial;
+
+        // Aplicar tema inicial
+        aplicarTema(listaTemas[indiceTemaActual]);
+
         initComponents(items, fechaCorteInicial);
         configurarAtajosTeclado();
+         // Asignar el icono de Nexum directamente a este JInternalFrame
+        try {
+            setFrameIcon(new javax.swing.ImageIcon(getClass().getResource("/vektor/cubo-azul-16.png")));
+        } catch (Exception e) {
+            System.out.println("No se pudo cargar el icono interno: " + e.getMessage());
+        }
+    }
+
+    // ==========================================
+    // SISTEMA DE CAMBIO DE TEMAS [F6]
+    // ==========================================
+    private void aplicarTema(String nombreTema) {
+        switch (nombreTema) {
+            case "Morado Neón":
+                cFondo = new Color(10, 10, 15);
+                cPanelNorte = new Color(45, 10, 55);
+                cPanelTabla = new Color(15, 10, 20);
+                cAcento = new Color(255, 110, 220);
+                cTextoClaro = new Color(255, 230, 255);
+                cBarraSur = new Color(130, 0, 70);
+                cSeleccion = new Color(140, 20, 160);
+                break;
+            case "Turquesa Pro":
+                cFondo = new Color(5, 15, 20);
+                cPanelNorte = new Color(10, 40, 50);
+                cPanelTabla = new Color(5, 20, 25);
+                cAcento = new Color(0, 245, 255);
+                cTextoClaro = new Color(220, 255, 255);
+                cBarraSur = new Color(0, 60, 70);
+                cSeleccion = new Color(0, 120, 140);
+                break;
+            case "Esmeralda Terminal":
+                cFondo = new Color(5, 20, 15);
+                cPanelNorte = new Color(10, 45, 30);
+                cPanelTabla = new Color(5, 25, 18);
+                cAcento = new Color(0, 255, 128);
+                cTextoClaro = new Color(220, 255, 240);
+                cBarraSur = new Color(0, 60, 35);
+                cSeleccion = new Color(0, 140, 80);
+                break;
+            case "Naranja Fuego":
+                cFondo = new Color(15, 10, 8);
+                cPanelNorte = new Color(40, 18, 12);
+                cPanelTabla = new Color(25, 12, 10);
+                cAcento = new Color(245, 73, 39);
+                cTextoClaro = new Color(255, 235, 225);
+                cBarraSur = new Color(60, 20, 12);
+                cSeleccion = new Color(130, 42, 22);
+                break;
+            case "Clipper Clásico":
+            default:
+                cFondo = new Color(0, 0, 128);
+                cPanelNorte = new Color(0, 1, 36);
+                cPanelTabla = new Color(0, 0, 160);
+                cAcento = Color.YELLOW;
+                cTextoClaro = Color.WHITE;
+                cBarraSur = new Color(160, 0, 0);
+                cSeleccion = new Color(0, 128, 192);
+                break;
+        }
+    }
+
+    private void ciclarSiguienteTema() {
+        indiceTemaActual = (indiceTemaActual + 1) % listaTemas.length;
+        aplicarTema(listaTemas[indiceTemaActual]);
+
+        if (panelPrincipal != null) {
+            panelPrincipal.setBackground(cFondo);
+        }
+        if (panelNorte != null) {
+            panelNorte.setBackground(cPanelNorte);
+        }
+        if (panelFiltrosSup != null) {
+            panelFiltrosSup.setBackground(cFondo);
+        }
+        if (panelFiltrosInf != null) {
+            panelFiltrosInf.setBackground(cFondo);
+        }
+
+        if (lblEncabezado != null) {
+            lblEncabezado.setForeground(cAcento);
+        }
+        if (lblBuscar != null) {
+            lblBuscar.setForeground(cAcento);
+        }
+        if (lblFecha != null) {
+            lblFecha.setForeground(cAcento);
+        }
+
+        if (txtBuscar != null) {
+            txtBuscar.setBackground(cPanelTabla);
+            txtBuscar.setForeground(cTextoClaro);
+            txtBuscar.setCaretColor(cTextoClaro);
+        }
+        if (txtFechaCorte != null) {
+            txtFechaCorte.setBackground(cPanelTabla);
+            txtFechaCorte.setForeground(cTextoClaro);
+            txtFechaCorte.setCaretColor(cTextoClaro);
+        }
+        if (chkSaldoCero != null) {
+            chkSaldoCero.setBackground(cFondo);
+            chkSaldoCero.setForeground(cTextoClaro);
+        }
+
+        if (tabla != null) {
+            tabla.setBackground(cPanelTabla);
+            tabla.setForeground(cTextoClaro);
+            tabla.setSelectionBackground(cSeleccion);
+            tabla.setSelectionForeground(Color.WHITE);
+            tabla.getTableHeader().setBackground(cFondo);
+            tabla.getTableHeader().setForeground(cAcento);
+            tabla.repaint();
+        }
+
+        if (scrollPane != null) {
+            scrollPane.getViewport().setBackground(cFondo);
+            scrollPane.setBorder(BorderFactory.createLineBorder(cFondo));
+        }
+
+        if (panelSur != null) {
+            panelSur.setBackground(cBarraSur);
+        }
+        if (lblTotalValor != null) {
+            lblTotalValor.setForeground(cAcento);
+        }
+
+        actualizarTextoAyuda();
+
+        revalidate();
+        repaint();
+    }
+
+    private void actualizarTextoAyuda() {
+        String temaActual = listaTemas[indiceTemaActual];
+        if (lblAyuda != null) {
+            lblAyuda.setText("[F6] Tema: " + temaActual + " | (ESC) Salir");
+        }
     }
 
     private void initComponents(List<InventarioItemDTO> items, String fechaCorteInicial) {
-        // Panel principal con fondo azul clásico Clipper
-        JPanel panelPrincipal = new JPanel(new BorderLayout());
-        panelPrincipal.setBackground(new Color(0, 0, 128));
+        panelPrincipal = new JPanel(new BorderLayout());
+        panelPrincipal.setBackground(cFondo);
 
         // ==========================================
         // 1. ZONA SUPERIOR (Cabecera, Buscador y Filtros)
         // ==========================================
-        JPanel panelNorte = new JPanel(new GridLayout(3, 1, 5, 5));
-        panelNorte.setBackground(new Color(0, 1, 36));
+        panelNorte = new JPanel(new GridLayout(3, 1, 5, 5));
+        panelNorte.setBackground(cPanelNorte);
         panelNorte.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
-        // Título estilo consola
-        JLabel lblEncabezado = new JLabel("=== INVENTARIO DE PRODUCTOS (Al " + fechaCorteInicial + ") ===", JLabel.CENTER);
-        lblEncabezado.setForeground(Color.YELLOW);
-        lblEncabezado.setFont(new Font("Monospaced", Font.BOLD, 15));
+        lblEncabezado = new JLabel("=== INVENTARIO DE PRODUCTOS (Al " + fechaCorteInicial + ") ===", JLabel.CENTER);
+        lblEncabezado.setForeground(cAcento);
+        lblEncabezado.setFont(FUENTE_MONOSPACED);
         panelNorte.add(lblEncabezado);
 
-        // Panel de búsqueda y fecha al corte
-        JPanel panelFiltrosSup = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
-        panelFiltrosSup.setBackground(new Color(0, 0, 128));
+        panelFiltrosSup = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        panelFiltrosSup.setBackground(cFondo);
 
-        JLabel lblBuscar = new JLabel("BUSCAR (Descripción o Barra):");
-        lblBuscar.setForeground(Color.YELLOW);
+        lblBuscar = new JLabel("BUSCAR (Descripción o Barra):");
+        lblBuscar.setForeground(cAcento);
         lblBuscar.setFont(new Font("Monospaced", Font.BOLD, 12));
         panelFiltrosSup.add(lblBuscar);
 
         txtBuscar = new JTextField(18);
-        txtBuscar.setBackground(new Color(0, 0, 160));
-        txtBuscar.setForeground(Color.WHITE);
-        txtBuscar.setCaretColor(Color.WHITE);
+        txtBuscar.setBackground(cPanelTabla);
+        txtBuscar.setForeground(cTextoClaro);
+        txtBuscar.setCaretColor(cTextoClaro);
         txtBuscar.setFont(new Font("Monospaced", Font.BOLD, 12));
         panelFiltrosSup.add(txtBuscar);
 
@@ -69,7 +232,6 @@ public class FrmResultadoInventario extends JInternalFrame {
                 String texto = txtBuscar.getText().toLowerCase().trim();
                 javax.swing.RowFilter<DefaultTableModel, Object> rf = null;
                 try {
-                    // Filtra por las columnas 0 (Código) y 1 (Descripción)
                     rf = javax.swing.RowFilter.regexFilter("(?i)" + texto, 0, 1);
                 } catch (java.util.regex.PatternSyntaxException ex) {
                     return;
@@ -80,54 +242,49 @@ public class FrmResultadoInventario extends JInternalFrame {
             }
         });
 
-        JLabel lblFecha = new JLabel("Fecha al Corte:");
-        lblFecha.setForeground(Color.YELLOW);
+        lblFecha = new JLabel("Fecha al Corte:");
+        lblFecha.setForeground(cAcento);
         lblFecha.setFont(new Font("Monospaced", Font.BOLD, 12));
         panelFiltrosSup.add(lblFecha);
 
         txtFechaCorte = new JTextField(fechaCorteInicial, 12);
-        txtFechaCorte.setBackground(new Color(0, 0, 160));
-        txtFechaCorte.setForeground(Color.WHITE);
-        txtFechaCorte.setCaretColor(Color.WHITE);
+        txtFechaCorte.setBackground(cPanelTabla);
+        txtFechaCorte.setForeground(cTextoClaro);
+        txtFechaCorte.setCaretColor(cTextoClaro);
         txtFechaCorte.setFont(new Font("Monospaced", Font.BOLD, 12));
         panelFiltrosSup.add(txtFechaCorte);
 
         panelNorte.add(panelFiltrosSup);
 
-        // Panel para el Checkbox de saldo cero
-        JPanel panelFiltrosInf = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
-        panelFiltrosInf.setBackground(new Color(0, 0, 128));
+        panelFiltrosInf = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        panelFiltrosInf.setBackground(cFondo);
 
         chkSaldoCero = new JCheckBox("Ver Saldo / Stock Cero");
-        chkSaldoCero.setBackground(new Color(0, 0, 128));
-        chkSaldoCero.setForeground(Color.WHITE);
+        chkSaldoCero.setBackground(cFondo);
+        chkSaldoCero.setForeground(cTextoClaro);
         chkSaldoCero.setFont(new Font("Monospaced", Font.BOLD, 12));
         chkSaldoCero.setFocusPainted(false);
         panelFiltrosInf.add(chkSaldoCero);
 
-        // Lógica para que el Checkbox filtre el stock en tiempo real
         chkSaldoCero.addItemListener((java.awt.event.ItemEvent e) -> {
             javax.swing.table.TableRowSorter<DefaultTableModel> sorter
                     = (javax.swing.table.TableRowSorter<DefaultTableModel>) tabla.getRowSorter();
-            
+
             if (sorter == null) {
                 sorter = new javax.swing.table.TableRowSorter<>(modeloTabla);
                 tabla.setRowSorter(sorter);
             }
-            
+
             if (chkSaldoCero.isSelected()) {
-                // Si está marcado, mostramos todo (quitamos el filtro de stock)
                 sorter.setRowFilter(null);
             } else {
-                // Si NO está marcado, filtramos para Ocultar los que tengan stock 0,00
                 sorter.setRowFilter(new javax.swing.RowFilter<DefaultTableModel, Integer>() {
                     @Override
                     public boolean include(javax.swing.RowFilter.Entry<? extends DefaultTableModel, ? extends Integer> entry) {
-                        // La columna 3 es "Stock Actual"
                         String stockStr = entry.getStringValue(3).replace(",", ".");
                         try {
                             double stock = Double.parseDouble(stockStr);
-                            return stock > 0.0; // Solo muestra si es mayor a cero
+                            return stock > 0.0;
                         } catch (NumberFormatException ex) {
                             return true;
                         }
@@ -164,36 +321,38 @@ public class FrmResultadoInventario extends JInternalFrame {
         }
 
         tabla = new JTable(modeloTabla);
-        tabla.setBackground(new Color(0, 0, 160));
-        tabla.setForeground(Color.WHITE);
+        tabla.setBackground(cPanelTabla);
+        tabla.setForeground(cTextoClaro);
         tabla.setFont(new Font("Monospaced", Font.PLAIN, 16));
         tabla.setRowHeight(22);
+        tabla.setSelectionBackground(cSeleccion);
+        tabla.setSelectionForeground(Color.WHITE);
 
-        // Encabezado de la tabla estilo Clipper
-        tabla.getTableHeader().setBackground(new Color(0, 0, 100));
-        tabla.getTableHeader().setForeground(Color.YELLOW);
+        tabla.getTableHeader().setBackground(cFondo);
+        tabla.getTableHeader().setForeground(cAcento);
         tabla.getTableHeader().setFont(new Font("Monospaced", Font.BOLD, 16));
 
-        JScrollPane scrollPane = new JScrollPane(tabla);
-        scrollPane.getViewport().setBackground(new Color(0, 0, 128));
-        scrollPane.setBorder(BorderFactory.createLineBorder(new Color(0, 0, 90)));
+        scrollPane = new JScrollPane(tabla);
+        scrollPane.getViewport().setBackground(cFondo);
+        scrollPane.setBorder(BorderFactory.createLineBorder(cFondo));
         panelPrincipal.add(scrollPane, BorderLayout.CENTER);
 
         // ==========================================
-        // 3. BARRA INFERIOR (Totales y Pie Rojo Clipper)
+        // 3. BARRA INFERIOR (Totales y Pie)
         // ==========================================
-        JPanel panelSur = new JPanel(new BorderLayout());
-        panelSur.setBackground(new Color(160, 0, 0)); // Rojo clásico Clipper
+        panelSur = new JPanel(new BorderLayout());
+        panelSur.setBackground(cBarraSur);
         panelSur.setBorder(BorderFactory.createEmptyBorder(8, 10, 8, 10));
 
         lblTotalValor = new JLabel(String.format("Valorización Total: $ %.2f", costoTotalGeneral));
-        lblTotalValor.setForeground(Color.YELLOW);
+        lblTotalValor.setForeground(cAcento);
         lblTotalValor.setFont(new Font("Monospaced", Font.BOLD, 13));
         panelSur.add(lblTotalValor, BorderLayout.WEST);
 
-        JLabel lblAyuda = new JLabel("(ESC) Salir", JLabel.RIGHT);
+        lblAyuda = new JLabel("", JLabel.RIGHT);
         lblAyuda.setForeground(Color.WHITE);
         lblAyuda.setFont(new Font("Monospaced", Font.BOLD, 13));
+        actualizarTextoAyuda();
         panelSur.add(lblAyuda, BorderLayout.EAST);
 
         panelPrincipal.add(panelSur, BorderLayout.SOUTH);
@@ -201,19 +360,24 @@ public class FrmResultadoInventario extends JInternalFrame {
     }
 
     private void configurarAtajosTeclado() {
-        KeyAdapter keyAdapter = new KeyAdapter() {
-            @Override
-            public void keyPressed(KeyEvent e) {
-                if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
-                    dispose(); // Cierra el JInternalFrame al instante con ESC
-                }
-            }
-        };
+        JComponent root = getRootPane();
+        int cond = JComponent.WHEN_IN_FOCUSED_WINDOW;
 
-        this.addKeyListener(keyAdapter);
-        tabla.addKeyListener(keyAdapter);
-        txtBuscar.addKeyListener(keyAdapter);
-        txtFechaCorte.addKeyListener(keyAdapter);
-        chkSaldoCero.addKeyListener(keyAdapter);
+        root.getInputMap(cond).put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), "salir");
+        root.getActionMap().put("salir", new AbstractAction() {
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                dispose();
+            }
+        });
+
+        // [F6] Ciclar Tema en tiempo real
+        root.getInputMap(cond).put(KeyStroke.getKeyStroke(KeyEvent.VK_F6, 0), "ciclar_tema");
+        root.getActionMap().put("ciclar_tema", new AbstractAction() {
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                ciclarSiguienteTema();
+            }
+        });
     }
 }

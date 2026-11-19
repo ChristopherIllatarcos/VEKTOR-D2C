@@ -4,18 +4,26 @@ import conexion.Conexion;
 import dao.ParametrosDAO;
 import dao.RotacionVentasDAO;
 import modelo.ParametrosDTO;
+import org.jfree.chart.ChartFactory;
+import org.jfree.chart.ChartPanel;
+import org.jfree.chart.JFreeChart;
+import org.jfree.chart.plot.CategoryPlot;
+import org.jfree.chart.renderer.category.BarRenderer;
+import org.jfree.data.category.DefaultCategoryDataset;
 
 import javax.swing.*;
 import javax.swing.border.LineBorder;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import java.awt.event.ActionEvent;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
 import java.awt.event.KeyEvent;
 import java.sql.Connection;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 
 public class FrmRotacionVentas extends JInternalFrame {
@@ -29,56 +37,225 @@ public class FrmRotacionVentas extends JInternalFrame {
 
     private JLabel lblTotalUnidades;
     private JLabel lblTotalMonto;
+    private JLabel lblAtajos;
+    private JButton btnConsultar;
+    private JButton btnGrafico;
 
-    // Paleta Terracota / Cobre Oscuro para Bodegas
-    private final Color COLOR_FONDO = new Color(61, 28, 2);             // Cobre / Terracota oscuro (#3D1C02)
-    private final Color COLOR_PANEL_TABLA = new Color(26, 14, 5);       // Fondo oscuro cálido tabla
-    private final Color COLOR_ZEBRA_1 = new Color(26, 14, 5);           // Fondo cebra par
-    private final Color COLOR_ZEBRA_2 = new Color(36, 20, 8);           // Fondo cebra impar (más legible)
-    private final Color COLOR_BORDE_AMBAR = new Color(255, 170, 51);    // Ámbar / Naranja dorado (#FFAA33)
-    private final Color COLOR_TEXTO_CREMA = new Color(255, 240, 204);   // Crema dorado claro (#FFF0CC)
-    private final Color COLOR_BARRA_INF = new Color(115, 50, 5);        // Terracota medio
+    // Componentes estructurales para actualización dinámica de colores
+    private JPanel panelSuperior, panelInferiorContenedor, panelTotales, panelAtajosContainer;
+    private JScrollPane scrollTabla;
+
+    // Lista en memoria para alimentar el gráfico ejecutivo con la última consulta
+    private List<Object[]> listaUltimaConsulta = new ArrayList<>();
+
+    // Variables de Colores Actuales del Tema
+    private Color cFondo, cPanelTabla, cZebra1, cZebra2, cBordeAmbar, cTextoCrema, cBarraInf, cSeleccion;
     private final Font FUENTE_CONSOLA = new Font("Consolas", Font.BOLD, 14);
+
+    // Sistema de Temas Ciclos [F6]
+    private final String[] listaTemas = {"Clipper Clásico", "Turquesa Pro", "Esmeralda Terminal","Terracota Cobre" , "Naranja Fuego"};
+    private int indiceTemaActual = 0; // Empieza en Terracota Cobre por defecto
 
     public FrmRotacionVentas() {
         super("7.- ROTACIÓN DE MERCADERÍA POR VENTAS", false, false, false, false);
+
+        // Aplicar tema inicial
+        aplicarTema(listaTemas[indiceTemaActual]);
+
         initComponentsManual();
         cargarFechaDesdeParametros();
         ejecutarBusquedaInicial();
+         // Asignar el icono de Nexum directamente a este JInternalFrame
+        try {
+            setFrameIcon(new javax.swing.ImageIcon(getClass().getResource("/vektor/cubo-azul-16.png")));
+        } catch (Exception e) {
+            System.out.println("No se pudo cargar el icono interno: " + e.getMessage());
+        }
+    }
+
+    // ==========================================
+    // SISTEMA DE CAMBIO DE TEMAS [F6]
+    // ==========================================
+    private void aplicarTema(String nombreTema) {
+        switch (nombreTema) {
+            case "Turquesa Pro":
+                cFondo = new Color(5, 15, 20);
+                cPanelTabla = new Color(5, 20, 25);
+                cZebra1 = new Color(5, 20, 25);
+                cZebra2 = new Color(10, 35, 45);
+                cBordeAmbar = new Color(0, 245, 255);
+                cTextoCrema = new Color(220, 255, 255);
+                cBarraInf = new Color(0, 60, 70);
+                cSeleccion = new Color(0, 120, 140);
+                break;
+            case "Esmeralda Terminal":
+                cFondo = new Color(5, 20, 15);
+                cPanelTabla = new Color(5, 25, 18);
+                cZebra1 = new Color(5, 25, 18);
+                cZebra2 = new Color(12, 45, 30);
+                cBordeAmbar = new Color(0, 255, 128);
+                cTextoCrema = new Color(220, 255, 240);
+                cBarraInf = new Color(0, 60, 35);
+                cSeleccion = new Color(0, 140, 80);
+                break;
+            case "Clipper Clásico":
+                cFondo = Color.BLACK;
+                cPanelTabla = new Color(0, 0, 120);
+                cZebra1 = new Color(0, 0, 120);
+                cZebra2 = new Color(0, 0, 168);
+                cBordeAmbar = new Color(255, 255, 85);
+                cTextoCrema = Color.WHITE;
+                cBarraInf = new Color(168, 0, 0);
+                cSeleccion = new Color(0, 168, 168);
+                break;
+            case "Naranja Fuego":
+                cFondo = new Color(15, 10, 8);
+                cPanelTabla = new Color(25, 12, 10);
+                cZebra1 = new Color(25, 12, 10);
+                cZebra2 = new Color(50, 22, 15);
+                cBordeAmbar = new Color(245, 73, 39);
+                cTextoCrema = new Color(255, 235, 225);
+                cBarraInf = new Color(60, 20, 12);
+                cSeleccion = new Color(130, 42, 22);
+                break;
+            case "Terracota Cobre":
+            default:
+                cFondo = new Color(61, 28, 2);
+                cPanelTabla = new Color(26, 14, 5);
+                cZebra1 = new Color(26, 14, 5);
+                cZebra2 = new Color(36, 20, 8);
+                cBordeAmbar = new Color(255, 170, 51);
+                cTextoCrema = new Color(255, 240, 204);
+                cBarraInf = new Color(115, 50, 5);
+                cSeleccion = new Color(140, 60, 10);
+                break;
+        }
+    }
+
+    private void ciclarSiguienteTema() {
+        indiceTemaActual = (indiceTemaActual + 1) % listaTemas.length;
+        String nuevoTema = listaTemas[indiceTemaActual];
+        aplicarTema(nuevoTema);
+
+        getContentPane().setBackground(cFondo);
+
+        if (panelSuperior != null) {
+            panelSuperior.setBackground(cFondo);
+            panelSuperior.setBorder(BorderFactory.createTitledBorder(
+                    new LineBorder(cBordeAmbar, 2),
+                    " ROTACIÓN DE MERCADERÍA - FILTROS DE CONSULTA ",
+                    0, 0, FUENTE_CONSOLA, cBordeAmbar
+            ));
+        }
+
+        if (tablaRotacion != null) {
+            tablaRotacion.setBackground(cPanelTabla);
+            tablaRotacion.setForeground(cTextoCrema);
+            tablaRotacion.setGridColor(cBordeAmbar);
+            tablaRotacion.setSelectionBackground(cBarraInf);
+            tablaRotacion.setSelectionForeground(Color.YELLOW);
+            tablaRotacion.getTableHeader().setBackground(cFondo);
+            tablaRotacion.getTableHeader().setForeground(cBordeAmbar);
+            tablaRotacion.repaint();
+        }
+
+        if (scrollTabla != null) {
+            scrollTabla.getViewport().setBackground(cPanelTabla);
+            scrollTabla.setBorder(new LineBorder(cBordeAmbar, 1));
+        }
+
+        if (panelInferiorContenedor != null) {
+            panelInferiorContenedor.setBackground(cFondo);
+        }
+
+        if (panelTotales != null) {
+            panelTotales.setBackground(cFondo);
+            panelTotales.setBorder(BorderFactory.createMatteBorder(1, 0, 1, 0, cBordeAmbar));
+        }
+
+        if (lblTotalMonto != null) {
+            lblTotalMonto.setForeground(cBordeAmbar);
+        }
+
+        if (panelAtajosContainer != null) {
+            panelAtajosContainer.setBackground(cBarraInf);
+            panelAtajosContainer.setBorder(new LineBorder(cBordeAmbar, 1));
+        }
+
+        estilizarCampoDinamico(txtFechaInicial);
+        estilizarCampoDinamico(txtFechaFinal);
+        estilizarCampoDinamico(txtBuscarProducto);
+
+        if (btnConsultar != null) {
+            estilizarBotonConsola(btnConsultar, cBarraInf);
+        }
+        if (btnGrafico != null) {
+            estilizarBotonConsola(btnGrafico, new Color(Math.min(255, cBarraInf.getRed() + 65), Math.max(0, cBarraInf.getGreen() + 20), Math.max(0, cBarraInf.getBlue())));
+        }
+
+        actualizarTextoAtajos();
+
+        revalidate();
+        repaint();
+    }
+
+    private void estilizarCampoDinamico(JTextField txt) {
+        if (txt != null) {
+            txt.setBackground(cPanelTabla);
+            txt.setForeground(cBordeAmbar);
+            txt.setCaretColor(cBordeAmbar);
+            txt.setBorder(new LineBorder(cBordeAmbar, 1));
+        }
+    }
+
+    private void actualizarTextoAtajos() {
+        String temaActual = listaTemas[indiceTemaActual];
+        if (lblAtajos != null) {
+            lblAtajos.setText("(Esc) Salir    |    (Enter) Buscar    |    (F5) Ver Todo    |    (F6) Tema: " + temaActual + "    |    (F3) Gráfico");
+        }
     }
 
     private void initComponentsManual() {
-        setSize(1100, 680);
+        setSize(1150, 680);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
-        getContentPane().setBackground(COLOR_FONDO);
+        getContentPane().setBackground(cFondo);
         setLayout(new BorderLayout(0, 6));
 
         // ==========================================
-        // 1. PANEL SUPERIOR (Filtros estilo Clipper)
+        // 1. PANEL SUPERIOR (Filtros y Botón Gráfico)
         // ==========================================
-        JPanel panelSuperior = new JPanel(new BorderLayout());
-        panelSuperior.setBackground(COLOR_FONDO);
+        panelSuperior = new JPanel(new BorderLayout());
+        panelSuperior.setBackground(cFondo);
         panelSuperior.setBorder(BorderFactory.createTitledBorder(
-                new LineBorder(COLOR_BORDE_AMBAR, 2),
+                new LineBorder(cBordeAmbar, 2),
                 " ROTACIÓN DE MERCADERÍA - FILTROS DE CONSULTA ",
-                0, 0, FUENTE_CONSOLA, COLOR_BORDE_AMBAR
+                0, 0, FUENTE_CONSOLA, cBordeAmbar
         ));
 
-        JPanel panelCampos = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 10));
+        JPanel panelCampos = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 10));
         panelCampos.setOpaque(false);
 
-        txtFechaInicial = crearCampoTexto(10);
-        txtFechaFinal = crearCampoTexto(10);
-        txtBuscarProducto = crearCampoTexto(24);
+        txtFechaInicial = crearCampoTexto(12);
+        txtFechaFinal = crearCampoTexto(12);
+        txtBuscarProducto = crearCampoTexto(18);
 
-        panelCampos.add(crearEtiqueta("Fecha Inicial:"));
+        btnConsultar = new JButton("Consultar [Enter]");
+        estilizarBotonConsola(btnConsultar, cBarraInf);
+        btnConsultar.addActionListener(e -> ejecutarBusqueda());
+
+        btnGrafico = new JButton("Ver Gráfico [F3]");
+        estilizarBotonConsola(btnGrafico, new Color(180, 90, 0));
+        btnGrafico.addActionListener(e -> abrirVentanaGrafico());
+
+        panelCampos.add(crearEtiqueta("F.Ini:"));
         panelCampos.add(txtFechaInicial);
-        panelCampos.add(crearEtiqueta("Fecha Final:"));
+        panelCampos.add(crearEtiqueta("F.Fin:"));
         panelCampos.add(txtFechaFinal);
-        panelCampos.add(crearEtiqueta("Barra/Producto:"));
+        panelCampos.add(crearEtiqueta("Barra/Prod:"));
         panelCampos.add(txtBuscarProducto);
+        panelCampos.add(btnConsultar);
+        panelCampos.add(btnGrafico);
 
-        // Enter en cualquiera de los campos filtra al instante
         txtFechaInicial.addActionListener(e -> {
             ejecutarBusqueda();
             txtFechaFinal.requestFocusInWindow();
@@ -107,37 +284,34 @@ public class FrmRotacionVentas extends JInternalFrame {
 
         tablaRotacion = new JTable(modeloTabla);
         tablaRotacion.setFont(FUENTE_CONSOLA);
-        tablaRotacion.setBackground(COLOR_PANEL_TABLA);
-        tablaRotacion.setForeground(Color.WHITE);
-        tablaRotacion.setGridColor(new Color(90, 45, 15));
-        tablaRotacion.setRowHeight(28); // Altura más cómoda para respirar visualmente
-        tablaRotacion.setSelectionBackground(COLOR_BARRA_INF);
+        tablaRotacion.setBackground(cPanelTabla);
+        tablaRotacion.setForeground(cTextoCrema);
+        tablaRotacion.setGridColor(cBordeAmbar);
+        tablaRotacion.setRowHeight(28);
+        tablaRotacion.setSelectionBackground(cBarraInf);
         tablaRotacion.setSelectionForeground(Color.YELLOW);
 
         tablaRotacion.getTableHeader().setFont(FUENTE_CONSOLA);
-        tablaRotacion.getTableHeader().setBackground(COLOR_FONDO);
-        tablaRotacion.getTableHeader().setForeground(COLOR_BORDE_AMBAR);
+        tablaRotacion.getTableHeader().setBackground(cFondo);
+        tablaRotacion.getTableHeader().setForeground(cBordeAmbar);
 
-        // Renderizador personalizado para Filas Cebra y alineación numérica
         DefaultTableCellRenderer renderizadorCebra = new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
                 Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
 
                 if (isSelected) {
-                    c.setBackground(COLOR_BARRA_INF);
+                    c.setBackground(cBarraInf);
                     c.setForeground(Color.YELLOW);
                 } else {
-                    // Alternar colores cebra para facilitar la lectura
                     if (row % 2 == 0) {
-                        c.setBackground(COLOR_ZEBRA_1);
+                        c.setBackground(cZebra1);
                     } else {
-                        c.setBackground(COLOR_ZEBRA_2);
+                        c.setBackground(cZebra2);
                     }
-                    c.setForeground(Color.WHITE);
+                    c.setForeground(cTextoCrema);
                 }
 
-                // Alinear a la derecha las columnas numéricas (Fam, Costo, Cant, Total, Media)
                 if (column == 1 || column >= 4) {
                     setHorizontalAlignment(SwingConstants.RIGHT);
                 } else {
@@ -148,57 +322,54 @@ public class FrmRotacionVentas extends JInternalFrame {
             }
         };
 
-        // Aplicar el renderizador a todas las columnas de la tabla
         for (int i = 0; i < tablaRotacion.getColumnCount(); i++) {
             tablaRotacion.getColumnModel().getColumn(i).setCellRenderer(renderizadorCebra);
         }
 
-        // Anchos sugeridos de columnas
         tablaRotacion.getColumnModel().getColumn(0).setPreferredWidth(100);
         tablaRotacion.getColumnModel().getColumn(1).setPreferredWidth(55);
         tablaRotacion.getColumnModel().getColumn(2).setPreferredWidth(105);
-        tablaRotacion.getColumnModel().getColumn(3).setPreferredWidth(320);
+        tablaRotacion.getColumnModel().getColumn(3).setPreferredWidth(300);
         tablaRotacion.getColumnModel().getColumn(4).setPreferredWidth(95);
-        tablaRotacion.getColumnModel().getColumn(5).setPreferredWidth(110);
-        tablaRotacion.getColumnModel().getColumn(6).setPreferredWidth(135);
-        tablaRotacion.getColumnModel().getColumn(7).setPreferredWidth(110);
+        tablaRotacion.getColumnModel().getColumn(5).setPreferredWidth(100);
+        tablaRotacion.getColumnModel().getColumn(6).setPreferredWidth(130);
+        tablaRotacion.getColumnModel().getColumn(7).setPreferredWidth(100);
 
-        JScrollPane scrollTabla = new JScrollPane(tablaRotacion);
-        scrollTabla.getViewport().setBackground(COLOR_PANEL_TABLA);
-        scrollTabla.setBorder(new LineBorder(COLOR_BORDE_AMBAR, 1));
+        scrollTabla = new JScrollPane(tablaRotacion);
+        scrollTabla.getViewport().setBackground(cPanelTabla);
+        scrollTabla.setBorder(new LineBorder(cBordeAmbar, 1));
         add(scrollTabla, BorderLayout.CENTER);
 
         // ==========================================
         // 3. PANEL INFERIOR (Totales + Barra Atajos)
         // ==========================================
-        JPanel panelInferiorContenedor = new JPanel(new BorderLayout());
-        panelInferiorContenedor.setBackground(COLOR_FONDO);
+        panelInferiorContenedor = new JPanel(new BorderLayout());
+        panelInferiorContenedor.setBackground(cFondo);
 
-        // Barra de Totales
-        JPanel panelTotales = new JPanel(new FlowLayout(FlowLayout.RIGHT, 25, 6));
-        panelTotales.setBackground(COLOR_FONDO);
-        panelTotales.setBorder(BorderFactory.createMatteBorder(1, 0, 1, 0, COLOR_BORDE_AMBAR));
+        panelTotales = new JPanel(new FlowLayout(FlowLayout.RIGHT, 25, 6));
+        panelTotales.setBackground(cFondo);
+        panelTotales.setBorder(BorderFactory.createMatteBorder(1, 0, 1, 0, cBordeAmbar));
 
         lblTotalUnidades = crearEtiqueta("UNIDADES ROTADAS: 0");
         lblTotalMonto = new JLabel("TOTAL ROTACIÓN: $0");
         lblTotalMonto.setFont(new Font("Consolas", Font.BOLD, 16));
-        lblTotalMonto.setForeground(COLOR_BORDE_AMBAR);
+        lblTotalMonto.setForeground(cBordeAmbar);
 
         panelTotales.add(lblTotalUnidades);
         panelTotales.add(lblTotalMonto);
 
-        // Barra de Atajos
-        JPanel panelAtajos = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 6));
-        panelAtajos.setBackground(COLOR_BARRA_INF);
-        panelAtajos.setBorder(new LineBorder(COLOR_BORDE_AMBAR, 1));
+        panelAtajosContainer = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 6));
+        panelAtajosContainer.setBackground(cBarraInf);
+        panelAtajosContainer.setBorder(new LineBorder(cBordeAmbar, 1));
 
-        JLabel lblAtajos = new JLabel("(Enter) Buscar / Filtrar    |    (F5) Ver Todo / Limpiar    |    (Esc) Salir");
+        lblAtajos = new JLabel();
         lblAtajos.setFont(FUENTE_CONSOLA);
-        lblAtajos.setForeground(COLOR_TEXTO_CREMA);
-        panelAtajos.add(lblAtajos);
+        lblAtajos.setForeground(cTextoCrema);
+        actualizarTextoAtajos();
+        panelAtajosContainer.add(lblAtajos);
 
         panelInferiorContenedor.add(panelTotales, BorderLayout.NORTH);
-        panelInferiorContenedor.add(panelAtajos, BorderLayout.SOUTH);
+        panelInferiorContenedor.add(panelAtajosContainer, BorderLayout.SOUTH);
         add(panelInferiorContenedor, BorderLayout.SOUTH);
 
         configurarAtajos();
@@ -207,34 +378,42 @@ public class FrmRotacionVentas extends JInternalFrame {
     private JLabel crearEtiqueta(String texto) {
         JLabel lbl = new JLabel(texto);
         lbl.setFont(FUENTE_CONSOLA);
-        lbl.setForeground(COLOR_TEXTO_CREMA);
+        lbl.setForeground(cTextoCrema);
         return lbl;
     }
 
     private JTextField crearCampoTexto(int columnas) {
         JTextField txt = new JTextField(columnas);
         txt.setFont(FUENTE_CONSOLA);
-        txt.setBackground(COLOR_PANEL_TABLA);
-        txt.setForeground(COLOR_BORDE_AMBAR);
-        txt.setCaretColor(COLOR_BORDE_AMBAR);
-        txt.setBorder(new LineBorder(COLOR_BORDE_AMBAR, 1));
+        txt.setBackground(cPanelTabla);
+        txt.setForeground(cBordeAmbar);
+        txt.setCaretColor(cBordeAmbar);
+        txt.setBorder(new LineBorder(cBordeAmbar, 1));
 
-        // Efecto visual de foco activo (el campo resalta al seleccionarse)
         txt.addFocusListener(new FocusAdapter() {
             @Override
             public void focusGained(FocusEvent e) {
-                txt.setBackground(new Color(45, 22, 6));
+                txt.setBackground(new Color(Math.min(255, cPanelTabla.getRed() + 30), Math.min(255, cPanelTabla.getGreen() + 20), Math.min(255, cPanelTabla.getBlue() + 15)));
                 txt.setBorder(new LineBorder(Color.YELLOW, 2));
             }
 
             @Override
             public void focusLost(FocusEvent e) {
-                txt.setBackground(COLOR_PANEL_TABLA);
-                txt.setBorder(new LineBorder(COLOR_BORDE_AMBAR, 1));
+                txt.setBackground(cPanelTabla);
+                txt.setBorder(new LineBorder(cBordeAmbar, 1));
             }
         });
 
         return txt;
+    }
+
+    private void estilizarBotonConsola(JButton btn, Color bg) {
+        btn.setFont(new Font("Consolas", Font.BOLD, 12));
+        btn.setBackground(bg);
+        btn.setForeground(Color.WHITE);
+        btn.setFocusPainted(false);
+        btn.setBorder(BorderFactory.createLineBorder(cBordeAmbar, 1));
+        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
     }
 
     private void cargarFechaDesdeParametros() {
@@ -262,12 +441,12 @@ public class FrmRotacionVentas extends JInternalFrame {
     private void cargarTabla(String fIni, String fFin, String prod) {
         modeloTabla.setRowCount(0);
         RotacionVentasDAO dao = new RotacionVentasDAO();
-        List<Object[]> resultados = dao.buscarRotacionVentas(fIni, fFin, prod);
+        listaUltimaConsulta = dao.buscarRotacionVentas(fIni, fFin, prod);
 
         double sumaUnidades = 0;
         double sumaMonto = 0;
 
-        for (Object[] fila : resultados) {
+        for (Object[] fila : listaUltimaConsulta) {
             double costo = (double) fila[4];
             double cant = (double) fila[5];
             double total = (double) fila[6];
@@ -292,11 +471,96 @@ public class FrmRotacionVentas extends JInternalFrame {
         lblTotalMonto.setText(String.format("TOTAL ROTACIÓN: $%,.0f", sumaMonto));
     }
 
+    private void abrirVentanaGrafico() {
+        if (listaUltimaConsulta == null || listaUltimaConsulta.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Debe realizar una consulta con datos antes de ver el gráfico.", "Aviso", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        List<Object[]> listaOrdenada = new ArrayList<>(listaUltimaConsulta);
+        listaOrdenada.sort((a, b) -> Double.compare((double) b[6], (double) a[6]));
+
+        DefaultCategoryDataset dataset = new DefaultCategoryDataset();
+        int limite = Math.min(10, listaOrdenada.size());
+
+        for (int i = limite - 1; i >= 0; i--) {
+            Object[] fila = listaOrdenada.get(i);
+            String descripcion = (String) fila[3];
+            if (descripcion.length() > 22) {
+                descripcion = descripcion.substring(0, 22) + "..";
+            }
+            double rotacionTotal = (double) fila[6];
+            dataset.addValue(rotacionTotal, "Rotación Total ($)", descripcion);
+        }
+
+        JFreeChart barChart = ChartFactory.createBarChart(
+                "TOP " + limite + " - ROTACIÓN DE MERCADERÍA ($)",
+                "Producto",
+                "Rotación Total ($)",
+                dataset,
+                org.jfree.chart.plot.PlotOrientation.HORIZONTAL,
+                true, true, false
+        );
+
+        CategoryPlot plot = barChart.getCategoryPlot();
+        plot.setBackgroundPaint(cPanelTabla);
+        plot.setDomainGridlinePaint(Color.LIGHT_GRAY);
+        plot.setRangeGridlinePaint(Color.LIGHT_GRAY);
+
+        plot.getDomainAxis().setLabelPaint(Color.WHITE);
+        plot.getDomainAxis().setTickLabelPaint(Color.WHITE);
+        plot.getRangeAxis().setLabelPaint(Color.WHITE);
+        plot.getRangeAxis().setTickLabelPaint(Color.WHITE);
+
+        BarRenderer renderer = (BarRenderer) plot.getRenderer();
+        renderer.setSeriesPaint(0, cBordeAmbar);
+
+        barChart.setBackgroundPaint(cFondo);
+        barChart.getTitle().setPaint(Color.YELLOW);
+        barChart.getTitle().setFont(new Font("Consolas", Font.BOLD, 15));
+
+        JDialog dlgGrafico = new JDialog(JOptionPane.getFrameForComponent(this), "Gráfico Ejecutivo - Top Rotación", true);
+        dlgGrafico.setSize(900, 600);
+        dlgGrafico.setLocationRelativeTo(this);
+        dlgGrafico.setUndecorated(true);
+
+        JPanel panelContenedor = new JPanel(new BorderLayout());
+        panelContenedor.setBackground(cFondo);
+        panelContenedor.setBorder(new LineBorder(cBordeAmbar, 2));
+
+        ChartPanel chartPanel = new ChartPanel(barChart);
+        chartPanel.setBackground(cFondo);
+        panelContenedor.add(chartPanel, BorderLayout.CENTER);
+
+        JPanel panelSurDlg = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        panelSurDlg.setBackground(cBarraInf);
+        JButton btnCerrarDlg = new JButton("Cerrar [Esc / Enter]");
+        estilizarBotonConsola(btnCerrarDlg, cFondo);
+        btnCerrarDlg.addActionListener(e -> dlgGrafico.dispose());
+        panelSurDlg.add(btnCerrarDlg);
+        panelContenedor.add(panelSurDlg, BorderLayout.SOUTH);
+
+        dlgGrafico.setContentPane(panelContenedor);
+
+        KeyStroke strokeEsc = KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0);
+        KeyStroke strokeEnter = KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0);
+        dlgGrafico.getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(strokeEsc, "CERRAR");
+        dlgGrafico.getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(strokeEnter, "CERRAR");
+        dlgGrafico.getRootPane().getActionMap().put("CERRAR", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                dlgGrafico.dispose();
+            }
+        });
+
+        dlgGrafico.setVisible(true);
+    }
+
     private void configurarAtajos() {
         JRootPane root = getRootPane();
+        int cond = JComponent.WHEN_IN_FOCUSED_WINDOW;
 
-        // [ESC] Cerrar
-        root.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), "cerrar");
+        root.getInputMap(cond).put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), "cerrar");
         root.getActionMap().put("cerrar", new AbstractAction() {
             @Override
             public void actionPerformed(java.awt.event.ActionEvent e) {
@@ -304,8 +568,7 @@ public class FrmRotacionVentas extends JInternalFrame {
             }
         });
 
-        // [F5] Limpiar filtros y mostrar todo
-        root.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(KeyEvent.VK_F5, 0), "limpiar");
+        root.getInputMap(cond).put(KeyStroke.getKeyStroke(KeyEvent.VK_F5, 0), "limpiar");
         root.getActionMap().put("limpiar", new AbstractAction() {
             @Override
             public void actionPerformed(java.awt.event.ActionEvent e) {
@@ -314,6 +577,23 @@ public class FrmRotacionVentas extends JInternalFrame {
                 txtBuscarProducto.setText("");
                 ejecutarBusqueda();
                 txtFechaInicial.requestFocusInWindow();
+            }
+        });
+
+        // [F6] Ciclar Tema en tiempo real
+        root.getInputMap(cond).put(KeyStroke.getKeyStroke(KeyEvent.VK_F6, 0), "ciclar_tema");
+        root.getActionMap().put("ciclar_tema", new AbstractAction() {
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                ciclarSiguienteTema();
+            }
+        });
+
+        root.getInputMap(cond).put(KeyStroke.getKeyStroke(KeyEvent.VK_F3, 0), "grafico");
+        root.getActionMap().put("grafico", new AbstractAction() {
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                abrirVentanaGrafico();
             }
         });
     }

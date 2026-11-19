@@ -22,27 +22,40 @@ public class FrmCartolaPorFecha extends JInternalFrame {
     private JTable tablaCartola;
     private DefaultTableModel modeloTabla;
     private JLabel lblTotal;
+    private JLabel lblAtajos;
+    private JButton btnConsultar;
 
-    // Colores y Fuentes estilo consola / Clipper
-    private final Color COLOR_FONDO = new Color(0, 0, 0);          // Negro clásico
-    private final Color COLOR_TEXTO = new Color(0, 255, 0);          // Verde terminal
-    private final Color COLOR_CIAN = new Color(0, 255, 255);         // Cian bordes
-    private final Color COLOR_SELECCION = new Color(0, 0, 128);      // Azul oscuro selección
+    // Componentes estructurales para actualización dinámica de colores
+    private JPanel panelFiltros;
+    private JPanel panelInferior;
+    private JScrollPane scrollTabla;
+    private JLabel lblRutLabel, lblDesdeLabel, lblHastaLabel;
+
+    // Variables de Colores Actuales del Tema
+    private Color cFondo, cEncabezado, cTexto, cBordeCian, cSeleccion;
     private final Font FUENTE_CONSOLA = new Font("Courier New", Font.BOLD, 12);
 
+    // Sistema de Temas Ciclos [F6]
+    private final String[] listaTemas = {"Terminal Verde", "Morado Neón", "Turquesa Pro", "Esmeralda Terminal", "Naranja Fuego"};
+    private int indiceTemaActual = 0; // Empieza en Terminal Verde por defecto
+
     public FrmCartolaPorFecha() {
-        super(" CARTOLA DE MOVIMIENTOS POR FECHA ", false, true, false, true);
+        super("5.- CARTOLA DE MOVIMIENTOS POR FECHA ", false, true, false, false);
         setSize(850, 520);
         setLocation(50, 30);
-        getContentPane().setBackground(COLOR_FONDO);
+
+        // Aplicar tema inicial
+        aplicarTema(listaTemas[indiceTemaActual]);
+
+        getContentPane().setBackground(cFondo);
         setLayout(new BorderLayout());
 
         // 1. PANEL SUPERIOR DE FILTROS
-        JPanel panelFiltros = new JPanel(new GridBagLayout());
-        panelFiltros.setBackground(COLOR_FONDO);
+        panelFiltros = new JPanel(new GridBagLayout());
+        panelFiltros.setBackground(cFondo);
         panelFiltros.setBorder(BorderFactory.createTitledBorder(
-                new LineBorder(COLOR_CIAN, 2), " PARAMETROS DE CONSULTA ",
-                0, 0, FUENTE_CONSOLA, COLOR_CIAN
+                new LineBorder(cBordeCian, 2), " PARAMETROS DE CONSULTA ",
+                0, 0, FUENTE_CONSOLA, cBordeCian
         ));
 
         GridBagConstraints gbc = new GridBagConstraints();
@@ -52,10 +65,10 @@ public class FrmCartolaPorFecha extends JInternalFrame {
         // RUT Cliente
         gbc.gridx = 0;
         gbc.gridy = 0;
-        JLabel lblRut = new JLabel("RUT / Cliente:");
-        lblRut.setForeground(COLOR_TEXTO);
-        lblRut.setFont(FUENTE_CONSOLA);
-        panelFiltros.add(lblRut, gbc);
+        lblRutLabel = new JLabel("RUT / Cliente:");
+        lblRutLabel.setForeground(cTexto);
+        lblRutLabel.setFont(FUENTE_CONSOLA);
+        panelFiltros.add(lblRutLabel, gbc);
 
         gbc.gridx = 1;
         gbc.gridy = 0;
@@ -66,39 +79,37 @@ public class FrmCartolaPorFecha extends JInternalFrame {
         // Fecha Desde
         gbc.gridx = 2;
         gbc.gridy = 0;
-        JLabel lblDesde = new JLabel("Desde (DD-MM-YYYY):");
-        lblDesde.setForeground(COLOR_TEXTO);
-        lblDesde.setFont(FUENTE_CONSOLA);
-        panelFiltros.add(lblDesde, gbc);
+        lblDesdeLabel = new JLabel("Desde (DD-MM-YYYY):");
+        lblDesdeLabel.setForeground(cTexto);
+        lblDesdeLabel.setFont(FUENTE_CONSOLA);
+        panelFiltros.add(lblDesdeLabel, gbc);
 
         gbc.gridx = 3;
         gbc.gridy = 0;
         txtFechaDesde = new JTextField(10);
         estilizarCampo(txtFechaDesde);
-        // Autocompletar con la fecha actual o inicio de mes por defecto
         txtFechaDesde.setText("01-01-2026");
         panelFiltros.add(txtFechaDesde, gbc);
 
         // Fecha Hasta
         gbc.gridx = 0;
         gbc.gridy = 1;
-        JLabel lblHasta = new JLabel("Hasta (DD-MM-YYYY):");
-        lblHasta.setForeground(COLOR_TEXTO);
-        lblHasta.setFont(FUENTE_CONSOLA);
-        panelFiltros.add(lblHasta, gbc);
+        lblHastaLabel = new JLabel("Hasta (DD-MM-YYYY):");
+        lblHastaLabel.setForeground(cTexto);
+        lblHastaLabel.setFont(FUENTE_CONSOLA);
+        panelFiltros.add(lblHastaLabel, gbc);
 
         gbc.gridx = 1;
         gbc.gridy = 1;
         txtFechaHasta = new JTextField(10);
         estilizarCampo(txtFechaHasta);
-        // Autocompletar con la fecha actual del sistema
         txtFechaHasta.setText(LocalDate.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy")));
         panelFiltros.add(txtFechaHasta, gbc);
 
         // Botón Consultar
         gbc.gridx = 3;
         gbc.gridy = 1;
-        JButton btnConsultar = new JButton("[ENTER] Consultar");
+        btnConsultar = new JButton("[ENTER] Consultar");
         estilizarBoton(btnConsultar);
         btnConsultar.addActionListener(e -> realizarConsulta());
         panelFiltros.add(btnConsultar, gbc);
@@ -110,73 +121,204 @@ public class FrmCartolaPorFecha extends JInternalFrame {
         modeloTabla = new DefaultTableModel(columnas, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
-                return false; // Solo lectura
+                return false;
             }
         };
 
         tablaCartola = new JTable(modeloTabla);
-        tablaCartola.setBackground(COLOR_FONDO);
-        tablaCartola.setForeground(COLOR_TEXTO);
-        tablaCartola.setFont(FUENTE_CONSOLA);
-        tablaCartola.setSelectionBackground(COLOR_SELECCION);
-        tablaCartola.setSelectionForeground(Color.WHITE);
-        tablaCartola.getTableHeader().setBackground(COLOR_FONDO);
-        tablaCartola.getTableHeader().setForeground(COLOR_CIAN);
-        tablaCartola.getTableHeader().setFont(FUENTE_CONSOLA);
-        tablaCartola.setRowHeight(22);
+        estilarTabla(tablaCartola);
 
-        JScrollPane scrollTabla = new JScrollPane(tablaCartola);
-        scrollTabla.getViewport().setBackground(COLOR_FONDO);
+        scrollTabla = new JScrollPane(tablaCartola);
+        scrollTabla.getViewport().setBackground(cFondo);
         scrollTabla.setBorder(BorderFactory.createTitledBorder(
-                new LineBorder(COLOR_CIAN, 2), " LISTADO DE MOVIMIENTOS EN CARTOLA ",
-                0, 0, FUENTE_CONSOLA, COLOR_CIAN
+                new LineBorder(cBordeCian, 2), " LISTADO DE MOVIMIENTOS EN CARTOLA ",
+                0, 0, FUENTE_CONSOLA, cBordeCian
         ));
         add(scrollTabla, BorderLayout.CENTER);
 
         // 3. PANEL INFERIOR (TOTALES Y ATAJOS)
-        JPanel panelInferior = new JPanel(new BorderLayout());
-        panelInferior.setBackground(COLOR_FONDO);
+        panelInferior = new JPanel(new BorderLayout());
+        panelInferior.setBackground(cFondo);
         panelInferior.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
 
         lblTotal = new JLabel("TOTAL ABONOS PERIODO: $ 0");
-        lblTotal.setForeground(COLOR_CIAN);
+        lblTotal.setForeground(cBordeCian);
         lblTotal.setFont(new Font("Courier New", Font.BOLD, 13));
         panelInferior.add(lblTotal, BorderLayout.WEST);
 
-        JLabel lblAtajos = new JLabel("[P] Imprimir PDF   |   [ESC] Salir");
-        lblAtajos.setForeground(COLOR_TEXTO);
+        lblAtajos = new JLabel();
+        lblAtajos.setForeground(cTexto);
         lblAtajos.setFont(FUENTE_CONSOLA);
+        actualizarTextoAtajos();
         panelInferior.add(lblAtajos, BorderLayout.EAST);
 
         add(panelInferior, BorderLayout.SOUTH);
 
         // 4. CONFIGURACIÓN DE ATAJOS DE TECLADO GLOBALES EN LA VENTANA
         configurarAtajosTeclado();
+        // Asignar el icono de Nexum directamente a este JInternalFrame
+        try {
+            setFrameIcon(new javax.swing.ImageIcon(getClass().getResource("/vektor/cubo-azul-16.png")));
+        } catch (Exception e) {
+            System.out.println("No se pudo cargar el icono interno: " + e.getMessage());
+        }
+    }
+
+    // ==========================================
+    // SISTEMA DE CAMBIO DE TEMAS [F6]
+    // ==========================================
+    private void aplicarTema(String nombreTema) {
+        switch (nombreTema) {
+            case "Morado Neón":
+                cFondo = new Color(10, 10, 15);
+                cEncabezado = new Color(45, 10, 55);
+                cBordeCian = new Color(255, 110, 220);
+                cTexto = new Color(255, 180, 240);
+                cSeleccion = new Color(140, 20, 160);
+                break;
+            case "Turquesa Pro":
+                cFondo = new Color(5, 15, 20);
+                cEncabezado = new Color(10, 40, 50);
+                cBordeCian = new Color(0, 245, 255);
+                cTexto = new Color(180, 255, 255);
+                cSeleccion = new Color(0, 120, 140);
+                break;
+            case "Esmeralda Terminal":
+                cFondo = new Color(5, 20, 15);
+                cEncabezado = new Color(10, 45, 30);
+                cBordeCian = new Color(0, 255, 128);
+                cTexto = new Color(180, 255, 200);
+                cSeleccion = new Color(0, 140, 80);
+                break;
+            case "Naranja Fuego":
+                cFondo = new Color(15, 10, 8);
+                cEncabezado = new Color(40, 18, 12);
+                cBordeCian = new Color(245, 73, 39);
+                cTexto = new Color(255, 200, 150);
+                cSeleccion = new Color(130, 42, 22);
+                break;
+            case "Terminal Verde":
+            default:
+                cFondo = Color.BLACK;
+                cEncabezado = Color.BLACK;
+                cBordeCian = Color.CYAN;
+                cTexto = Color.GREEN;
+                cSeleccion = new Color(0, 0, 128);
+                break;
+        }
+    }
+
+    private void ciclarSiguienteTema() {
+        indiceTemaActual = (indiceTemaActual + 1) % listaTemas.length;
+        aplicarTema(listaTemas[indiceTemaActual]);
+
+        getContentPane().setBackground(cFondo);
+
+        if (panelFiltros != null) {
+            panelFiltros.setBackground(cFondo);
+            panelFiltros.setBorder(BorderFactory.createTitledBorder(
+                    new LineBorder(cBordeCian, 2), " PARAMETROS DE CONSULTA ",
+                    0, 0, FUENTE_CONSOLA, cBordeCian
+            ));
+            if (lblRutLabel != null) {
+                lblRutLabel.setForeground(cTexto);
+            }
+            if (lblDesdeLabel != null) {
+                lblDesdeLabel.setForeground(cTexto);
+            }
+            if (lblHastaLabel != null) {
+                lblHastaLabel.setForeground(cTexto);
+            }
+        }
+
+        estilizarCampo(txtRut);
+        estilizarCampo(txtFechaDesde);
+        estilizarCampo(txtFechaHasta);
+        estilizarBoton(btnConsultar);
+
+        if (tablaCartola != null) {
+            estilarTabla(tablaCartola);
+            tablaCartola.repaint();
+        }
+
+        if (scrollTabla != null) {
+            scrollTabla.getViewport().setBackground(cFondo);
+            scrollTabla.setBorder(BorderFactory.createTitledBorder(
+                    new LineBorder(cBordeCian, 2), " LISTADO DE MOVIMIENTOS EN CARTOLA ",
+                    0, 0, FUENTE_CONSOLA, cBordeCian
+            ));
+        }
+
+        if (panelInferior != null) {
+            panelInferior.setBackground(cFondo);
+        }
+        if (lblTotal != null) {
+            lblTotal.setForeground(cBordeCian);
+        }
+        if (lblAtajos != null) {
+            lblAtajos.setForeground(cTexto);
+        }
+
+        actualizarTextoAtajos();
+
+        revalidate();
+        repaint();
+    }
+
+    private void actualizarTextoAtajos() {
+        String temaActual = listaTemas[indiceTemaActual];
+        if (lblAtajos != null) {
+            lblAtajos.setText("[P] PDF   |   [F6] Tema: " + temaActual + "   |   [ESC] Salir");
+        }
     }
 
     private void estilizarCampo(JTextField campo) {
-        campo.setBackground(COLOR_FONDO);
-        campo.setForeground(COLOR_TEXTO);
-        campo.setCaretColor(COLOR_TEXTO);
-        campo.setFont(FUENTE_CONSOLA);
-        campo.setBorder(new LineBorder(COLOR_CIAN, 1));
-        // Al presionar Enter en cualquier campo, ejecuta la consulta
-        campo.addActionListener(e -> realizarConsulta());
+        if (campo != null) {
+            campo.setBackground(cFondo);
+            campo.setForeground(cTexto);
+            campo.setCaretColor(cTexto);
+            campo.setFont(FUENTE_CONSOLA);
+            campo.setBorder(new LineBorder(cBordeCian, 1));
+            // Asegurar acción de enter
+            for (java.awt.event.ActionListener al : campo.getActionListeners()) {
+                campo.removeActionListener(al);
+            }
+            campo.addActionListener(e -> realizarConsulta());
+        }
     }
 
     private void estilizarBoton(JButton boton) {
-        boton.setBackground(COLOR_FONDO);
-        boton.setForeground(COLOR_CIAN);
-        boton.setFont(FUENTE_CONSOLA);
-        boton.setBorder(new LineBorder(COLOR_CIAN, 1));
-        boton.setFocusPainted(false);
+        if (boton != null) {
+            boton.setBackground(cFondo);
+            boton.setForeground(cBordeCian);
+            boton.setFont(FUENTE_CONSOLA);
+            boton.setBorder(new LineBorder(cBordeCian, 1));
+            boton.setFocusPainted(false);
+            boton.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        }
+    }
+
+    private void estilarTabla(JTable tabla) {
+        if (tabla != null) {
+            tabla.setBackground(cFondo);
+            tabla.setForeground(cTexto);
+            tabla.setFont(FUENTE_CONSOLA);
+            tabla.setGridColor(cBordeCian);
+            tabla.setSelectionBackground(cSeleccion);
+            tabla.setSelectionForeground(Color.WHITE);
+            tabla.getTableHeader().setBackground(cEncabezado);
+            tabla.getTableHeader().setForeground(cBordeCian);
+            tabla.getTableHeader().setFont(FUENTE_CONSOLA);
+            tabla.setRowHeight(22);
+        }
     }
 
     private void configurarAtajosTeclado() {
         JRootPane rootPane = this.getRootPane();
+        int cond = JComponent.WHEN_IN_FOCUSED_WINDOW;
 
         // Atajo [ESC] para cerrar la ventana
-        rootPane.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), "cerrarVentana");
+        rootPane.getInputMap(cond).put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), "cerrarVentana");
         rootPane.getActionMap().put("cerrarVentana", new AbstractAction() {
             @Override
             public void actionPerformed(java.awt.event.ActionEvent e) {
@@ -184,8 +326,17 @@ public class FrmCartolaPorFecha extends JInternalFrame {
             }
         });
 
+        // Atajo [F6] para ciclar temas en tiempo real
+        rootPane.getInputMap(cond).put(KeyStroke.getKeyStroke(KeyEvent.VK_F6, 0), "ciclarTemaF6");
+        rootPane.getActionMap().put("ciclarTemaF6", new AbstractAction() {
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                ciclarSiguienteTema();
+            }
+        });
+
         // Atajo [P] o [p] para imprimir / exportar a PDF
-        rootPane.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(KeyEvent.VK_P, 0), "imprimirPdf");
+        rootPane.getInputMap(cond).put(KeyStroke.getKeyStroke(KeyEvent.VK_P, 0), "imprimirPdf");
         rootPane.getActionMap().put("imprimirPdf", new AbstractAction() {
             @Override
             public void actionPerformed(java.awt.event.ActionEvent e) {
@@ -208,7 +359,7 @@ public class FrmCartolaPorFecha extends JInternalFrame {
         modeloTabla.setRowCount(0);
         double sumaTotal = 0.0;
 
-        try (Connection con = Conexion.getConnection()) { // Reemplaza por tu método de conexión
+        try (Connection con = Conexion.getConnection()) {
             CuentaCorrienteDAO dao = new CuentaCorrienteDAO();
             List<DocumentoCarteraDTO> lista = dao.obtenerCartolaPorFecha(con, rut, fechaDesde, fechaHasta);
 
@@ -241,14 +392,11 @@ public class FrmCartolaPorFecha extends JInternalFrame {
         }
 
         try {
-            // Obtenemos los filtros actuales para la cabecera del reporte
             String rutCliente = txtRut.getText().trim();
             String fechaDesde = txtFechaDesde.getText().trim();
             String fechaHasta = txtFechaHasta.getText().trim();
             String fechaActual = LocalDate.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy"));
 
-            // Llamamos a tu clase PDFUtils del paquete utilidades
-            // (Ajusta el método estático o la instancia según cómo lo tengas construido en PDFUtils)
             PDFUtils.generarCartolaPorFechaPDF(
                     modeloTabla,
                     rutCliente,

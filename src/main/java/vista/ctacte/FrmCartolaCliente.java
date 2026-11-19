@@ -39,64 +39,208 @@ public class FrmCartolaCliente extends JInternalFrame {
     private JTextField txtRutCliente;
     private JLabel lblNombreCliente;
     private JLabel lblTotalDeuda;
+    private JLabel lblAtajos;
+    private JLabel lblSubTitulo;
+    private JLabel lblRut;
+    private JLabel lblAyudaF8;
+    private JLabel lblNom;
+    private JLabel lblTextoDeuda;
 
     private JTable tablaCartola;
     private DefaultTableModel modeloTablaCartola;
 
-    private javax.swing.table.DefaultTableModel modeloTabla;
+    // Componentes estructurales para actualización dinámica de colores
+    private JLayeredPane layeredPane;
+    private JPanel panelSuperior;
+    private JPanel panelInferior;
+    private JScrollPane scrollCartola;
+
+    // Variables de Colores Actuales del Tema
+    private Color cFondo, cEncabezado, cTablaFondo, cBordeAcento, cTextoAmarillo, cTextoBlanco, cBarraInferior;
+    private final Font fuenteConsola = new Font("Consolas", Font.BOLD, 15);
+
+    // Sistema de Temas Ciclos [F6]
+    private final String[] listaTemas = {"Clipper Azul", "Morado Neón", "Turquesa Pro", "Esmeralda Terminal", "Naranja Fuego"};
+    private int indiceTemaActual = 0; // Empieza en Clipper Azul por defecto
 
     public FrmCartolaCliente() {
-        super("Cartola Interna CtaCte Cliente", true, true, true, true);
+        super("4.- Cartola Interna CtaCte Cliente", true, true, true, true);
         putClientProperty("JInternalFrame.isPalette", Boolean.FALSE);
+
+        // Aplicar tema inicial
+        aplicarTema(listaTemas[indiceTemaActual]);
+
         initComponentsManual();
         configurarTablaDetalle();
-        modeloTablaCartola = (javax.swing.table.DefaultTableModel) tablaCartola.getModel();
+        modeloTablaCartola = (DefaultTableModel) tablaCartola.getModel();
+        // Asignar el icono de Nexum directamente a este JInternalFrame
+        try {
+            setFrameIcon(new javax.swing.ImageIcon(getClass().getResource("/vektor/cubo-azul-16.png")));
+        } catch (Exception e) {
+            System.out.println("No se pudo cargar el icono interno: " + e.getMessage());
+        }
+    }
+
+    // ==========================================
+    // SISTEMA DE CAMBIO DE TEMAS [F6]
+    // ==========================================
+    private void aplicarTema(String nombreTema) {
+        switch (nombreTema) {
+            case "Morado Neón":
+                cFondo = new Color(10, 10, 15);
+                cEncabezado = new Color(45, 10, 55);
+                cTablaFondo = new Color(15, 10, 20);
+                cBordeAcento = new Color(255, 110, 220);
+                cTextoAmarillo = new Color(255, 110, 220);
+                cTextoBlanco = new Color(255, 230, 255);
+                cBarraInferior = new Color(130, 0, 70);
+                break;
+            case "Turquesa Pro":
+                cFondo = new Color(5, 15, 20);
+                cEncabezado = new Color(10, 40, 50);
+                cTablaFondo = new Color(5, 20, 25);
+                cBordeAcento = new Color(0, 245, 255);
+                cTextoAmarillo = new Color(0, 245, 255);
+                cTextoBlanco = new Color(220, 255, 255);
+                cBarraInferior = new Color(0, 60, 70);
+                break;
+            case "Esmeralda Terminal":
+                cFondo = new Color(5, 20, 15);
+                cEncabezado = new Color(10, 45, 30);
+                cTablaFondo = new Color(5, 25, 18);
+                cBordeAcento = new Color(0, 255, 128);
+                cTextoAmarillo = new Color(0, 255, 128);
+                cTextoBlanco = new Color(220, 255, 240);
+                cBarraInferior = new Color(0, 60, 35);
+                break;
+            case "Naranja Fuego":
+                cFondo = new Color(15, 10, 8);
+                cEncabezado = new Color(40, 18, 12);
+                cTablaFondo = new Color(25, 12, 10);
+                cBordeAcento = new Color(245, 73, 39);
+                cTextoAmarillo = new Color(255, 180, 100);
+                cTextoBlanco = new Color(255, 235, 225);
+                cBarraInferior = new Color(60, 20, 12);
+                break;
+            case "Clipper Azul":
+            default:
+                cFondo = new Color(0, 0, 128);
+                cEncabezado = new Color(0, 0, 128);
+                cTablaFondo = new Color(16, 16, 16);
+                cBordeAcento = Color.WHITE;
+                cTextoAmarillo = Color.YELLOW;
+                cTextoBlanco = Color.WHITE;
+                cBarraInferior = new Color(0, 0, 128);
+                break;
+        }
+    }
+
+    private void ciclarSiguienteTema() {
+        indiceTemaActual = (indiceTemaActual + 1) % listaTemas.length;
+        aplicarTema(listaTemas[indiceTemaActual]);
+
+        if (layeredPane != null) {
+            layeredPane.setBackground(cFondo);
+        }
+
+        if (panelSuperior != null) {
+            panelSuperior.setBackground(cEncabezado);
+            panelSuperior.setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, cBordeAcento));
+        }
+
+        if (lblSubTitulo != null) {
+            lblSubTitulo.setForeground(cTextoAmarillo);
+        }
+        if (lblRut != null) {
+            lblRut.setForeground(cTextoBlanco);
+        }
+        if (lblAyudaF8 != null) {
+            lblAyudaF8.setForeground(cTextoAmarillo);
+        }
+        if (lblNom != null) {
+            lblNom.setForeground(cTextoBlanco);
+        }
+        if (lblNombreCliente != null) {
+            lblNombreCliente.setForeground(cTextoAmarillo);
+        }
+
+        if (txtRutCliente != null) {
+            txtRutCliente.setBackground(cTablaFondo);
+            txtRutCliente.setForeground(cTextoAmarillo);
+            txtRutCliente.setCaretColor(cTextoAmarillo);
+            txtRutCliente.setBorder(BorderFactory.createLineBorder(cBordeAcento, 1));
+        }
+
+        if (tablaCartola != null) {
+            tablaCartola.setBackground(cTablaFondo);
+            tablaCartola.setForeground(cTextoBlanco);
+            tablaCartola.getTableHeader().setBackground(cEncabezado);
+            tablaCartola.getTableHeader().setForeground(cTextoAmarillo);
+            tablaCartola.repaint();
+        }
+
+        if (scrollCartola != null) {
+            scrollCartola.getViewport().setBackground(cTablaFondo);
+            scrollCartola.setBorder(BorderFactory.createLineBorder(cBordeAcento, 1));
+        }
+
+        if (panelInferior != null) {
+            panelInferior.setBackground(cBarraInferior);
+            panelInferior.setBorder(BorderFactory.createMatteBorder(2, 0, 0, 0, cBordeAcento));
+        }
+
+        if (lblTextoDeuda != null) {
+            lblTextoDeuda.setForeground(cTextoBlanco);
+        }
+        if (lblTotalDeuda != null) {
+            lblTotalDeuda.setForeground(cTextoAmarillo);
+        }
+
+        actualizarTextoAtajos();
+
+        revalidate();
+        repaint();
+    }
+
+    private void actualizarTextoAtajos() {
+        String temaActual = listaTemas[indiceTemaActual];
+        if (lblAtajos != null) {
+            lblAtajos.setText("  (Esc)apar    (F8): Buscar Cliente    (F2): Detalle    (F6) Tema: " + temaActual + "    (Print): Imprimir");
+        }
     }
 
     private void initComponentsManual() {
         setSize(1100, 700);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 
-        JLayeredPane layeredPane = new JLayeredPane();
-        layeredPane.setLayout(null);
-        setContentPane(layeredPane);
-
-        // ==========================================
-        // PALETA DE COLORES Y FUENTES ESTILO MS-DOS
-        // ==========================================
-        Color dosBlue = new Color(0, 0, 128);       // Azul Clipper clásico
-        Color dosDarkPanel = new Color(16, 16, 16);   // Fondo negro terminal
-        Color dosYellow = Color.YELLOW;              // Amarillo brillante estilo DOS
-        Color dosWhite = Color.WHITE;
-
-        Font fuenteConsola = new Font("Consolas", Font.BOLD, 15);
-        if (fuenteConsola.getFamily().equals("Dialog")) {
-            fuenteConsola = new Font("Monospaced", Font.BOLD, 15);
+        Font fConsola = fuenteConsola;
+        if (fConsola.getFamily().equals("Dialog")) {
+            fConsola = new Font("Monospaced", Font.BOLD, 15);
         }
 
-        layeredPane.setBackground(dosBlue);
+        layeredPane = new JLayeredPane();
+        layeredPane.setLayout(null);
+        setContentPane(layeredPane);
+        layeredPane.setBackground(cFondo);
 
         // ==========================================
         // 1. PANEL SUPERIOR (Cabecera y Buscador de Cliente)
         // ==========================================
-        JPanel panelSuperior = new JPanel(new BorderLayout());
+        panelSuperior = new JPanel(new BorderLayout());
         panelSuperior.setBounds(0, 0, 1100, 110);
-        panelSuperior.setBackground(dosBlue);
-        panelSuperior.setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, Color.WHITE));
+        panelSuperior.setBackground(cEncabezado);
+        panelSuperior.setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, cBordeAcento));
 
-        // Título de la sección estilo recuadro DOS
         JPanel panelTituloBox = new JPanel();
         panelTituloBox.setOpaque(false);
         panelTituloBox.setLayout(new BoxLayout(panelTituloBox, BoxLayout.Y_AXIS));
         panelTituloBox.setBorder(BorderFactory.createEmptyBorder(8, 15, 5, 15));
 
-        JLabel lblSubTitulo = new JLabel(" CARTOLA INTERNA CTACTE CLIENTE ");
-        lblSubTitulo.setForeground(dosYellow);
-        lblSubTitulo.setFont(new Font(fuenteConsola.getFamily(), Font.BOLD, 16));
-
+        lblSubTitulo = new JLabel(" CARTOLA INTERNA CTACTE CLIENTE ");
+        lblSubTitulo.setForeground(cTextoAmarillo);
+        lblSubTitulo.setFont(new Font(fConsola.getFamily(), Font.BOLD, 16));
         panelTituloBox.add(lblSubTitulo);
 
-        // Panel de inputs (RUT y Nombre)
         JPanel panelDatosFiltro = new JPanel(new GridLayout(2, 1, 0, 5));
         panelDatosFiltro.setOpaque(false);
         panelDatosFiltro.setBorder(BorderFactory.createEmptyBorder(0, 15, 8, 15));
@@ -105,21 +249,21 @@ public class FrmCartolaCliente extends JInternalFrame {
         JPanel filaRut = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
         filaRut.setOpaque(false);
 
-        JLabel lblRut = new JLabel("Ingrese R.U.T.:");
-        lblRut.setForeground(dosWhite);
-        lblRut.setFont(fuenteConsola);
+        lblRut = new JLabel("Ingrese R.U.T.:");
+        lblRut.setForeground(cTextoBlanco);
+        lblRut.setFont(fConsola);
 
         txtRutCliente = new JTextField(15);
-        txtRutCliente.setFont(fuenteConsola);
-        txtRutCliente.setBackground(Color.BLACK);
-        txtRutCliente.setForeground(dosYellow);
-        txtRutCliente.setCaretColor(dosYellow);
-        txtRutCliente.setBorder(BorderFactory.createLineBorder(Color.LIGHT_GRAY, 1));
+        txtRutCliente.setFont(fConsola);
+        txtRutCliente.setBackground(cTablaFondo);
+        txtRutCliente.setForeground(cTextoAmarillo);
+        txtRutCliente.setCaretColor(cTextoAmarillo);
+        txtRutCliente.setBorder(BorderFactory.createLineBorder(cBordeAcento, 1));
         txtRutCliente.addActionListener(e -> buscarClienteYCartola());
 
-        JLabel lblAyudaF8 = new JLabel("(Presione F8 para buscar cliente)");
-        lblAyudaF8.setForeground(dosYellow);
-        lblAyudaF8.setFont(new Font(fuenteConsola.getFamily(), Font.ITALIC, 12));
+        lblAyudaF8 = new JLabel("(Presione F8 para buscar cliente)");
+        lblAyudaF8.setForeground(cTextoAmarillo);
+        lblAyudaF8.setFont(new Font(fConsola.getFamily(), Font.ITALIC, 12));
 
         filaRut.add(lblRut);
         filaRut.add(txtRutCliente);
@@ -129,13 +273,13 @@ public class FrmCartolaCliente extends JInternalFrame {
         JPanel filaNombre = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
         filaNombre.setOpaque(false);
 
-        JLabel lblNom = new JLabel("Nombre del Cliente:");
-        lblNom.setForeground(dosWhite);
-        lblNom.setFont(fuenteConsola);
+        lblNom = new JLabel("Nombre del Cliente:");
+        lblNom.setForeground(cTextoBlanco);
+        lblNom.setFont(fConsola);
 
         lblNombreCliente = new JLabel("[ Seleccione o ingrese un RUT válido ]");
-        lblNombreCliente.setForeground(dosYellow);
-        lblNombreCliente.setFont(fuenteConsola);
+        lblNombreCliente.setForeground(cTextoAmarillo);
+        lblNombreCliente.setFont(fConsola);
 
         filaNombre.add(lblNom);
         filaNombre.add(lblNombreCliente);
@@ -154,50 +298,49 @@ public class FrmCartolaCliente extends JInternalFrame {
         modeloTablaCartola = new DefaultTableModel(columnasCartola, 0);
 
         tablaCartola = new JTable(modeloTablaCartola);
-        tablaCartola.setFont(fuenteConsola);
-        tablaCartola.setBackground(dosDarkPanel);
-        tablaCartola.setForeground(dosWhite);
+        tablaCartola.setFont(fConsola);
+        tablaCartola.setBackground(cTablaFondo);
+        tablaCartola.setForeground(cTextoBlanco);
         tablaCartola.setGridColor(Color.DARK_GRAY);
         tablaCartola.setRowHeight(26);
 
-        tablaCartola.getTableHeader().setFont(fuenteConsola);
-        tablaCartola.getTableHeader().setBackground(dosBlue);
-        tablaCartola.getTableHeader().setForeground(dosYellow);
+        tablaCartola.getTableHeader().setFont(fConsola);
+        tablaCartola.getTableHeader().setBackground(cEncabezado);
+        tablaCartola.getTableHeader().setForeground(cTextoAmarillo);
 
-        JScrollPane scrollCartola = new JScrollPane(tablaCartola);
+        scrollCartola = new JScrollPane(tablaCartola);
         scrollCartola.setBounds(0, 110, 1100, 485);
-        scrollCartola.getViewport().setBackground(dosDarkPanel);
-        scrollCartola.setBorder(BorderFactory.createLineBorder(Color.GRAY, 1));
+        scrollCartola.getViewport().setBackground(cTablaFondo);
+        scrollCartola.setBorder(BorderFactory.createLineBorder(cBordeAcento, 1));
         layeredPane.add(scrollCartola, JLayeredPane.DEFAULT_LAYER);
 
         // ==========================================
         // 3. PANEL INFERIOR (Totales y Barra de Comandos)
         // ==========================================
-        JPanel panelInferior = new JPanel(new BorderLayout());
+        panelInferior = new JPanel(new BorderLayout());
         panelInferior.setBounds(0, 595, 1100, 105);
-        panelInferior.setBackground(dosBlue);
-        panelInferior.setBorder(BorderFactory.createMatteBorder(2, 0, 0, 0, Color.WHITE));
+        panelInferior.setBackground(cBarraInferior);
+        panelInferior.setBorder(BorderFactory.createMatteBorder(2, 0, 0, 0, cBordeAcento));
 
-        // Caja de Total Deuda
         JPanel panelTotalBox = new JPanel(new FlowLayout(FlowLayout.RIGHT, 20, 10));
         panelTotalBox.setOpaque(false);
 
-        JLabel lblTextoDeuda = new JLabel("SALDO TOTAL CARTERA: $");
-        lblTextoDeuda.setForeground(dosWhite);
-        lblTextoDeuda.setFont(fuenteConsola);
+        lblTextoDeuda = new JLabel("SALDO TOTAL CARTERA: $");
+        lblTextoDeuda.setForeground(cTextoBlanco);
+        lblTextoDeuda.setFont(fConsola);
 
         lblTotalDeuda = new JLabel("0");
-        lblTotalDeuda.setForeground(dosYellow);
-        lblTotalDeuda.setFont(new Font(fuenteConsola.getFamily(), Font.BOLD, 18));
+        lblTotalDeuda.setForeground(cTextoAmarillo);
+        lblTotalDeuda.setFont(new Font(fConsola.getFamily(), Font.BOLD, 18));
 
         panelTotalBox.add(lblTextoDeuda);
         panelTotalBox.add(lblTotalDeuda);
 
-        // Atajos inferiores
-        JLabel lblAtajos = new JLabel("  (Esc)apar    (F8): Buscar Cliente    (F2): Detalle Documento    (F6): Imprimir Cartola");
-        lblAtajos.setForeground(dosYellow);
-        lblAtajos.setFont(new Font(fuenteConsola.getFamily(), Font.BOLD, 13));
+        lblAtajos = new JLabel();
+        lblAtajos.setForeground(cTextoAmarillo);
+        lblAtajos.setFont(new Font(fConsola.getFamily(), Font.BOLD, 13));
         lblAtajos.setBorder(BorderFactory.createEmptyBorder(0, 10, 10, 0));
+        actualizarTextoAtajos();
 
         panelInferior.add(panelTotalBox, BorderLayout.NORTH);
         panelInferior.add(lblAtajos, BorderLayout.SOUTH);
@@ -223,22 +366,32 @@ public class FrmCartolaCliente extends JInternalFrame {
         // ==========================================
         // ATAJOS DE TECLADO GLOBALES
         // ==========================================
-        // ESC para cerrar
         getRootPane().registerKeyboardAction(ev -> dispose(),
                 KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0),
                 JComponent.WHEN_IN_FOCUSED_WINDOW);
 
-        // F8 para abrir el buscador de clientes (igual que en ventas)
         atajarF8Cliente();
 
-        // F6 para Imprimir / Exportar Cartola 
+        // F6 para Ciclar Tema en tiempo real
         getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
-                .put(KeyStroke.getKeyStroke(KeyEvent.VK_F6, 0), "imprimirCartolaF6");
+                .put(KeyStroke.getKeyStroke(KeyEvent.VK_F6, 0), "ciclarTemaF6");
 
-        getRootPane().getActionMap().put("imprimirCartolaF6", new AbstractAction() {
+        getRootPane().getActionMap().put("ciclarTemaF6", new AbstractAction() {
             @Override
             public void actionPerformed(java.awt.event.ActionEvent e) {
-                imprimirCartolaPDF(); // <-- ¡Aquí es donde se llama al método!
+                ciclarSiguienteTema();
+            }
+        });
+
+        // F7 o evento alternativo para Imprimir / Exportar Cartola (o se mantiene F6 si prefieres, pero F6 ahora cambia el tema, asignamos F7 para imprimir o combinamos)
+        // Nota: El usuario usaba F6 para imprimir cartola previamente. Dado que F6 ahora es el estándar en todo el sistema para cambiar de tema, cambiamos Imprimir Cartola a F7 o dejamos F6 para tema y F7 para imprimir.
+        getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
+                .put(KeyStroke.getKeyStroke(KeyEvent.VK_F7, 0), "imprimirCartolaF7");
+
+        getRootPane().getActionMap().put("imprimirCartolaF7", new AbstractAction() {
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                imprimirCartolaPDF();
             }
         });
 
@@ -258,12 +411,9 @@ public class FrmCartolaCliente extends JInternalFrame {
         repaint();
     }
 
-   private void configurarTablaDetalle() {
-        // 1. Usamos el modelo que la tabla ya trae creado por NetBeans (evita romper la vista)
+    private void configurarTablaDetalle() {
         javax.swing.table.DefaultTableModel modeloTabla = (javax.swing.table.DefaultTableModel) tablaCartola.getModel();
-     
 
-        // 2. Interceptar la tecla F2 directamente dentro de la tabla para abrir el detalle
         tablaCartola.getInputMap(javax.swing.JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)
                 .put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_F2, 0), "verDetalleF2");
 
@@ -274,7 +424,6 @@ public class FrmCartolaCliente extends JInternalFrame {
             }
         });
 
-        // 3. Abrir el detalle también con doble clic en la fila
         tablaCartola.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mouseClicked(java.awt.event.MouseEvent evt) {
@@ -284,7 +433,7 @@ public class FrmCartolaCliente extends JInternalFrame {
             }
         });
     }
-    
+
     private void atajarF8Cliente() {
         getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
                 .put(KeyStroke.getKeyStroke(KeyEvent.VK_F8, 0), "abrirBuscarClienteCartola");
@@ -316,7 +465,6 @@ public class FrmCartolaCliente extends JInternalFrame {
                         lblNombreCliente.setText(datosCliente[1]);
                     }
 
-                    // Aquí puedes disparar la carga de la cartola para este cliente
                     cargarCartolaCliente(datosCliente[0]);
                 }
             }
@@ -330,7 +478,6 @@ public class FrmCartolaCliente extends JInternalFrame {
             return;
         }
 
-        // Simulación o llamada DAO para buscar el cliente por RUT y rellenar su cartola
         try {
             ClienteDAO dao = new ClienteDAO();
             List<Object[]> listaClientes = dao.cargarClientesDAO(rut);
@@ -360,7 +507,6 @@ public class FrmCartolaCliente extends JInternalFrame {
     }
 
     private void cargarCartolaCliente(String rutCliente) {
-        // Limpiamos la tabla actual y reseteamos el total
         modeloTablaCartola.setRowCount(0);
         double saldoTotalCalculado = 0.0;
 
@@ -375,7 +521,6 @@ public class FrmCartolaCliente extends JInternalFrame {
                         JOptionPane.INFORMATION_MESSAGE);
             } else {
                 for (Object[] mov : movimientos) {
-                    // Conversión segura para evitar ClassCastException con BigDecimal/Double de JDBC
                     double cargo = 0.0;
                     double abono = 0.0;
                     double saldo = 0.0;
@@ -391,17 +536,16 @@ public class FrmCartolaCliente extends JInternalFrame {
                             saldo = Double.parseDouble(mov[6].toString());
                         }
                     } catch (NumberFormatException e) {
-                        // Si viene algún valor extraño, lo ignoramos o dejamos en 0
+                        // Ignorar formato incorrecto
                     }
 
                     saldoTotalCalculado += saldo;
 
-                    // Agregamos la fila a la tabla con formato visual chileno estilo moneda
                     modeloTablaCartola.addRow(new Object[]{
-                        mov[0], // Tipo Doc
-                        mov[1], // N° Doc
-                        mov[2], // Fecha Emisión
-                        mov[3] != null ? mov[3] : "-", // Vencimiento
+                        mov[0],
+                        mov[1],
+                        mov[2],
+                        mov[3] != null ? mov[3] : "-",
                         String.format("$%,.0f", cargo),
                         String.format("$%,.0f", abono),
                         String.format("$%,.0f", saldo)
@@ -409,7 +553,6 @@ public class FrmCartolaCliente extends JInternalFrame {
                 }
             }
 
-            // Actualizamos la etiqueta con el saldo total de la cartera
             lblTotalDeuda.setText(String.format("%,.0f", saldoTotalCalculado));
 
         } catch (Exception ex) {
@@ -435,9 +578,7 @@ public class FrmCartolaCliente extends JInternalFrame {
         String totalDeuda = lblTotalDeuda.getText().trim();
 
         try {
-            // ¡Llamada limpia a tu clase PDFUtils en el paquete utilidades!
             utilidades.PDFUtils.generarCartolaClientePDF(rutCliente, nombreCliente, totalDeuda, modeloTablaCartola);
-
             JOptionPane.showMessageDialog(this, "¡Cartola exportada a PDF con éxito!");
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this,
@@ -458,7 +599,6 @@ public class FrmCartolaCliente extends JInternalFrame {
             return;
         }
 
-        // Extraemos los datos de la fila seleccionada
         String tipoDoc = tablaCartola.getValueAt(filaSeleccionada, 0) != null ? tablaCartola.getValueAt(filaSeleccionada, 0).toString() : "";
         String nroDoc = tablaCartola.getValueAt(filaSeleccionada, 1) != null ? tablaCartola.getValueAt(filaSeleccionada, 1).toString() : "";
         String fechaEmision = tablaCartola.getValueAt(filaSeleccionada, 2) != null ? tablaCartola.getValueAt(filaSeleccionada, 2).toString() : "";
@@ -467,24 +607,21 @@ public class FrmCartolaCliente extends JInternalFrame {
         String abono = tablaCartola.getValueAt(filaSeleccionada, 5) != null ? tablaCartola.getValueAt(filaSeleccionada, 5).toString() : "0";
         String saldo = tablaCartola.getValueAt(filaSeleccionada, 6) != null ? tablaCartola.getValueAt(filaSeleccionada, 6).toString() : "0";
 
-        // Creamos un JDialog modal con la estética MS-DOS
         javax.swing.JDialog dialogDetalle = new javax.swing.JDialog((java.awt.Frame) null, " Detalle de Documento [F2] ", true);
         dialogDetalle.setSize(450, 320);
         dialogDetalle.setLocationRelativeTo(this);
         dialogDetalle.setLayout(new java.awt.BorderLayout());
 
-        // Panel principal con color azul Clipper clásico
         javax.swing.JPanel panelFondo = new javax.swing.JPanel();
-        panelFondo.setBackground(new java.awt.Color(0, 0, 128)); // Azul marino MS-DOS
+        panelFondo.setBackground(cFondo);
         panelFondo.setLayout(new java.awt.BorderLayout(10, 10));
-        panelFondo.setBorder(javax.swing.BorderFactory.createLineBorder(java.awt.Color.YELLOW, 2));
+        panelFondo.setBorder(javax.swing.BorderFactory.createLineBorder(cBordeAcento, 2));
 
-        // Texto estilo consola
         String contenido
                 = """
-                   \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+                   ═══════════════════════════════════════════
                               DETALLE DE MOVIMIENTO        
-                   \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+                   ═══════════════════════════════════════════
                   
                    Tipo de Documento : """ + tipoDoc + "\n"
                 + " N° de Documento   : " + nroDoc + "\n"
@@ -498,27 +635,13 @@ public class FrmCartolaCliente extends JInternalFrame {
 
         javax.swing.JTextArea areaTexto = new javax.swing.JTextArea(contenido);
         areaTexto.setFont(new java.awt.Font("Monospaced", java.awt.Font.BOLD, 13));
-        areaTexto.setForeground(java.awt.Color.YELLOW); // Texto amarillo brillante clásico
-        areaTexto.setBackground(new java.awt.Color(0, 0, 128));
+        areaTexto.setForeground(cTextoAmarillo);
+        areaTexto.setBackground(cFondo);
         areaTexto.setEditable(false);
         areaTexto.setMargin(new java.awt.Insets(15, 15, 15, 15));
 
         panelFondo.add(areaTexto, java.awt.BorderLayout.CENTER);
 
-//        // Botón inferior estilo retro
-//        javax.swing.JButton btnCerrar = new javax.swing.JButton("[ CERRAR (ENTER / ESC) ]");
-//        btnCerrar.setFont(new java.awt.Font("Monospaced", java.awt.Font.BOLD, 12));
-//        btnCerrar.setBackground(java.awt.Color.LIGHT_GRAY);
-//        btnCerrar.setForeground(java.awt.Color.BLACK);
-//        btnCerrar.setFocusPainted(false);
-//        btnCerrar.addActionListener(e -> dialogDetalle.dispose());
-//
-//        javax.swing.JPanel panelBoton = new javax.swing.JPanel();
-//        panelBoton.setBackground(new java.awt.Color(0, 0, 128));
-//        panelBoton.add(btnCerrar);
-//        panelFondo.add(panelBoton, java.awt.BorderLayout.SOUTH);
-
-        // Atajo ESC o ENTER para cerrar la ventana emergente
         dialogDetalle.getRootPane().registerKeyboardAction(e -> dialogDetalle.dispose(),
                 javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_ESCAPE, 0),
                 javax.swing.JComponent.WHEN_IN_FOCUSED_WINDOW);

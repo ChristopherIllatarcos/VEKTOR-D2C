@@ -24,11 +24,17 @@ public class FrmDetalleVendedor extends JInternalFrame {
     private int codigoVendedor;
 
     public FrmDetalleVendedor(String nombreVendedor, int codigoVendedor) {
-        super("VEKTOR D2C - DETALLE: " + nombreVendedor, true, false, false, false);
+        super("DETALLE: " + nombreVendedor, true, false, false, false);
         this.comisionDAO = new ComisionDAO();
         this.codigoVendedor = codigoVendedor;
 
         initComponents();
+        // Asignar el icono Nexum a la ventana interna (JInternalFrame)
+        try {
+            setFrameIcon(new javax.swing.ImageIcon(getClass().getResource("/vektor/cubo-azul-16.png")));
+        } catch (Exception e) {
+            System.out.println("No se pudo cargar el icono interno: " + e.getMessage());
+        }
         configurarAtajosTeclado();
         cargarDatosDetalle(""); // Carga todos inicialmente ordenados del más nuevo al más antiguo
 
@@ -157,6 +163,10 @@ public class FrmDetalleVendedor extends JInternalFrame {
 
         panelPrincipal.add(panelComandos, BorderLayout.SOUTH);
         add(panelPrincipal);
+       SwingUtilities.invokeLater(() -> {
+            utilidades.IconoUtils.aplicarIcono(this);
+        });
+
     }
 
     private void estilizarCampoTexto(JTextField txt) {

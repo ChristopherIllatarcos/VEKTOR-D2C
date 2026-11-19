@@ -2,9 +2,7 @@ package vista;
 
 import vista.ctacte.FrmEstadisticasClientes;
 import vista.ventas.FrmArchivoClientes;
-import vista.ventas.DlgVenta;
 import com.formdev.flatlaf.FlatDarkLaf;
-import conexion.Conexion;
 import dao.CuentaCorrienteDAO;
 import dao.ProductoVentaDAO;
 import java.awt.BorderLayout;
@@ -12,30 +10,42 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Frame;
+import java.awt.Image;
 import java.awt.Window;
-import java.sql.Connection;
+import java.awt.event.KeyEvent;
+import java.util.ArrayList;
+import java.util.List;
+import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.ImageIcon;
+import javax.swing.JComponent;
 import javax.swing.JDesktopPane;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
+import javax.swing.JRootPane;
+import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 import javax.swing.UnsupportedLookAndFeelException;
+import vista.archivo.DlgAccesosFunciones;
+import vista.archivo.DlgCamaraKey;
+import vista.archivo.DlgFoliadorHojas;
 import vista.archivo.DlgIndexacionDB;
+import vista.archivo.DlgLicenciaUso;
+import vista.archivo.DlgUsuariosSistema;
 import vista.archivo.FrmParametros;
 import vista.bodega.DlgProductos;
 import vista.bodega.FrmInventarioCritico;
 import vista.bodega.FrmResultadoInventario;
 import vista.bodega.FrmRotacionVentas;
 import vista.bodega.FrmVentasPorFamilia;
-import vista.compras.DlgProveedores;
 import vista.compras.FrmIngresoCompra;
 import vista.compras.FrmLibroCompras;
+import vista.compras.FrmProveedores;
 import vista.ctacte.FrmCarteraCheques;
 import vista.ctacte.FrmCartolaCliente;
 import vista.ctacte.FrmCartolaPorFecha;
@@ -45,6 +55,7 @@ import vista.ventas.FrmComisionesCobranza;
 import vista.ventas.FrmComisionesVentas;
 import vista.ventas.FrmConsultaDocumento;
 import vista.ventas.FrmFichaVendedores;
+import vista.ventas.FrmHojaRuta;
 import vista.ventas.FrmMantencionVentas;
 import vista.ventas.FrmVenta;
 
@@ -59,6 +70,17 @@ public class FrmPrincipal extends javax.swing.JFrame {
     private JDesktopPane escritorio = new JDesktopPane();
     private final CuentaCorrienteDAO dao = new CuentaCorrienteDAO();
 
+    private JLabel lblTitulo;
+    private Color cColorTema = new Color(100, 180, 255);
+
+    // Listas para almacenar los componentes del menú y submenús y cambiarles el color en vivo
+    private final List<JMenu> listaMenus = new ArrayList<>();
+    private final List<JMenuItem> listaSubMenus = new ArrayList<>();
+
+    // Sistema de Temas Ciclos [F6]
+    private final String[] listaTemas = {"Clipper Azul", "Morado Neón", "Turquesa Pro", "Esmeralda Terminal", "Naranja Fuego"};
+    private int indiceTemaActual = 0;
+
     public FrmPrincipal() {
         initComponents();
 
@@ -69,6 +91,18 @@ public class FrmPrincipal extends javax.swing.JFrame {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
 
+        // 1.5. Cargar la familia de iconos nexum para barra de tareas y ventanas (Adiós Java Icon)
+        java.util.List<Image> iconosApp = new java.util.ArrayList<>();
+        try {
+            iconosApp.add(new ImageIcon(getClass().getResource("/vektor/cubo-azul-16.png")).getImage());
+            iconosApp.add(new ImageIcon(getClass().getResource("/vektor/cubo-azul-32.png")).getImage());
+            iconosApp.add(new ImageIcon(getClass().getResource("/vektor/cubo-azul-64.png")).getImage());
+            iconosApp.add(new ImageIcon(getClass().getResource("/vektor/cubo-azul-128.png")).getImage());
+            setIconImages(iconosApp);
+        } catch (Exception e) {
+            System.out.println("No se pudieron cargar los iconos de la aplicación: " + e.getMessage());
+        }
+
         // 2. Establecer el JDesktopPane como el contenedor principal (ContentPane)
         setContentPane(escritorio);
         escritorio.setLayout(new BorderLayout());
@@ -76,19 +110,74 @@ public class FrmPrincipal extends javax.swing.JFrame {
         // 3. Cargar la barra de menú superior
         configurarMenu();
 
-        // 4. Colocar el Panel Dashboard de bienvenida al centro del escritorio
+        // 4. Configurar atajo global [F6] para cambio de tema en la ventana principal
+        configurarAtajoTemaF6();
+
+        // 5. Aplicar colores iniciales a menús y títulos
+        aplicarTemaPrincipal(listaTemas[indiceTemaActual]);
+
+        // 6. Colocar el Panel Dashboard de bienvenida al centro del escritorio
         PanelDashboard dashboard = new PanelDashboard();
         escritorio.add(dashboard, BorderLayout.CENTER);
 
-        // 5. Listeners para restaurar y minimizar
+        // 7. Listeners para restaurar y minimizar
         minimizarPrincipal();
         verificarRespaldoAutomatico();
 
         setVisible(true);
     }
 
+    private void configurarAtajoTemaF6() {
+        JRootPane root = getRootPane();
+        root.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(KeyEvent.VK_F6, 0), "ciclarTemaF6");
+        root.getActionMap().put("ciclarTemaF6", new AbstractAction() {
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                ciclarSiguienteTemaPrincipal();
+            }
+        });
+    }
+
+    private void ciclarSiguienteTemaPrincipal() {
+        indiceTemaActual = (indiceTemaActual + 1) % listaTemas.length;
+        aplicarTemaPrincipal(listaTemas[indiceTemaActual]);
+    }
+
+    private void aplicarTemaPrincipal(String nombreTema) {
+        switch (nombreTema) {
+            case "Morado Neón" ->
+                cColorTema = new Color(255, 110, 220);
+            case "Turquesa Pro" ->
+                cColorTema = new Color(0, 245, 255);
+            case "Esmeralda Terminal" ->
+                cColorTema = new Color(0, 255, 128);
+            case "Naranja Fuego" ->
+                cColorTema = new Color(245, 73, 39);
+            case "Clipper Azul" ->
+                cColorTema = new Color(100, 180, 255);
+            default ->
+                cColorTema = new Color(100, 180, 255);
+        }
+
+        // Aplicar color al título de la barra superior
+        if (lblTitulo != null) {
+            lblTitulo.setForeground(cColorTema);
+        }
+
+        // Aplicar color a los menús principales (VENTAS, COMPRAS, etc.)
+        for (JMenu menu : listaMenus) {
+            menu.setForeground(cColorTema);
+        }
+
+        // Aplicar color a los submenús
+        for (JMenuItem item : listaSubMenus) {
+            item.setForeground(cColorTema);
+        }
+
+        repaint();
+    }
+
     private void minimizarPrincipal() {
-        // Asegurar el redibujado de la barra de menú al restaurar o activar la ventana
         this.addWindowListener(new java.awt.event.WindowAdapter() {
             @Override
             public void windowActivated(java.awt.event.WindowEvent e) {
@@ -114,7 +203,6 @@ public class FrmPrincipal extends javax.swing.JFrame {
     private void configurarMenu() {
         JMenuBar menuBar = new JMenuBar();
 
-        // Fuentes grandes y limpias
         Font fuenteMenuPrincipal = new Font("Segoe UI", Font.BOLD, 22);
         Font fuenteSubMenu = new Font("Segoe UI", Font.PLAIN, 20);
         Font fuenteTitulo = new Font("Segoe UI", Font.BOLD, 18);
@@ -125,28 +213,21 @@ public class FrmPrincipal extends javax.swing.JFrame {
         JMenu menuVentas = new JMenu("VENTAS");
         menuVentas.setFont(fuenteMenuPrincipal);
         menuVentas.setMnemonic(java.awt.event.KeyEvent.VK_V);
-
-        // Desactivar popups ligeros para que se dibuje perfectamente al frente
         menuVentas.getPopupMenu().setLightWeightPopupEnabled(false);
+        listaMenus.add(menuVentas);
 
         String[] itemsVentas = {
-            "1. Ventas",
-            "2. Consulta de documentos",
-            "3. Hoja de ruta",
-            "4. Mantención de ventas",
-            "5. Informe ventas por cliente",
-            "6. Ficha clientes",
-            "7. Comisión por ventas",
-            "8. Comisión por cobranza",
-            "9. Ficha de vendedores"
+            "1. Ventas", "2. Consulta de documentos", "3. Hoja de ruta",
+            "4. Mantención de ventas", "5. Informe ventas por cliente", "6. Ficha clientes",
+            "7. Comisión por ventas", "8. Comisión por cobranza", "9. Ficha de vendedores"
         };
 
         for (int i = 0; i < itemsVentas.length; i++) {
             JMenuItem item = new JMenuItem(itemsVentas[i]);
             item.setFont(fuenteSubMenu);
             item.setBorder(BorderFactory.createEmptyBorder(8, 15, 8, 15));
+            listaSubMenus.add(item);
 
-            // Asignar mnemónicos del 1 al 9 para acceso rápido por teclado
             switch (i) {
                 case 0 ->
                     item.setMnemonic(java.awt.event.KeyEvent.VK_1);
@@ -161,7 +242,6 @@ public class FrmPrincipal extends javax.swing.JFrame {
                 case 5 ->
                     item.setMnemonic(java.awt.event.KeyEvent.VK_6);
                 case 6 ->
-
                     item.setMnemonic(java.awt.event.KeyEvent.VK_7);
                 case 7 ->
                     item.setMnemonic(java.awt.event.KeyEvent.VK_8);
@@ -169,40 +249,24 @@ public class FrmPrincipal extends javax.swing.JFrame {
                     item.setMnemonic(java.awt.event.KeyEvent.VK_9);
             }
 
-            // Aquí puedes enlazar la acción de cada opción más adelante (por ejemplo, abrir sus respectivos Diálogos)
             final int indexAccion = i + 1;
-
-            // Acción individual para cada opción del menú
             item.addActionListener(e -> {
                 switch (indexAccion) {
                     case 1 -> {
-                        // Abrimos el módulo de ventas actualizado como JInternalFrame
                         FrmVenta ventanaVenta = new FrmVenta();
-
-                        // Lo agregamos al panel de escritorio principal (desktopPane)
                         escritorio.add(ventanaVenta);
-
                         ventanaVenta.setVisible(true);
-
                         try {
-                            ventanaVenta.setSelected(true); // Lo pasamos al frente si ya estaba abierto
+                            ventanaVenta.setSelected(true);
                         } catch (java.beans.PropertyVetoException ex) {
                             ex.printStackTrace();
                         }
-
-                        System.out.println("Seleccionado módulo Ventas op: " + indexAccion);
                     }
                     case 2 -> {
                         FrmConsultaDocumento frame = new FrmConsultaDocumento();
-
-                        // 1. Añadimos el frame al escritorio MDI
                         escritorio.add(frame);
-
-                        // 2. Le damos su tamaño (por si el constructor no lo alcanzó a fijar antes del add)
                         frame.setSize(980, 620);
-
                         frame.setVisible(true);
-
                         try {
                             frame.setSelected(true);
                             frame.toFront();
@@ -211,29 +275,31 @@ public class FrmPrincipal extends javax.swing.JFrame {
                         }
                     }
                     case 3 -> {
-
+                        FrmHojaRuta frame = new FrmHojaRuta();
+                        escritorio.add(frame);
+                        frame.setVisible(true);
+                        try {
+                            frame.setSelected(true);
+                        } catch (java.beans.PropertyVetoException ex) {
+                            ex.printStackTrace();
+                        }
                     }
                     case 4 -> {
                         FrmMantencionVentas frmVentas = new FrmMantencionVentas();
                         escritorio.add(frmVentas);
                         frmVentas.setVisible(true);
-
                         try {
                             frmVentas.setSelected(true);
                         } catch (java.beans.PropertyVetoException ex) {
                             ex.printStackTrace();
                         }
-
                     }
                     case 5 -> {
                         vista.ventas.FrmResultadoVentaCliente frm = new vista.ventas.FrmResultadoVentaCliente();
                         escritorio.add(frm);
-
-                        // Centrar el JInternalFrame dentro del JDesktopPane
                         int x = (escritorio.getWidth() - frm.getWidth()) / 2;
                         int y = (escritorio.getHeight() - frm.getHeight()) / 2;
                         frm.setLocation(Math.max(0, x), Math.max(0, y));
-
                         frm.toFront();
                         try {
                             frm.setSelected(true);
@@ -250,7 +316,6 @@ public class FrmPrincipal extends javax.swing.JFrame {
                         } catch (java.beans.PropertyVetoException ex) {
                             ex.printStackTrace();
                         }
-                        break;
                     }
                     case 7 -> {
                         FrmComisionesVentas frame = new FrmComisionesVentas();
@@ -290,7 +355,6 @@ public class FrmPrincipal extends javax.swing.JFrame {
                     }
                 }
             });
-
             menuVentas.add(item);
         }
 
@@ -300,19 +364,16 @@ public class FrmPrincipal extends javax.swing.JFrame {
         JMenu menuCompras = new JMenu("COMPRAS");
         menuCompras.setFont(fuenteMenuPrincipal);
         menuCompras.setMnemonic(java.awt.event.KeyEvent.VK_C);
-
-        // Desactivar popups ligeros para que se dibuje perfectamente al frente
         menuCompras.getPopupMenu().setLightWeightPopupEnabled(false);
+        listaMenus.add(menuCompras);
 
-        String[] itemsCompras = {
-            "1. Proveedores",
-            "2. Ingreso de Compras",
-            "3. Libro de Compras",};
+        String[] itemsCompras = {"1. Proveedores", "2. Ingreso de Compras", "3. Libro de Compras"};
 
         for (int i = 0; i < itemsCompras.length; i++) {
             JMenuItem item = new JMenuItem(itemsCompras[i]);
             item.setFont(fuenteSubMenu);
             item.setBorder(BorderFactory.createEmptyBorder(8, 15, 8, 15));
+            listaSubMenus.add(item);
 
             switch (i) {
                 case 0 ->
@@ -321,17 +382,19 @@ public class FrmPrincipal extends javax.swing.JFrame {
                     item.setMnemonic(java.awt.event.KeyEvent.VK_2);
                 case 2 ->
                     item.setMnemonic(java.awt.event.KeyEvent.VK_3);
-
             }
 
             final int indexAccion = i + 1;
             item.addActionListener(e -> {
                 switch (indexAccion) {
                     case 1 -> {
-                        // Pasamos solo 'this' porque el constructor ya maneja la modalidad por dentro
-                        DlgProveedores ventanaPro = new DlgProveedores(this);
-                        ventanaPro.setVisible(true);
-                        System.out.println("Abriendo Maestro de Proveedores, op: " + indexAccion);
+                        FrmProveedores frm = new FrmProveedores();
+                        escritorio.add(frm);
+                        frm.setVisible(true);
+                        try {
+                            frm.setSelected(true);
+                        } catch (java.beans.PropertyVetoException ex) {
+                        }
                     }
                     case 2 -> {
                         FrmIngresoCompra frm = new FrmIngresoCompra();
@@ -341,7 +404,6 @@ public class FrmPrincipal extends javax.swing.JFrame {
                             frm.setSelected(true);
                         } catch (java.beans.PropertyVetoException ex) {
                         }
-
                     }
                     case 3 -> {
                         FrmLibroCompras frm = new FrmLibroCompras();
@@ -354,7 +416,6 @@ public class FrmPrincipal extends javax.swing.JFrame {
                     }
                 }
             });
-
             menuCompras.add(item);
         }
 
@@ -364,26 +425,21 @@ public class FrmPrincipal extends javax.swing.JFrame {
         JMenu menuBodegas = new JMenu("BODEGAS");
         menuBodegas.setFont(fuenteMenuPrincipal);
         menuBodegas.setMnemonic(java.awt.event.KeyEvent.VK_B);
-
-        // Desactivar popups ligeros para que se dibuje perfectamente al frente
         menuBodegas.getPopupMenu().setLightWeightPopupEnabled(false);
+        listaMenus.add(menuBodegas);
 
         String[] itemsBodegas = {
-            "1. Registros de Productos",
-            "2. Registros de Familias",
-            "3. Ingreso de Mercadería",
-            "4. Kardex de Mercadería",
-            "5. Inventario de Mercadería",
-            "6. Inventario Crítico",
-            "7. Rotación de Ventas",
-            "8. Ventas por Familias",};
+            "1. Registros de Productos", "2. Registros de Familias", "3. Ingreso de Mercadería",
+            "4. Kardex de Mercadería", "5. Inventario de Mercadería", "6. Inventario Crítico",
+            "7. Rotación de Ventas", "8. Ventas por Familias"
+        };
 
         for (int i = 0; i < itemsBodegas.length; i++) {
             JMenuItem item = new JMenuItem(itemsBodegas[i]);
             item.setFont(fuenteSubMenu);
             item.setBorder(BorderFactory.createEmptyBorder(8, 15, 8, 15));
+            listaSubMenus.add(item);
 
-            // Asignar mnemónicos del 1 al 8 para acceso rápido por teclado
             switch (i) {
                 case 0 ->
                     item.setMnemonic(java.awt.event.KeyEvent.VK_1);
@@ -403,13 +459,10 @@ public class FrmPrincipal extends javax.swing.JFrame {
                     item.setMnemonic(java.awt.event.KeyEvent.VK_8);
             }
 
-            // Acción para cada opción del menú Bodegas
             final int indexAccion = i;
-
             item.addActionListener(e -> {
                 switch (indexAccion) {
                     case 0 -> {
-                        // Opción 1: Registros de Productos
                         DlgProductos dlg = new DlgProductos();
                         escritorio.add(dlg);
                         dlg.setVisible(true);
@@ -428,7 +481,6 @@ public class FrmPrincipal extends javax.swing.JFrame {
                         } catch (java.beans.PropertyVetoException ex) {
                             ex.printStackTrace();
                         }
-
                     }
                     case 2 -> {
                         vista.bodega.FrmIngresoMercaderia frm = new vista.bodega.FrmIngresoMercaderia();
@@ -440,9 +492,7 @@ public class FrmPrincipal extends javax.swing.JFrame {
                             ex.printStackTrace();
                         }
                     }
-
                     case 3 -> {
-
                         vista.bodega.FrmKardexMercaderia frm = new vista.bodega.FrmKardexMercaderia();
                         escritorio.add(frm);
                         frm.setVisible(true);
@@ -452,15 +502,9 @@ public class FrmPrincipal extends javax.swing.JFrame {
                             ex.printStackTrace();
                         }
                     }
-
                     case 4 -> {
                         String fechaActual = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"));
-
-                        FrmResultadoInventario frm = new FrmResultadoInventario(
-                                new ProductoVentaDAO().listarInventario(),
-                                fechaActual
-                        );
-
+                        FrmResultadoInventario frm = new FrmResultadoInventario(new ProductoVentaDAO().listarInventario(), fechaActual);
                         escritorio.add(frm);
                         frm.setVisible(true);
                         try {
@@ -468,7 +512,6 @@ public class FrmPrincipal extends javax.swing.JFrame {
                         } catch (java.beans.PropertyVetoException ex) {
                             ex.printStackTrace();
                         }
-
                     }
                     case 5 -> {
                         FrmInventarioCritico frm = new FrmInventarioCritico();
@@ -478,9 +521,7 @@ public class FrmPrincipal extends javax.swing.JFrame {
                             frm.setSelected(true);
                         } catch (java.beans.PropertyVetoException ex) {
                         }
-
                     }
-
                     case 6 -> {
                         FrmRotacionVentas frm = new FrmRotacionVentas();
                         escritorio.add(frm);
@@ -489,9 +530,7 @@ public class FrmPrincipal extends javax.swing.JFrame {
                             frm.setSelected(true);
                         } catch (java.beans.PropertyVetoException ex) {
                         }
-
                     }
-
                     case 7 -> {
                         FrmVentasPorFamilia frm = new FrmVentasPorFamilia();
                         escritorio.add(frm);
@@ -502,10 +541,8 @@ public class FrmPrincipal extends javax.swing.JFrame {
                             ex.printStackTrace();
                         }
                     }
-
                 }
             });
-
             menuBodegas.add(item);
         }
 
@@ -515,24 +552,20 @@ public class FrmPrincipal extends javax.swing.JFrame {
         JMenu menuCtacte = new JMenu("CTACTE");
         menuCtacte.setFont(fuenteMenuPrincipal);
         menuCtacte.setMnemonic(java.awt.event.KeyEvent.VK_T);
-
-        // Desactivar popups ligeros para que se dibuje perfectamente al frente
         menuCtacte.getPopupMenu().setLightWeightPopupEnabled(false);
+        listaMenus.add(menuCtacte);
 
         String[] itemsCtaCte = {
-            "1. Eliminar Pago",
-            "2. Listado de Documentos",
-            "3. Estadístico de Clientes",
-            "4. Cartola por Ventas",
-            "5. Cartola por Fecha",
-            "6. Cobros de la A a la Z",};
+            "1. Eliminar Pago", "2. Listado de Documentos", "3. Estadístico de Clientes",
+            "4. Cartola por Ventas", "5. Cartola por Fecha", "6. Cobros de la A a la Z"
+        };
 
         for (int i = 0; i < itemsCtaCte.length; i++) {
             JMenuItem item = new JMenuItem(itemsCtaCte[i]);
             item.setFont(fuenteSubMenu);
             item.setBorder(BorderFactory.createEmptyBorder(8, 15, 8, 15));
+            listaSubMenus.add(item);
 
-            // Asignar mnemónicos del 1 al 6 para acceso rápido por teclado
             switch (i) {
                 case 0 ->
                     item.setMnemonic(java.awt.event.KeyEvent.VK_1);
@@ -549,13 +582,9 @@ public class FrmPrincipal extends javax.swing.JFrame {
             }
 
             final int indexAccion = i + 1;
-
-            // Acción individual para cada opción del menú
             item.addActionListener(e -> {
                 switch (indexAccion) {
                     case 1 -> {
-                        // Como 'this' es tu ventana principal (que contiene el JDesktopPane o puedes acceder a él)
-                        // Reemplaza 'this.desktopPane' por el nombre de tu variable JDesktopPane real si se llama distinto.
                         FrmEliminarRecibo frmEliminar = new FrmEliminarRecibo();
                         this.escritorio.add(frmEliminar);
                         frmEliminar.setVisible(true);
@@ -576,16 +605,14 @@ public class FrmPrincipal extends javax.swing.JFrame {
                         }
                     }
                     case 3 -> {
-
                         FrmEstadisticasClientes frmCte = new FrmEstadisticasClientes();
                         escritorio.add(frmCte);
                         frmCte.setVisible(true);
                         try {
                             frmCte.setSelected(true);
-                        } catch (java.beans.PropertyVetoException ex) { // <--- Cambiado de 'e' a 'ex'
+                        } catch (java.beans.PropertyVetoException ex) {
                             ex.printStackTrace();
                         }
-                        break;
                     }
                     case 4 -> {
                         FrmCartolaCliente frmCartola = new FrmCartolaCliente();
@@ -593,10 +620,9 @@ public class FrmPrincipal extends javax.swing.JFrame {
                         frmCartola.setVisible(true);
                         try {
                             frmCartola.setSelected(true);
-                        } catch (java.beans.PropertyVetoException ex) { // <--- Cambiado de 'e' a 'ex'
+                        } catch (java.beans.PropertyVetoException ex) {
                             ex.printStackTrace();
                         }
-                        break;
                     }
                     case 5 -> {
                         FrmCartolaPorFecha frmFecha = new FrmCartolaPorFecha();
@@ -620,7 +646,6 @@ public class FrmPrincipal extends javax.swing.JFrame {
                     }
                 }
             });
-
             menuCtacte.add(item);
         }
 
@@ -629,29 +654,22 @@ public class FrmPrincipal extends javax.swing.JFrame {
         // ==========================================
         JMenu menuArchivos = new JMenu("ARCHIVOS");
         menuArchivos.setFont(fuenteMenuPrincipal);
-        menuArchivos.setMnemonic(java.awt.event.KeyEvent.VK_A); // Letra 'A' subrayada
-
-        // Clave vital para que el submenú se dibuje al frente
+        menuArchivos.setMnemonic(java.awt.event.KeyEvent.VK_A);
         menuArchivos.getPopupMenu().setLightWeightPopupEnabled(false);
+        listaMenus.add(menuArchivos);
+
         String[] itemsArchivos = {
-            "1. Finalizar la sesión",
-            "2. Usuario del sistema",
-            "3. Accesos a funciones",
-            "4. Cámara key",
-            "5. Foliador de hojas",
-            "6. Parámetros y correlativos",
-            "7. Indexación de la base de datos",
-            "8. Licencia de uso"
+            "1. Finalizar la sesión", "2. Usuario del sistema", "3. Accesos a funciones",
+            "4. Cámara key", "5. Foliador de hojas", "6. Parámetros y correlativos",
+            "7. Indexación de la base de datos", "8. Licencia de uso"
         };
 
         for (int i = 0; i < itemsArchivos.length; i++) {
             JMenuItem item = new JMenuItem(itemsArchivos[i]);
             item.setFont(fuenteSubMenu);
             item.setBorder(BorderFactory.createEmptyBorder(8, 15, 8, 15));
+            listaSubMenus.add(item);
 
-            // ==========================================
-            // ASIGNAR TECLAS RÁPIDAS (1 al 8) COMO MNEMÓNICOS
-            // ==========================================
             switch (i) {
                 case 0 ->
                     item.setMnemonic(java.awt.event.KeyEvent.VK_1);
@@ -672,48 +690,51 @@ public class FrmPrincipal extends javax.swing.JFrame {
             }
 
             final int indexAccion = i + 1;
-
-            // Acción individual para cada opción del menú
             item.addActionListener(e -> {
                 switch (indexAccion) {
-                    case 1 -> {
+                    case 1 ->
                         this.dispose();
-                    }
                     case 2 -> {
-
+                        DlgUsuariosSistema dlg = new DlgUsuariosSistema(this);
+                        dlg.setVisible(true);
                     }
                     case 3 -> {
-
+                        DlgAccesosFunciones dlg = new DlgAccesosFunciones(this);
+                        dlg.setVisible(true);
                     }
                     case 4 -> {
-
+                        DlgCamaraKey dlg = new DlgCamaraKey(this);
+                        dlg.setVisible(true);
                     }
                     case 5 -> {
-
+                        DlgFoliadorHojas dlg = new DlgFoliadorHojas(this);
+                        dlg.setVisible(true);
                     }
                     case 6 -> {
                         Window parentWindow = SwingUtilities.getWindowAncestor(escritorio);
                         FrmParametros dialog = new FrmParametros(parentWindow);
                         dialog.setVisible(true);
-
                     }
                     case 7 -> {
                         Window parentWindow = SwingUtilities.getWindowAncestor(escritorio);
                         DlgIndexacionDB dialog = new DlgIndexacionDB((Frame) parentWindow);
                         dialog.setVisible(true);
                     }
+                    case 8 -> {
+                        DlgLicenciaUso dlg = new DlgLicenciaUso(this);
+                        dlg.setVisible(true);
+                    }
                 }
             });
-
             menuArchivos.add(item);
         }
 
         // ==========================================
         // DISTRIBUCIÓN AUTOMÁTICA EN LA BARRA
         // ==========================================
-        menuBar.add(Box.createHorizontalStrut(15)); // Margen inicial izquierdo
+        menuBar.add(Box.createHorizontalStrut(15));
         menuBar.add(menuVentas);
-        menuBar.add(Box.createHorizontalGlue());    // Espacio flexible automático
+        menuBar.add(Box.createHorizontalGlue());
         menuBar.add(menuCompras);
         menuBar.add(Box.createHorizontalGlue());
         menuBar.add(menuBodegas);
@@ -722,25 +743,20 @@ public class FrmPrincipal extends javax.swing.JFrame {
         menuBar.add(Box.createHorizontalGlue());
         menuBar.add(menuArchivos);
 
-        menuBar.add(Box.createHorizontalStrut(30)); // Separación antes del título
+        menuBar.add(Box.createHorizontalStrut(30));
 
-        JLabel lblTitulo = new JLabel("");
+        lblTitulo = new JLabel("");
         lblTitulo.setFont(fuenteTitulo);
-        lblTitulo.setForeground(new Color(100, 180, 255)); // aqui se cambia el color del t´tulo
+        lblTitulo.setForeground(cColorTema);
 
-        // ==========================================
-        // CARGAR EL ICONO AL LADO IZQUIERDO
-        // ==========================================
-        try {
-            ImageIcon iconoNexum = new ImageIcon(getClass().getResource("/iconos/nexum-16.png"));
-            lblTitulo.setIcon(iconoNexum);
-            // Espacio entre el icono y la letra "N" de NEXUM (en píxeles)
-            lblTitulo.setIconTextGap(8);
-            // Posicionamos el texto a la derecha del icono
-            lblTitulo.setHorizontalTextPosition(JLabel.RIGHT);
-        } catch (Exception e) {
-            System.out.println("No se pudo cargar el icono de la barra: " + e.getMessage());
-        }
+//        try {
+//            ImageIcon iconoNexum = new ImageIcon(getClass().getResource("/iconos/nexum-16.png"));
+//            lblTitulo.setIcon(iconoNexum);
+//            lblTitulo.setIconTextGap(8);
+//            lblTitulo.setHorizontalTextPosition(JLabel.RIGHT);
+//        } catch (Exception e) {
+//            System.out.println("No se pudo cargar el icono de la barra: " + e.getMessage());
+//        }
 
         lblTitulo.setBorder(BorderFactory.createEmptyBorder(0, 10, 0, 15));
         menuBar.add(lblTitulo);
@@ -751,17 +767,10 @@ public class FrmPrincipal extends javax.swing.JFrame {
     }
 
     private void verificarRespaldoAutomatico() {
-        // Lo ejecutamos en un hilo aparte para no congelar la apertura del menú principal
         new Thread(() -> {
             if (utilidades.ValidadorRespaldoUtils.esNecesarioRespaldoAutomatico()) {
-                // Opcion A: Ejecutar el respaldo de forma silenciosa o avisar al usuario
                 SwingUtilities.invokeLater(() -> {
-                    // Opcional: Mostrar un aviso discreto en la barra de estado inferior
-                    // lblEstadoSistema.setText("Aviso: Han pasado 15 días. Se recomienda ejecutar respaldo (Opción 7).");
-
-                    // Opcion B: Lanzar el diálogo de indexación/respaldo automáticamente
                     DlgIndexacionDB dlgAuto = new DlgIndexacionDB((Frame) SwingUtilities.getWindowAncestor(this));
-                    // Si prefieres que sea completamente transparente, puedes adaptar la lógica del worker aquí.
                 });
             }
         }).start();
@@ -811,7 +820,7 @@ public class FrmPrincipal extends javax.swing.JFrame {
         pack();
     }// </editor-fold>//GEN-END:initComponents
 
-    /**
+   /**
      * @param args the command line arguments
      */
     public static void main(String[] args) {
@@ -819,9 +828,17 @@ public class FrmPrincipal extends javax.swing.JFrame {
         try {
             UIManager.setLookAndFeel(new FlatDarkLaf());
         } catch (UnsupportedLookAndFeelException ex) {
+            ex.printStackTrace();
         }
 
-        SwingUtilities.invokeLater(FrmPrincipal::new);
+        // Lanzar el Splash de Nexum y al finalizar abrir FrmPrincipal
+        SwingUtilities.invokeLater(() -> {
+            SplashNexum splash = new SplashNexum();
+            splash.iniciarCarga(() -> {
+                // Ventana principal que se abre al terminar los 10 segundos
+                new FrmPrincipal().setVisible(true);
+            });
+        });
     }
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JMenuBar jMenuBar1;

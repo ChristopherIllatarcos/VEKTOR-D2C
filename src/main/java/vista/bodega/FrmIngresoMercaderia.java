@@ -29,39 +29,187 @@ public class FrmIngresoMercaderia extends JInternalFrame {
 
     private JLabel lblTotalUnidades;
     private JLabel lblTotalMonto;
+    private JLabel lblAtajos;
 
-    // Paleta Púrpura Oscuro / Ciruela y Magenta
-    private final Color COLOR_FONDO = new Color(43, 11, 58);
-    private final Color COLOR_PANEL_TABLA = new Color(20, 5, 28);
-    private final Color COLOR_ZEBRA_1 = new Color(20, 5, 28);
-    private final Color COLOR_ZEBRA_2 = new Color(28, 8, 38);
-    private final Color COLOR_BORDE_MAGENTA = new Color(255, 119, 255);
-    private final Color COLOR_TEXTO_CLARO = new Color(240, 220, 255);
-    private final Color COLOR_BARRA_INF = new Color(75, 20, 100);
+    // Componentes estructurales para actualización dinámica de colores
+    private JPanel panelSuperior, panelInferiorContenedor, panelTotales, panelAtajos;
+    private JScrollPane scrollTabla;
+
+    // Variables de Colores Actuales del Tema
+    private Color cFondo, cPanelTabla, cZebra1, cZebra2, cBordeMagenta, cTextoClaro, cBarraInf, cSeleccion;
     private final Font FUENTE_CONSOLA = new Font("Consolas", Font.BOLD, 14);
+
+    // Sistema de Temas Ciclos [F6]
+    private final String[] listaTemas = {"Clipper Clásico", "Turquesa Pro", "Esmeralda Terminal","Púrpura Ciruela" , "Naranja Fuego"};
+    private int indiceTemaActual = 0; // Empieza en Púrpura Ciruela por defecto
 
     public FrmIngresoMercaderia() {
         super("3.- INGRESO DE MERCADERÍA", false, false, false, false);
+
+        // Aplicar tema inicial
+        aplicarTema(listaTemas[indiceTemaActual]);
+
         initComponentsManual();
         cargarFechaDesdeParametros();
         ejecutarBusquedaInicial();
+         // Asignar el icono de Nexum directamente a este JInternalFrame
+        try {
+            setFrameIcon(new javax.swing.ImageIcon(getClass().getResource("/vektor/cubo-azul-16.png")));
+        } catch (Exception e) {
+            System.out.println("No se pudo cargar el icono interno: " + e.getMessage());
+        }
+    }
+
+    // ==========================================
+    // SISTEMA DE CAMBIO DE TEMAS [F6]
+    // ==========================================
+    private void aplicarTema(String nombreTema) {
+        switch (nombreTema) {
+            case "Turquesa Pro":
+                cFondo = new Color(5, 15, 20);
+                cPanelTabla = new Color(5, 20, 25);
+                cZebra1 = new Color(5, 20, 25);
+                cZebra2 = new Color(10, 35, 45);
+                cBordeMagenta = new Color(0, 245, 255);
+                cTextoClaro = new Color(220, 255, 255);
+                cBarraInf = new Color(0, 60, 70);
+                cSeleccion = new Color(0, 120, 140);
+                break;
+            case "Esmeralda Terminal":
+                cFondo = new Color(5, 20, 15);
+                cPanelTabla = new Color(5, 25, 18);
+                cZebra1 = new Color(5, 25, 18);
+                cZebra2 = new Color(12, 45, 30);
+                cBordeMagenta = new Color(0, 255, 128);
+                cTextoClaro = new Color(220, 255, 240);
+                cBarraInf = new Color(0, 60, 35);
+                cSeleccion = new Color(0, 140, 80);
+                break;
+            case "Clipper Clásico":
+                cFondo = Color.BLACK;
+                cPanelTabla = new Color(0, 0, 120);
+                cZebra1 = new Color(0, 0, 120);
+                cZebra2 = new Color(0, 0, 168);
+                cBordeMagenta = new Color(255, 255, 85);
+                cTextoClaro = Color.WHITE;
+                cBarraInf = new Color(168, 0, 0);
+                cSeleccion = new Color(0, 168, 168);
+                break;
+            case "Naranja Fuego":
+                cFondo = new Color(15, 10, 8);
+                cPanelTabla = new Color(25, 12, 10);
+                cZebra1 = new Color(25, 12, 10);
+                cZebra2 = new Color(50, 22, 15);
+                cBordeMagenta = new Color(245, 73, 39);
+                cTextoClaro = new Color(255, 235, 225);
+                cBarraInf = new Color(60, 20, 12);
+                cSeleccion = new Color(130, 42, 22);
+                break;
+            case "Púrpura Ciruela":
+            default:
+                cFondo = new Color(43, 11, 58);
+                cPanelTabla = new Color(20, 5, 28);
+                cZebra1 = new Color(20, 5, 28);
+                cZebra2 = new Color(28, 8, 38);
+                cBordeMagenta = new Color(255, 119, 255);
+                cTextoClaro = new Color(240, 220, 255);
+                cBarraInf = new Color(75, 20, 100);
+                cSeleccion = new Color(110, 30, 145);
+                break;
+        }
+    }
+
+    private void ciclarSiguienteTema() {
+        indiceTemaActual = (indiceTemaActual + 1) % listaTemas.length;
+        String nuevoTema = listaTemas[indiceTemaActual];
+        aplicarTema(nuevoTema);
+
+        getContentPane().setBackground(cFondo);
+
+        if (panelSuperior != null) {
+            panelSuperior.setBackground(cFondo);
+            panelSuperior.setBorder(BorderFactory.createTitledBorder(
+                    new LineBorder(cBordeMagenta, 2),
+                    " INGRESO DE MERCADERÍA - FILTROS DE CONSULTA ",
+                    0, 0, FUENTE_CONSOLA, cBordeMagenta
+            ));
+        }
+
+        if (tablaIngresos != null) {
+            tablaIngresos.setBackground(cPanelTabla);
+            tablaIngresos.setForeground(cTextoClaro);
+            tablaIngresos.setGridColor(cBordeMagenta);
+            tablaIngresos.setSelectionBackground(cBarraInf);
+            tablaIngresos.setSelectionForeground(Color.YELLOW);
+            tablaIngresos.getTableHeader().setBackground(cFondo);
+            tablaIngresos.getTableHeader().setForeground(cBordeMagenta);
+            tablaIngresos.repaint();
+        }
+
+        if (scrollTabla != null) {
+            scrollTabla.getViewport().setBackground(cPanelTabla);
+            scrollTabla.setBorder(new LineBorder(cBordeMagenta, 1));
+        }
+
+        if (panelInferiorContenedor != null) {
+            panelInferiorContenedor.setBackground(cFondo);
+        }
+
+        if (panelTotales != null) {
+            panelTotales.setBackground(cFondo);
+            panelTotales.setBorder(BorderFactory.createMatteBorder(1, 0, 1, 0, cBordeMagenta));
+        }
+
+        if (lblTotalMonto != null) {
+            lblTotalMonto.setForeground(cBordeMagenta);
+        }
+
+        if (panelAtajos != null) {
+            panelAtajos.setBackground(cBarraInf);
+            panelAtajos.setBorder(new LineBorder(cBordeMagenta, 1));
+        }
+
+        estilizarCampoDinamico(txtFechaInicial);
+        estilizarCampoDinamico(txtFechaFinal);
+        estilizarCampoDinamico(txtBuscarProducto);
+
+        actualizarTextoAtajos();
+
+        revalidate();
+        repaint();
+    }
+
+    private void estilizarCampoDinamico(JTextField txt) {
+        if (txt != null) {
+            txt.setBackground(cPanelTabla);
+            txt.setForeground(cBordeMagenta);
+            txt.setCaretColor(cBordeMagenta);
+            txt.setBorder(new LineBorder(cBordeMagenta, 1));
+        }
+    }
+
+    private void actualizarTextoAtajos() {
+        String temaActual = listaTemas[indiceTemaActual];
+        if (lblAtajos != null) {
+            lblAtajos.setText("(Ins) Nuevo | (F2) Editar | (Supr) Eliminar | (F5) Refrescar | (F6) Tema: " + temaActual + " | (Esc) Salir");
+        }
     }
 
     private void initComponentsManual() {
         setSize(1100, 680);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
-        getContentPane().setBackground(COLOR_FONDO);
+        getContentPane().setBackground(cFondo);
         setLayout(new BorderLayout(0, 6));
 
         // ==========================================
         // 1. PANEL SUPERIOR (Filtros)
         // ==========================================
-        JPanel panelSuperior = new JPanel(new BorderLayout());
-        panelSuperior.setBackground(COLOR_FONDO);
+        panelSuperior = new JPanel(new BorderLayout());
+        panelSuperior.setBackground(cFondo);
         panelSuperior.setBorder(BorderFactory.createTitledBorder(
-                new LineBorder(COLOR_BORDE_MAGENTA, 2),
+                new LineBorder(cBordeMagenta, 2),
                 " INGRESO DE MERCADERÍA - FILTROS DE CONSULTA ",
-                0, 0, FUENTE_CONSOLA, COLOR_BORDE_MAGENTA
+                0, 0, FUENTE_CONSOLA, cBordeMagenta
         ));
 
         JPanel panelCampos = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 10));
@@ -106,16 +254,16 @@ public class FrmIngresoMercaderia extends JInternalFrame {
 
         tablaIngresos = new JTable(modeloTabla);
         tablaIngresos.setFont(FUENTE_CONSOLA);
-        tablaIngresos.setBackground(COLOR_PANEL_TABLA);
-        tablaIngresos.setForeground(Color.WHITE);
-        tablaIngresos.setGridColor(new Color(60, 20, 80));
+        tablaIngresos.setBackground(cPanelTabla);
+        tablaIngresos.setForeground(cTextoClaro);
+        tablaIngresos.setGridColor(cBordeMagenta);
         tablaIngresos.setRowHeight(28);
-        tablaIngresos.setSelectionBackground(COLOR_BARRA_INF);
+        tablaIngresos.setSelectionBackground(cBarraInf);
         tablaIngresos.setSelectionForeground(Color.YELLOW);
 
         tablaIngresos.getTableHeader().setFont(FUENTE_CONSOLA);
-        tablaIngresos.getTableHeader().setBackground(COLOR_FONDO);
-        tablaIngresos.getTableHeader().setForeground(COLOR_BORDE_MAGENTA);
+        tablaIngresos.getTableHeader().setBackground(cFondo);
+        tablaIngresos.getTableHeader().setForeground(cBordeMagenta);
 
         DefaultTableCellRenderer renderizadorCebra = new DefaultTableCellRenderer() {
             @Override
@@ -123,15 +271,15 @@ public class FrmIngresoMercaderia extends JInternalFrame {
                 Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
 
                 if (isSelected) {
-                    c.setBackground(COLOR_BARRA_INF);
+                    c.setBackground(cBarraInf);
                     c.setForeground(Color.YELLOW);
                 } else {
                     if (row % 2 == 0) {
-                        c.setBackground(COLOR_ZEBRA_1);
+                        c.setBackground(cZebra1);
                     } else {
-                        c.setBackground(COLOR_ZEBRA_2);
+                        c.setBackground(cZebra2);
                     }
-                    c.setForeground(Color.WHITE);
+                    c.setForeground(cTextoClaro);
                 }
 
                 if (column >= 3) {
@@ -155,36 +303,37 @@ public class FrmIngresoMercaderia extends JInternalFrame {
         tablaIngresos.getColumnModel().getColumn(4).setPreferredWidth(130);
         tablaIngresos.getColumnModel().getColumn(5).setPreferredWidth(140);
 
-        JScrollPane scrollTabla = new JScrollPane(tablaIngresos);
-        scrollTabla.getViewport().setBackground(COLOR_PANEL_TABLA);
-        scrollTabla.setBorder(new LineBorder(COLOR_BORDE_MAGENTA, 1));
+        scrollTabla = new JScrollPane(tablaIngresos);
+        scrollTabla.getViewport().setBackground(cPanelTabla);
+        scrollTabla.setBorder(new LineBorder(cBordeMagenta, 1));
         add(scrollTabla, BorderLayout.CENTER);
 
         // ==========================================
         // 3. PANEL INFERIOR (Totales + Atajos)
         // ==========================================
-        JPanel panelInferiorContenedor = new JPanel(new BorderLayout());
-        panelInferiorContenedor.setBackground(COLOR_FONDO);
+        panelInferiorContenedor = new JPanel(new BorderLayout());
+        panelInferiorContenedor.setBackground(cFondo);
 
-        JPanel panelTotales = new JPanel(new FlowLayout(FlowLayout.RIGHT, 25, 6));
-        panelTotales.setBackground(COLOR_FONDO);
-        panelTotales.setBorder(BorderFactory.createMatteBorder(1, 0, 1, 0, COLOR_BORDE_MAGENTA));
+        panelTotales = new JPanel(new FlowLayout(FlowLayout.RIGHT, 25, 6));
+        panelTotales.setBackground(cFondo);
+        panelTotales.setBorder(BorderFactory.createMatteBorder(1, 0, 1, 0, cBordeMagenta));
 
         lblTotalUnidades = crearEtiqueta("TOTAL UNIDADES: 0");
         lblTotalMonto = new JLabel("TOTAL INGRESOS: $0");
         lblTotalMonto.setFont(new Font("Consolas", Font.BOLD, 16));
-        lblTotalMonto.setForeground(COLOR_BORDE_MAGENTA);
+        lblTotalMonto.setForeground(cBordeMagenta);
 
         panelTotales.add(lblTotalUnidades);
         panelTotales.add(lblTotalMonto);
 
-        JPanel panelAtajos = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 6));
-        panelAtajos.setBackground(COLOR_BARRA_INF);
-        panelAtajos.setBorder(new LineBorder(COLOR_BORDE_MAGENTA, 1));
+        panelAtajos = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 6));
+        panelAtajos.setBackground(cBarraInf);
+        panelAtajos.setBorder(new LineBorder(cBordeMagenta, 1));
 
-        JLabel lblAtajos = new JLabel("(Ins) Nuevo    |    (F2) Editar    |    (Supr) Eliminar    |    (F5) Refrescar    |    (Esc) Salir");
+        lblAtajos = new JLabel();
         lblAtajos.setFont(FUENTE_CONSOLA);
-        lblAtajos.setForeground(COLOR_TEXTO_CLARO);
+        lblAtajos.setForeground(cTextoClaro);
+        actualizarTextoAtajos();
         panelAtajos.add(lblAtajos);
 
         panelInferiorContenedor.add(panelTotales, BorderLayout.NORTH);
@@ -197,29 +346,29 @@ public class FrmIngresoMercaderia extends JInternalFrame {
     private JLabel crearEtiqueta(String texto) {
         JLabel lbl = new JLabel(texto);
         lbl.setFont(FUENTE_CONSOLA);
-        lbl.setForeground(COLOR_TEXTO_CLARO);
+        lbl.setForeground(cTextoClaro);
         return lbl;
     }
 
     private JTextField crearCampoTexto(int columnas) {
         JTextField txt = new JTextField(columnas);
         txt.setFont(FUENTE_CONSOLA);
-        txt.setBackground(COLOR_PANEL_TABLA);
-        txt.setForeground(COLOR_BORDE_MAGENTA);
-        txt.setCaretColor(COLOR_BORDE_MAGENTA);
-        txt.setBorder(new LineBorder(COLOR_BORDE_MAGENTA, 1));
+        txt.setBackground(cPanelTabla);
+        txt.setForeground(cBordeMagenta);
+        txt.setCaretColor(cBordeMagenta);
+        txt.setBorder(new LineBorder(cBordeMagenta, 1));
 
         txt.addFocusListener(new FocusAdapter() {
             @Override
             public void focusGained(FocusEvent e) {
-                txt.setBackground(new Color(45, 12, 60));
+                txt.setBackground(new Color(Math.min(255, cPanelTabla.getRed() + 30), Math.min(255, cPanelTabla.getGreen() + 30), Math.min(255, cPanelTabla.getBlue() + 30)));
                 txt.setBorder(new LineBorder(Color.YELLOW, 2));
             }
 
             @Override
             public void focusLost(FocusEvent e) {
-                txt.setBackground(COLOR_PANEL_TABLA);
-                txt.setBorder(new LineBorder(COLOR_BORDE_MAGENTA, 1));
+                txt.setBackground(cPanelTabla);
+                txt.setBorder(new LineBorder(cBordeMagenta, 1));
             }
         });
 
@@ -301,19 +450,18 @@ public class FrmIngresoMercaderia extends JInternalFrame {
 
         final String barraOriginal = barraSel;
 
-        // JDialog con la misma estética Púrpura / Magenta unificada
         JDialog dialogo = new JDialog(JOptionPane.getFrameForComponent(this), esEdicion ? "EDITAR INGRESO DE MERCADERÍA" : "NUEVO INGRESO DE MERCADERÍA", true);
         dialogo.setSize(480, 360);
         dialogo.setLocationRelativeTo(this);
-        dialogo.getContentPane().setBackground(COLOR_FONDO);
+        dialogo.getContentPane().setBackground(cFondo);
         dialogo.setLayout(new BorderLayout());
 
         JPanel panelCentro = new JPanel(new GridBagLayout());
-        panelCentro.setBackground(COLOR_FONDO);
+        panelCentro.setBackground(cFondo);
         panelCentro.setBorder(BorderFactory.createTitledBorder(
-                new LineBorder(COLOR_BORDE_MAGENTA, 2),
+                new LineBorder(cBordeMagenta, 2),
                 esEdicion ? " MODIFICAR DATOS DEL REGISTRO " : " REGISTRAR NUEVA ENTRADA ",
-                0, 0, FUENTE_CONSOLA, COLOR_BORDE_MAGENTA
+                0, 0, FUENTE_CONSOLA, cBordeMagenta
         ));
 
         GridBagConstraints gbc = new GridBagConstraints();
@@ -363,10 +511,9 @@ public class FrmIngresoMercaderia extends JInternalFrame {
 
         dialogo.add(panelCentro, BorderLayout.CENTER);
 
-        // Panel de Botones inferior en el diálogo
         JPanel panelBotones = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 10));
-        panelBotones.setBackground(COLOR_BARRA_INF);
-        panelBotones.setBorder(new LineBorder(COLOR_BORDE_MAGENTA, 1));
+        panelBotones.setBackground(cBarraInf);
+        panelBotones.setBorder(new LineBorder(cBordeMagenta, 1));
 
         JButton btnGuardar = new JButton("Guardar [F3]");
         btnGuardar.setFont(FUENTE_CONSOLA);
@@ -422,19 +569,18 @@ public class FrmIngresoMercaderia extends JInternalFrame {
         String barra = (String) modeloTabla.getValueAt(fila, 1);
         String nombre = (String) modeloTabla.getValueAt(fila, 2);
 
-        // JDialog de confirmación personalizado con la estética Púrpura / Magenta
         JDialog dialogo = new JDialog(JOptionPane.getFrameForComponent(this), "CONFIRMAR ELIMINACIÓN", true);
         dialogo.setSize(480, 220);
         dialogo.setLocationRelativeTo(this);
-        dialogo.getContentPane().setBackground(COLOR_FONDO);
+        dialogo.getContentPane().setBackground(cFondo);
         dialogo.setLayout(new BorderLayout());
 
         JPanel panelCentro = new JPanel(new GridBagLayout());
-        panelCentro.setBackground(COLOR_FONDO);
+        panelCentro.setBackground(cFondo);
         panelCentro.setBorder(BorderFactory.createTitledBorder(
-                new LineBorder(COLOR_BORDE_MAGENTA, 2),
+                new LineBorder(cBordeMagenta, 2),
                 " ADVERTENCIA DE ELIMINACIÓN ",
-                0, 0, FUENTE_CONSOLA, COLOR_BORDE_MAGENTA
+                0, 0, FUENTE_CONSOLA, cBordeMagenta
         ));
 
         GridBagConstraints gbc = new GridBagConstraints();
@@ -450,17 +596,16 @@ public class FrmIngresoMercaderia extends JInternalFrame {
 
         gbc.gridy = 1;
         gbc.insets = new Insets(5, 15, 10, 15);
-        JLabel lblDetalle = new JLabel("<html><center>" + nombre + "<br><font color='#FF77FF'>[Barra: " + barra + "]</font></center></html>");
+        JLabel lblDetalle = new JLabel("<html><center>" + nombre + "<br><font color='" + colorToHex(cBordeMagenta) + "'>[Barra: " + barra + "]</font></center></html>");
         lblDetalle.setFont(new Font("Consolas", Font.BOLD, 13));
-        lblDetalle.setForeground(COLOR_TEXTO_CLARO);
+        lblDetalle.setForeground(cTextoClaro);
         panelCentro.add(lblDetalle, gbc);
 
         dialogo.add(panelCentro, BorderLayout.CENTER);
 
-        // Panel inferior de botones con la barra de atajos
         JPanel panelBotones = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 10));
-        panelBotones.setBackground(COLOR_BARRA_INF);
-        panelBotones.setBorder(new LineBorder(COLOR_BORDE_MAGENTA, 1));
+        panelBotones.setBackground(cBarraInf);
+        panelBotones.setBorder(new LineBorder(cBordeMagenta, 1));
 
         JButton btnSi = new JButton("Sí [Enter]");
         btnSi.setFont(FUENTE_CONSOLA);
@@ -485,18 +630,20 @@ public class FrmIngresoMercaderia extends JInternalFrame {
         btnSi.addActionListener(e -> accionEliminar.run());
         btnNo.addActionListener(e -> dialogo.dispose());
 
-        // Atajos de teclado dentro del diálogo: [Enter] para confirmar, [Esc] para cancelar
         dialogo.getRootPane().registerKeyboardAction(e -> dialogo.dispose(), KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), JComponent.WHEN_IN_FOCUSED_WINDOW);
         dialogo.getRootPane().registerKeyboardAction(e -> accionEliminar.run(), KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), JComponent.WHEN_IN_FOCUSED_WINDOW);
 
         dialogo.setVisible(true);
     }
 
+    private String colorToHex(Color color) {
+        return String.format("#%02x%02x%02x", color.getRed(), color.getGreen(), color.getBlue());
+    }
+
     private void configurarAtajos() {
         JRootPane root = getRootPane();
         int cond = JComponent.WHEN_IN_FOCUSED_WINDOW;
 
-        // [ESC] Cerrar ventana
         root.getInputMap(cond).put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), "cerrar");
         root.getActionMap().put("cerrar", new AbstractAction() {
             @Override
@@ -518,7 +665,15 @@ public class FrmIngresoMercaderia extends JInternalFrame {
             }
         });
 
-        // [INSERT] Nuevo Registro
+        // [F6] Ciclar Tema en tiempo real
+        root.getInputMap(cond).put(KeyStroke.getKeyStroke(KeyEvent.VK_F6, 0), "ciclar_tema");
+        root.getActionMap().put("ciclar_tema", new AbstractAction() {
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                ciclarSiguienteTema();
+            }
+        });
+
         root.getInputMap(cond).put(KeyStroke.getKeyStroke(KeyEvent.VK_INSERT, 0), "nuevo");
         root.getActionMap().put("nuevo", new AbstractAction() {
             @Override
@@ -527,7 +682,6 @@ public class FrmIngresoMercaderia extends JInternalFrame {
             }
         });
 
-        // [F2] Editar Registro (Blindado tanto a nivel de ventana como de tabla)
         root.getInputMap(cond).put(KeyStroke.getKeyStroke(KeyEvent.VK_F2, 0), "editar");
         tablaIngresos.getInputMap(JComponent.WHEN_FOCUSED).put(KeyStroke.getKeyStroke(KeyEvent.VK_F2, 0), "editar");
 
@@ -541,7 +695,6 @@ public class FrmIngresoMercaderia extends JInternalFrame {
         root.getActionMap().put("editar", accionEditar);
         tablaIngresos.getActionMap().put("editar", accionEditar);
 
-        // [SUPR] Eliminar Registro
         root.getInputMap(cond).put(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0), "eliminar");
         root.getActionMap().put("eliminar", new AbstractAction() {
             @Override

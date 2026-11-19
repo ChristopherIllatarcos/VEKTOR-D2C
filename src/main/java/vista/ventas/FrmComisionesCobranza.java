@@ -2,9 +2,16 @@ package vista.ventas;
 
 import dao.ComisionDAO;
 import modelo.ComisionVendedorDTO;
+import org.jfree.chart.ChartFactory;
+import org.jfree.chart.ChartPanel;
+import org.jfree.chart.JFreeChart;
+import org.jfree.chart.plot.CategoryPlot;
+import org.jfree.chart.renderer.category.BarRenderer;
+import org.jfree.data.category.DefaultCategoryDataset;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
+import javax.swing.border.LineBorder;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableColumnModel;
@@ -25,62 +32,201 @@ public class FrmComisionesCobranza extends JInternalFrame {
     private JTable tablaReporte;
     private DefaultTableModel modeloTabla;
     private JLabel lblVentaTotalGlobal;
+    private JLabel lblAtajos;
     private JButton btnConsultar;
+    private JButton btnGrafico;
     private ComisionDAO comisionDAO;
     private List<ComisionVendedorDTO> listaUltimaConsulta = new ArrayList<>();
 
+    // Componentes principales de la UI que cambiarán de color dinámicamente
+    private JPanel panelPrincipal, panelNorte, panelComandos;
+    private JScrollPane scrollPane;
+
+    // Variables de Colores Actuales del Tema
+    private Color cFondoNegro, cPanelNorte, cEncabezadoTabla, cAcento, cTextoClaro, cSeleccion, cBarraSur;
+    private final Font FUENTE_CONSOLA = new Font("Courier New", Font.BOLD, 12);
+
+    // Sistema de Temas Ciclos [F5]
+    private final String[] listaTemas = {"Clipper Clásico", "Morado Neón", "Turquesa Pro", "Esmeralda Terminal", "Naranja Fuego"};
+    private int indiceTemaActual = 0; // Empieza en Naranja Fuego
+
     public FrmComisionesCobranza() {
-        super("COMISIONES X COBRANZA", true, false, false, false);
+        super("8.- COMISIONES X COBRANZA", true, false, false, false);
         this.comisionDAO = new ComisionDAO();
 
+        // Aplicar tema inicial
+        aplicarTema(listaTemas[indiceTemaActual]);
+
         initComponents();
+        // Asignar el icono Nexum a la ventana interna (JInternalFrame)
+        try {
+            setFrameIcon(new javax.swing.ImageIcon(getClass().getResource("/vektor/cubo-azul-16.png")));
+        } catch (Exception e) {
+            System.out.println("No se pudo cargar el icono interno: " + e.getMessage());
+        }
         configurarAtajosTeclado();
 
-        setSize(980, 620);
+        setSize(1020, 620);
         setVisible(true);
+        SwingUtilities.invokeLater(() -> {
+            utilidades.IconoUtils.aplicarIcono(this);
+        });
+
     }
 
-    private void initComponents() {
-        JPanel panelPrincipal = new JPanel(new BorderLayout());
-        panelPrincipal.setBackground(new Color(0, 0, 168)); // Azul Clipper
-        panelPrincipal.setBorder(BorderFactory.createLineBorder(new Color(85, 255, 255), 2));
+    // ==========================================
+    // SISTEMA DE CAMBIO DE TEMAS
+    // ==========================================
+    private void aplicarTema(String nombreTema) {
+        switch (nombreTema) {
+            case "Morado Neón":
+                cFondoNegro = new Color(10, 10, 15);
+                cPanelNorte = new Color(45, 10, 55);
+                cEncabezadoTabla = new Color(90, 10, 120);
+                cAcento = new Color(255, 110, 220);
+                cTextoClaro = new Color(255, 230, 255);
+                cSeleccion = new Color(140, 20, 160);
+                cBarraSur = new Color(130, 0, 70);
+                break;
+            case "Turquesa Pro":
+                cFondoNegro = new Color(5, 15, 20);
+                cPanelNorte = new Color(10, 40, 50);
+                cEncabezadoTabla = new Color(0, 80, 95);
+                cAcento = new Color(0, 245, 255);
+                cTextoClaro = new Color(220, 255, 255);
+                cSeleccion = new Color(0, 120, 140);
+                cBarraSur = new Color(0, 60, 70);
+                break;
+            case "Esmeralda Terminal":
+                cFondoNegro = new Color(5, 20, 15);
+                cPanelNorte = new Color(10, 45, 30);
+                cEncabezadoTabla = new Color(15, 80, 50);
+                cAcento = new Color(0, 255, 128);
+                cTextoClaro = new Color(220, 255, 240);
+                cSeleccion = new Color(0, 140, 80);
+                cBarraSur = new Color(0, 60, 35);
+                break;
+            case "Clipper Clásico":
+                cFondoNegro = Color.BLACK;
+                cPanelNorte = new Color(0, 0, 168);
+                cEncabezadoTabla = new Color(0, 0, 168);
+                cAcento = new Color(255, 255, 85);
+                cTextoClaro = Color.WHITE;
+                cSeleccion = new Color(0, 168, 168);
+                cBarraSur = new Color(168, 0, 0);
+                break;
+            case "Naranja Fuego":
+            default:
+                cFondoNegro = new Color(15, 10, 8);
+                cPanelNorte = new Color(40, 18, 12);
+                cEncabezadoTabla = new Color(80, 28, 18);
+                cAcento = new Color(245, 73, 39);
+                cTextoClaro = new Color(255, 235, 225);
+                cSeleccion = new Color(130, 42, 22);
+                cBarraSur = new Color(60, 20, 12);
+                break;
+        }
+    }
 
-        // ==========================================
-        // 1. ZONA SUPERIOR (Fechas dinámicas y Total Global)
-        // ==========================================
-        JPanel panelNorte = new JPanel(new BorderLayout());
-        panelNorte.setBackground(new Color(0, 0, 168));
+    private void ciclarSiguienteTema() {
+        indiceTemaActual = (indiceTemaActual + 1) % listaTemas.length;
+        String nuevoTema = listaTemas[indiceTemaActual];
+        aplicarTema(nuevoTema);
+
+        // Refrescar componentes visuales
+        panelPrincipal.setBackground(cFondoNegro);
+        panelPrincipal.setBorder(BorderFactory.createLineBorder(cAcento, 2));
+
+        panelNorte.setBackground(cPanelNorte);
         panelNorte.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createMatteBorder(0, 0, 2, 0, new Color(85, 255, 255)),
+                BorderFactory.createMatteBorder(0, 0, 2, 0, cAcento),
                 new EmptyBorder(10, 15, 10, 15)
         ));
 
-        JPanel panelFiltros = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 0));
+        lblVentaTotalGlobal.setForeground(cAcento);
+
+        if (tablaReporte != null) {
+            tablaReporte.setBackground(cFondoNegro);
+            tablaReporte.setForeground(cTextoClaro);
+            tablaReporte.setSelectionBackground(cSeleccion);
+            tablaReporte.getTableHeader().setBackground(cEncabezadoTabla);
+            tablaReporte.getTableHeader().setForeground(cAcento);
+            tablaReporte.getTableHeader().setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, cAcento));
+            tablaReporte.repaint();
+        }
+
+        if (scrollPane != null) {
+            scrollPane.getViewport().setBackground(cFondoNegro);
+        }
+
+        panelComandos.setBackground(cBarraSur);
+        panelComandos.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, cAcento));
+
+        estilizarCampoTexto(txtFechaInicio);
+        estilizarCampoTexto(txtFechaFin);
+        estilizarBotonConsola(btnConsultar, cEncabezadoTabla);
+        estilizarBotonConsola(btnGrafico, cEncabezadoTabla);
+
+        // Actualizar texto de atajos en la barra inferior
+        actualizarTextoAtajos();
+
+        panelPrincipal.revalidate();
+        panelPrincipal.repaint();
+    }
+
+    private void actualizarTextoAtajos() {
+        String temaActual = listaTemas[indiceTemaActual];
+        lblAtajos.setText("<html><b style='color:#FFFF55;'>(Esc)</b> <span style='color:FFFFFF;'>Cerrar</span> &nbsp;&nbsp;|&nbsp;&nbsp; "
+                + "<b style='color:#FFFF55;'>(Enter)</b> <span style='color:FFFFFF;'>Consultar</span> &nbsp;&nbsp;|&nbsp;&nbsp; "
+                + "<b style='color:#FFFF55;'>(F3)</b> <span style='color:FFFFFF;'>Gráfico</span> &nbsp;&nbsp;|&nbsp;&nbsp; "
+                + "<b style='color:#FFFF55;'>(F5)</b> <span style='color:#00FFCC;'>Tema: " + temaActual + "</span></html>");
+    }
+
+    private void initComponents() {
+        panelPrincipal = new JPanel(new BorderLayout());
+        panelPrincipal.setBackground(cFondoNegro);
+        panelPrincipal.setBorder(BorderFactory.createLineBorder(cAcento, 2));
+
+        // ==========================================
+        // 1. ZONA SUPERIOR (Filtros Limpios)
+        // ==========================================
+        panelNorte = new JPanel(new BorderLayout());
+        panelNorte.setBackground(cPanelNorte);
+        panelNorte.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 0, 2, 0, cAcento),
+                new EmptyBorder(10, 15, 10, 15)
+        ));
+
+        JPanel panelFiltros = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 0));
         panelFiltros.setOpaque(false);
 
         JLabel lblTitulo = new JLabel("COBRANZA");
         lblTitulo.setFont(new Font("Monospaced", Font.BOLD, 15));
-        lblTitulo.setForeground(new Color(255, 255, 85));
+        lblTitulo.setForeground(cAcento);
 
         JLabel lblFI = new JLabel("DESDE:");
-        lblFI.setFont(new Font("Monospaced", Font.BOLD, 12));
-        lblFI.setForeground(new Color(85, 255, 255));
+        lblFI.setFont(FUENTE_CONSOLA);
+        lblFI.setForeground(cTextoClaro);
 
         String fechaHoy = LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
 
-        txtFechaInicio = new JTextField(fechaHoy, 10);
+        txtFechaInicio = new JTextField(fechaHoy, 12);
         estilizarCampoTexto(txtFechaInicio);
 
         JLabel lblFF = new JLabel("HASTA:");
-        lblFF.setFont(new Font("Monospaced", Font.BOLD, 12));
-        lblFF.setForeground(new Color(85, 255, 255));
+        lblFF.setFont(FUENTE_CONSOLA);
+        lblFF.setForeground(cTextoClaro);
 
-        txtFechaFin = new JTextField(fechaHoy, 10);
+        txtFechaFin = new JTextField(fechaHoy, 12);
         estilizarCampoTexto(txtFechaFin);
 
         btnConsultar = new JButton("Consultar [Enter]");
-        estilizarBotonConsola(btnConsultar, new Color(0, 168, 168));
+        estilizarBotonConsola(btnConsultar, cEncabezadoTabla);
         btnConsultar.addActionListener(e -> cargarReporteCobranza());
+
+        btnGrafico = new JButton("Ver Gráfico [F3]");
+        estilizarBotonConsola(btnGrafico, cEncabezadoTabla);
+        btnGrafico.addActionListener(e -> abrirVentanaGrafico());
 
         panelFiltros.add(lblTitulo);
         panelFiltros.add(lblFI);
@@ -88,18 +234,19 @@ public class FrmComisionesCobranza extends JInternalFrame {
         panelFiltros.add(lblFF);
         panelFiltros.add(txtFechaFin);
         panelFiltros.add(btnConsultar);
+        panelFiltros.add(btnGrafico);
 
         panelNorte.add(panelFiltros, BorderLayout.WEST);
 
         lblVentaTotalGlobal = new JLabel("TOTAL: $ 0");
         lblVentaTotalGlobal.setFont(new Font("Monospaced", Font.BOLD, 14));
-        lblVentaTotalGlobal.setForeground(new Color(255, 255, 85));
+        lblVentaTotalGlobal.setForeground(cAcento);
         panelNorte.add(lblVentaTotalGlobal, BorderLayout.EAST);
 
         panelPrincipal.add(panelNorte, BorderLayout.NORTH);
 
         // ==========================================
-        // 2. TABLA CENTRAL (Reporte Tabular)
+        // 2. TABLA CENTRAL CON RAYAS TRANSPARENTES
         // ==========================================
         String[] columnas = {"N° Ventas", "NOMBRE DEL VENDEDOR", "VENTA TOTAL", "COMISION", "PARTICIPACION"};
         modeloTabla = new DefaultTableModel(columnas, 0) {
@@ -112,61 +259,75 @@ public class FrmComisionesCobranza extends JInternalFrame {
         tablaReporte = new JTable(modeloTabla);
         tablaReporte.setFont(new Font("Monospaced", Font.BOLD, 13));
         tablaReporte.setRowHeight(22);
-        tablaReporte.setBackground(new Color(0, 0, 168));
-        tablaReporte.setForeground(Color.WHITE);
-        tablaReporte.setSelectionBackground(new Color(0, 168, 168));
+        tablaReporte.setBackground(cFondoNegro);
+        tablaReporte.setForeground(cTextoClaro);
+        tablaReporte.setSelectionBackground(cSeleccion);
         tablaReporte.setSelectionForeground(Color.WHITE);
         tablaReporte.setShowGrid(false);
         tablaReporte.setIntercellSpacing(new Dimension(0, 0));
 
         tablaReporte.getTableHeader().setFont(new Font("Monospaced", Font.BOLD, 13));
-        tablaReporte.getTableHeader().setBackground(new Color(0, 0, 168));
-        tablaReporte.getTableHeader().setForeground(new Color(255, 255, 85));
-        tablaReporte.getTableHeader().setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, new Color(85, 255, 255)));
+        tablaReporte.getTableHeader().setBackground(cEncabezadoTabla);
+        tablaReporte.getTableHeader().setForeground(cAcento);
+        tablaReporte.getTableHeader().setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, cAcento));
 
-        DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
-        centerRenderer.setHorizontalAlignment(JLabel.CENTER);
-        centerRenderer.setBackground(new Color(0, 0, 168));
-        centerRenderer.setForeground(Color.WHITE);
+        DefaultTableCellRenderer rendererRayas = new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+                Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+                if (!isSelected) {
+                    if (row % 2 == 0) {
+                        c.setBackground(cFondoNegro);
+                    } else {
+                        c.setBackground(new Color(
+                                Math.min(255, cFondoNegro.getRed() + 15),
+                                Math.min(255, cFondoNegro.getGreen() + 15),
+                                Math.min(255, cFondoNegro.getBlue() + 15)
+                        ));
+                    }
+                    c.setForeground(cTextoClaro);
+                } else {
+                    c.setBackground(cSeleccion);
+                    c.setForeground(Color.WHITE);
+                }
 
-        DefaultTableCellRenderer rightRenderer = new DefaultTableCellRenderer();
-        rightRenderer.setHorizontalAlignment(JLabel.RIGHT);
-        rightRenderer.setBackground(new Color(0, 0, 168));
-        rightRenderer.setForeground(Color.WHITE);
+                if (column == 2 || column == 3 || column == 4) {
+                    setHorizontalAlignment(JLabel.RIGHT);
+                } else if (column == 0) {
+                    setHorizontalAlignment(JLabel.CENTER);
+                } else {
+                    setHorizontalAlignment(JLabel.LEFT);
+                }
+                return c;
+            }
+        };
 
-        DefaultTableCellRenderer leftRenderer = new DefaultTableCellRenderer();
-        leftRenderer.setHorizontalAlignment(JLabel.LEFT);
-        leftRenderer.setBackground(new Color(0, 0, 168));
-        leftRenderer.setForeground(Color.WHITE);
-
-        tablaReporte.getColumnModel().getColumn(0).setCellRenderer(centerRenderer);
-        tablaReporte.getColumnModel().getColumn(1).setCellRenderer(leftRenderer);
-        tablaReporte.getColumnModel().getColumn(2).setCellRenderer(rightRenderer);
-        tablaReporte.getColumnModel().getColumn(3).setCellRenderer(rightRenderer);
-        tablaReporte.getColumnModel().getColumn(4).setCellRenderer(rightRenderer);
+        for (int i = 0; i < tablaReporte.getColumnModel().getColumnCount(); i++) {
+            tablaReporte.getColumnModel().getColumn(i).setCellRenderer(rendererRayas);
+        }
 
         TableColumnModel colModel = tablaReporte.getColumnModel();
-        colModel.getColumn(0).setPreferredWidth(100);
-        colModel.getColumn(1).setPreferredWidth(380);
+        colModel.getColumn(0).setPreferredWidth(90);
+        colModel.getColumn(1).setPreferredWidth(360);
         colModel.getColumn(2).setPreferredWidth(150);
-        colModel.getColumn(3).setPreferredWidth(140);
-        colModel.getColumn(4).setPreferredWidth(140);
+        colModel.getColumn(3).setPreferredWidth(130);
+        colModel.getColumn(4).setPreferredWidth(130);
 
-        JScrollPane scrollPane = new JScrollPane(tablaReporte);
-        scrollPane.getViewport().setBackground(new Color(0, 0, 168));
+        scrollPane = new JScrollPane(tablaReporte);
+        scrollPane.getViewport().setBackground(cFondoNegro);
         scrollPane.setBorder(BorderFactory.createEmptyBorder());
         panelPrincipal.add(scrollPane, BorderLayout.CENTER);
 
         // ==========================================
-        // 3. ZONA INFERIOR (Barra Roja de Comandos)
+        // 3. ZONA INFERIOR (Barra de Comandos con F5)
         // ==========================================
-        JPanel panelComandos = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 8));
-        panelComandos.setBackground(new Color(168, 0, 0));
-        panelComandos.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(255, 255, 85)));
+        panelComandos = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 8));
+        panelComandos.setBackground(cBarraSur);
+        panelComandos.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, cAcento));
 
-        JLabel lblAtajos = new JLabel("<html><b style='color:#FFFF55;'>(Esc)</b> <span style='color:FFFFFF;'>Cerrar Ventana</span> &nbsp;&nbsp;|&nbsp;&nbsp; "
-                + "<b style='color:#FFFF55;'>(Enter)</b> <span style='color:FFFFFF;'>Consultar Reporte</span></html>");
-        lblAtajos.setFont(new Font("Monospaced", Font.BOLD, 13));
+        lblAtajos = new JLabel();
+        lblAtajos.setFont(FUENTE_CONSOLA);
+        actualizarTextoAtajos();
         panelComandos.add(lblAtajos);
 
         panelPrincipal.add(panelComandos, BorderLayout.SOUTH);
@@ -174,27 +335,27 @@ public class FrmComisionesCobranza extends JInternalFrame {
     }
 
     private void estilizarCampoTexto(JTextField txt) {
-        txt.setFont(new Font("Monospaced", Font.BOLD, 13));
-        txt.setBackground(new Color(0, 0, 120));
-        txt.setForeground(Color.WHITE);
-        txt.setCaretColor(Color.WHITE);
-        txt.setBorder(BorderFactory.createLineBorder(new Color(85, 255, 255)));
+        txt.setFont(FUENTE_CONSOLA);
+        txt.setBackground(new Color(Math.max(0, cFondoNegro.getRed() + 10), Math.max(0, cFondoNegro.getGreen() + 10), Math.max(0, cFondoNegro.getBlue() + 10)));
+        txt.setForeground(cTextoClaro);
+        txt.setCaretColor(cAcento);
+        txt.setBorder(BorderFactory.createLineBorder(cAcento));
     }
 
     private void estilizarBotonConsola(JButton btn, Color bg) {
-        btn.setFont(new Font("Monospaced", Font.BOLD, 12));
+        btn.setFont(FUENTE_CONSOLA);
         btn.setBackground(bg);
-        btn.setForeground(Color.WHITE);
+        btn.setForeground(cTextoClaro);
         btn.setFocusPainted(false);
-        btn.setBorder(BorderFactory.createLineBorder(new Color(255, 255, 85), 1));
+        btn.setBorder(BorderFactory.createLineBorder(cAcento, 1));
         btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
     }
 
     private void configurarAtajosTeclado() {
         JRootPane rootPane = this.getRootPane();
+        int cond = JComponent.WHEN_IN_FOCUSED_WINDOW;
 
-        KeyStroke strokeEsc = KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0);
-        rootPane.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(strokeEsc, "CERRAR_ESC");
+        rootPane.getInputMap(cond).put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), "CERRAR_ESC");
         rootPane.getActionMap().put("CERRAR_ESC", new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -202,12 +363,28 @@ public class FrmComisionesCobranza extends JInternalFrame {
             }
         });
 
-        KeyStroke strokeEnter = KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0);
-        rootPane.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(strokeEnter, "CONSULTAR_ENTER");
+        rootPane.getInputMap(cond).put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), "CONSULTAR_ENTER");
         rootPane.getActionMap().put("CONSULTAR_ENTER", new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 cargarReporteCobranza();
+            }
+        });
+
+        rootPane.getInputMap(cond).put(KeyStroke.getKeyStroke(KeyEvent.VK_F3, 0), "GRAFICO_F3");
+        rootPane.getActionMap().put("GRAFICO_F3", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                abrirVentanaGrafico();
+            }
+        });
+
+        // [F5] Ciclar Tema en la Barra Inferior
+        rootPane.getInputMap(cond).put(KeyStroke.getKeyStroke(KeyEvent.VK_F5, 0), "CAMBIAR_TEMA_F5");
+        rootPane.getActionMap().put("CAMBIAR_TEMA_F5", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                ciclarSiguienteTema();
             }
         });
     }
@@ -252,5 +429,81 @@ public class FrmComisionesCobranza extends JInternalFrame {
         } catch (SQLException ex) {
             ex.printStackTrace();
         }
+    }
+
+    private void abrirVentanaGrafico() {
+        if (listaUltimaConsulta == null || listaUltimaConsulta.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Debe realizar una consulta con datos antes de ver el gráfico.", "Aviso", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        DefaultCategoryDataset dataset = new DefaultCategoryDataset();
+        for (ComisionVendedorDTO item : listaUltimaConsulta) {
+            String nombre = item.getNombreVendedor().trim();
+            if (nombre.length() > 15) {
+                nombre = nombre.substring(0, 15) + "..";
+            }
+            dataset.addValue(item.getVentaTotal(), "Venta Total", nombre);
+        }
+
+        JFreeChart barChart = ChartFactory.createBarChart(
+                "ESTADÍSTICA DE VENTAS POR VENDEDOR",
+                "Vendedor",
+                "Monto Total ($)",
+                dataset
+        );
+
+        CategoryPlot plot = barChart.getCategoryPlot();
+        plot.setBackgroundPaint(cFondoNegro);
+        plot.setDomainGridlinePaint(Color.GRAY);
+        plot.setRangeGridlinePaint(Color.GRAY);
+
+        plot.getDomainAxis().setLabelPaint(Color.WHITE);
+        plot.getDomainAxis().setTickLabelPaint(Color.WHITE);
+        plot.getRangeAxis().setLabelPaint(Color.WHITE);
+        plot.getRangeAxis().setTickLabelPaint(Color.WHITE);
+
+        BarRenderer renderer = (BarRenderer) plot.getRenderer();
+        renderer.setSeriesPaint(0, cAcento);
+
+        barChart.setBackgroundPaint(cFondoNegro);
+        barChart.getTitle().setPaint(cAcento);
+        barChart.getTitle().setFont(new Font("Monospaced", Font.BOLD, 15));
+
+        JDialog dlgGrafico = new JDialog(javax.swing.JOptionPane.getFrameForComponent(this), "Gráfico Ejecutivo - Comisiones", true);
+        dlgGrafico.setSize(850, 520);
+        dlgGrafico.setLocationRelativeTo(this);
+        dlgGrafico.setUndecorated(true);
+
+        JPanel panelContenedor = new JPanel(new BorderLayout());
+        panelContenedor.setBackground(cFondoNegro);
+        panelContenedor.setBorder(new LineBorder(cAcento, 2));
+
+        ChartPanel chartPanel = new ChartPanel(barChart);
+        chartPanel.setBackground(cFondoNegro);
+        panelContenedor.add(chartPanel, BorderLayout.CENTER);
+
+        JPanel panelSurDlg = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        panelSurDlg.setBackground(cBarraSur);
+        JButton btnCerrarDlg = new JButton("Cerrar [Esc / Enter]");
+        estilizarBotonConsola(btnCerrarDlg, cEncabezadoTabla);
+        btnCerrarDlg.addActionListener(e -> dlgGrafico.dispose());
+        panelSurDlg.add(btnCerrarDlg);
+        panelContenedor.add(panelSurDlg, BorderLayout.SOUTH);
+
+        dlgGrafico.setContentPane(panelContenedor);
+
+        KeyStroke strokeEsc = KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0);
+        KeyStroke strokeEnter = KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0);
+        dlgGrafico.getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(strokeEsc, "CERRAR");
+        dlgGrafico.getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(strokeEnter, "CERRAR");
+        dlgGrafico.getRootPane().getActionMap().put("CERRAR", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                dlgGrafico.dispose();
+            }
+        });
+
+        dlgGrafico.setVisible(true);
     }
 }

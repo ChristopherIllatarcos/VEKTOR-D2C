@@ -17,38 +17,183 @@ public class FrmKardexMercaderia extends JInternalFrame {
     private JTable tablaKardex;
     private DefaultTableModel modeloTabla;
     private JLabel lblTotalValorizacion;
+    private JLabel lblAtajos;
 
-    // Paleta Azul Océano Profundo / Cian Brillante
-    private final Color COLOR_FONDO = new Color(11, 34, 58);          // Azul marino oscuro (#0B223A)
-    private final Color COLOR_PANEL_TABLA = new Color(5, 18, 30);     // Fondo tabla profundo
-    private final Color COLOR_ZEBRA_1 = new Color(5, 18, 30);         // Fila cebra par
-    private final Color COLOR_ZEBRA_2 = new Color(15, 42, 68);        // Fila cebra impar
-    private final Color COLOR_BORDE_CIAN = new Color(0, 229, 255);    // Cian brillante (#00E5FF)
-    private final Color COLOR_TEXTO_CLARO = new Color(220, 240, 255);   // Azul claro / Blanco
-    private final Color COLOR_BARRA_INF = new Color(20, 70, 110);     // Azul marino medio
+    // Componentes estructurales para actualización dinámica de colores
+    private JPanel panelSuperior, panelInferiorContenedor, panelTotales, panelAtajosContainer;
+    private JScrollPane scrollTabla;
+
+    // Variables de Colores Actuales del Tema
+    private Color cFondo, cPanelTabla, cZebra1, cZebra2, cBordeCian, cTextoClaro, cBarraInf, cSeleccion;
     private final Font FUENTE_CONSOLA = new Font("Consolas", Font.BOLD, 14);
+
+    // Sistema de Temas Ciclos [F6]
+    private final String[] listaTemas = {"Clipper Clásico", "Turquesa Pro", "Esmeralda Terminal","Azul Océano" , "Naranja Fuego"};
+    private int indiceTemaActual = 0; // Empieza en Azul Océano por defecto
 
     public FrmKardexMercaderia() {
         super("4.- KÁRDEX DE MERCADERÍA", false, false, false, false);
+
+        // Aplicar tema inicial
+        aplicarTema(listaTemas[indiceTemaActual]);
+
         initComponentsManual();
         ejecutarBusqueda();
+        // Asignar el icono de Nexum directamente a este JInternalFrame
+        try {
+            setFrameIcon(new javax.swing.ImageIcon(getClass().getResource("/viktor/cubo-azul-16.png")));
+        } catch (Exception e) {
+            System.out.println("No se pudo cargar el icono interno: " + e.getMessage());
+        }
+    }
+
+    // ==========================================
+    // SISTEMA DE CAMBIO DE TEMAS [F6]
+    // ==========================================
+    private void aplicarTema(String nombreTema) {
+        switch (nombreTema) {
+            case "Turquesa Pro":
+                cFondo = new Color(5, 15, 20);
+                cPanelTabla = new Color(5, 20, 25);
+                cZebra1 = new Color(5, 20, 25);
+                cZebra2 = new Color(10, 35, 45);
+                cBordeCian = new Color(0, 245, 255);
+                cTextoClaro = new Color(220, 255, 255);
+                cBarraInf = new Color(0, 60, 70);
+                cSeleccion = new Color(0, 120, 140);
+                break;
+            case "Esmeralda Terminal":
+                cFondo = new Color(5, 20, 15);
+                cPanelTabla = new Color(5, 25, 18);
+                cZebra1 = new Color(5, 25, 18);
+                cZebra2 = new Color(12, 45, 30);
+                cBordeCian = new Color(0, 255, 128);
+                cTextoClaro = new Color(220, 255, 240);
+                cBarraInf = new Color(0, 60, 35);
+                cSeleccion = new Color(0, 140, 80);
+                break;
+            case "Clipper Clásico":
+                cFondo = Color.BLACK;
+                cPanelTabla = new Color(0, 0, 120);
+                cZebra1 = new Color(0, 0, 120);
+                cZebra2 = new Color(0, 0, 168);
+                cBordeCian = new Color(255, 255, 85);
+                cTextoClaro = Color.WHITE;
+                cBarraInf = new Color(168, 0, 0);
+                cSeleccion = new Color(0, 168, 168);
+                break;
+            case "Naranja Fuego":
+                cFondo = new Color(15, 10, 8);
+                cPanelTabla = new Color(25, 12, 10);
+                cZebra1 = new Color(25, 12, 10);
+                cZebra2 = new Color(50, 22, 15);
+                cBordeCian = new Color(245, 73, 39);
+                cTextoClaro = new Color(255, 235, 225);
+                cBarraInf = new Color(60, 20, 12);
+                cSeleccion = new Color(130, 42, 22);
+                break;
+            case "Azul Océano":
+            default:
+                cFondo = new Color(11, 34, 58);
+                cPanelTabla = new Color(5, 18, 30);
+                cZebra1 = new Color(5, 18, 30);
+                cZebra2 = new Color(15, 42, 68);
+                cBordeCian = new Color(0, 229, 255);
+                cTextoClaro = new Color(220, 240, 255);
+                cBarraInf = new Color(20, 70, 110);
+                cSeleccion = new Color(30, 95, 145);
+                break;
+        }
+    }
+
+    private void ciclarSiguienteTema() {
+        indiceTemaActual = (indiceTemaActual + 1) % listaTemas.length;
+        String nuevoTema = listaTemas[indiceTemaActual];
+        aplicarTema(nuevoTema);
+
+        getContentPane().setBackground(cFondo);
+
+        if (panelSuperior != null) {
+            panelSuperior.setBackground(cFondo);
+            panelSuperior.setBorder(BorderFactory.createTitledBorder(
+                    new LineBorder(cBordeCian, 2),
+                    " KÁRDEX Y CONSULTA DE STOCK - FILTROS ",
+                    0, 0, FUENTE_CONSOLA, cBordeCian
+            ));
+        }
+
+        if (tablaKardex != null) {
+            tablaKardex.setBackground(cPanelTabla);
+            tablaKardex.setForeground(cTextoClaro);
+            tablaKardex.setGridColor(cBordeCian);
+            tablaKardex.setSelectionBackground(cBarraInf);
+            tablaKardex.setSelectionForeground(Color.YELLOW);
+            tablaKardex.getTableHeader().setBackground(cFondo);
+            tablaKardex.getTableHeader().setForeground(cBordeCian);
+            tablaKardex.repaint();
+        }
+
+        if (scrollTabla != null) {
+            scrollTabla.getViewport().setBackground(cPanelTabla);
+            scrollTabla.setBorder(new LineBorder(cBordeCian, 1));
+        }
+
+        if (panelInferiorContenedor != null) {
+            panelInferiorContenedor.setBackground(cFondo);
+        }
+
+        if (panelTotales != null) {
+            panelTotales.setBackground(cFondo);
+            panelTotales.setBorder(BorderFactory.createMatteBorder(1, 0, 1, 0, cBordeCian));
+        }
+
+        if (lblTotalValorizacion != null) {
+            lblTotalValorizacion.setForeground(cBordeCian);
+        }
+
+        if (panelAtajosContainer != null) {
+            panelAtajosContainer.setBackground(cBarraInf);
+            panelAtajosContainer.setBorder(new LineBorder(cBordeCian, 1));
+        }
+
+        estilizarCampoDinamico(txtBuscarProducto);
+        actualizarTextoAtajos();
+
+        revalidate();
+        repaint();
+    }
+
+    private void estilizarCampoDinamico(JTextField txt) {
+        if (txt != null) {
+            txt.setBackground(cPanelTabla);
+            txt.setForeground(cBordeCian);
+            txt.setCaretColor(cBordeCian);
+            txt.setBorder(new LineBorder(cBordeCian, 1));
+        }
+    }
+
+    private void actualizarTextoAtajos() {
+        String temaActual = listaTemas[indiceTemaActual];
+        if (lblAtajos != null) {
+            lblAtajos.setText("(F5) Refrescar / Buscar    |    (F6) Tema: " + temaActual + "    |    (Esc) Salir");
+        }
     }
 
     private void initComponentsManual() {
         setSize(1150, 680);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
-        getContentPane().setBackground(COLOR_FONDO);
+        getContentPane().setBackground(cFondo);
         setLayout(new BorderLayout(0, 6));
 
         // ==========================================
         // 1. PANEL SUPERIOR (Filtros)
         // ==========================================
-        JPanel panelSuperior = new JPanel(new BorderLayout());
-        panelSuperior.setBackground(COLOR_FONDO);
+        panelSuperior = new JPanel(new BorderLayout());
+        panelSuperior.setBackground(cFondo);
         panelSuperior.setBorder(BorderFactory.createTitledBorder(
-                new LineBorder(COLOR_BORDE_CIAN, 2),
+                new LineBorder(cBordeCian, 2),
                 " KÁRDEX Y CONSULTA DE STOCK - FILTROS ",
-                0, 0, FUENTE_CONSOLA, COLOR_BORDE_CIAN
+                0, 0, FUENTE_CONSOLA, cBordeCian
         ));
 
         JPanel panelCampos = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 10));
@@ -76,32 +221,32 @@ public class FrmKardexMercaderia extends JInternalFrame {
 
         tablaKardex = new JTable(modeloTabla);
         tablaKardex.setFont(FUENTE_CONSOLA);
-        tablaKardex.setBackground(COLOR_PANEL_TABLA);
-        tablaKardex.setForeground(Color.WHITE);
-        tablaKardex.setGridColor(new Color(25, 70, 110));
+        tablaKardex.setBackground(cPanelTabla);
+        tablaKardex.setForeground(cTextoClaro);
+        tablaKardex.setGridColor(cBordeCian);
         tablaKardex.setRowHeight(28);
-        tablaKardex.setSelectionBackground(COLOR_BARRA_INF);
+        tablaKardex.setSelectionBackground(cBarraInf);
         tablaKardex.setSelectionForeground(Color.YELLOW);
 
         tablaKardex.getTableHeader().setFont(FUENTE_CONSOLA);
-        tablaKardex.getTableHeader().setBackground(COLOR_FONDO);
-        tablaKardex.getTableHeader().setForeground(COLOR_BORDE_CIAN);
+        tablaKardex.getTableHeader().setBackground(cFondo);
+        tablaKardex.getTableHeader().setForeground(cBordeCian);
 
         DefaultTableCellRenderer renderizadorCebra = new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
                 Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-                
+
                 if (isSelected) {
-                    c.setBackground(COLOR_BARRA_INF);
+                    c.setBackground(cBarraInf);
                     c.setForeground(Color.YELLOW);
                 } else {
                     if (row % 2 == 0) {
-                        c.setBackground(COLOR_ZEBRA_1);
+                        c.setBackground(cZebra1);
                     } else {
-                        c.setBackground(COLOR_ZEBRA_2);
+                        c.setBackground(cZebra2);
                     }
-                    c.setForeground(Color.WHITE);
+                    c.setForeground(cTextoClaro);
                 }
 
                 if (column >= 3) {
@@ -127,37 +272,38 @@ public class FrmKardexMercaderia extends JInternalFrame {
         tablaKardex.getColumnModel().getColumn(6).setPreferredWidth(80);
         tablaKardex.getColumnModel().getColumn(7).setPreferredWidth(140);
 
-        JScrollPane scrollTabla = new JScrollPane(tablaKardex);
-        scrollTabla.getViewport().setBackground(COLOR_PANEL_TABLA);
-        scrollTabla.setBorder(new LineBorder(COLOR_BORDE_CIAN, 1));
+        scrollTabla = new JScrollPane(tablaKardex);
+        scrollTabla.getViewport().setBackground(cPanelTabla);
+        scrollTabla.setBorder(new LineBorder(cBordeCian, 1));
         add(scrollTabla, BorderLayout.CENTER);
 
         // ==========================================
         // 3. PANEL INFERIOR (Totales + Atajos)
         // ==========================================
-        JPanel panelInferiorContenedor = new JPanel(new BorderLayout());
-        panelInferiorContenedor.setBackground(COLOR_FONDO);
+        panelInferiorContenedor = new JPanel(new BorderLayout());
+        panelInferiorContenedor.setBackground(cFondo);
 
-        JPanel panelTotales = new JPanel(new FlowLayout(FlowLayout.RIGHT, 25, 6));
-        panelTotales.setBackground(COLOR_FONDO);
-        panelTotales.setBorder(BorderFactory.createMatteBorder(1, 0, 1, 0, COLOR_BORDE_CIAN));
+        panelTotales = new JPanel(new FlowLayout(FlowLayout.RIGHT, 25, 6));
+        panelTotales.setBackground(cFondo);
+        panelTotales.setBorder(BorderFactory.createMatteBorder(1, 0, 1, 0, cBordeCian));
 
         lblTotalValorizacion = new JLabel("VALORIZACIÓN TOTAL INVENTARIO: $0");
         lblTotalValorizacion.setFont(new Font("Consolas", Font.BOLD, 16));
-        lblTotalValorizacion.setForeground(COLOR_BORDE_CIAN);
+        lblTotalValorizacion.setForeground(cBordeCian);
         panelTotales.add(lblTotalValorizacion);
 
-        JPanel panelAtajos = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 6));
-        panelAtajos.setBackground(COLOR_BARRA_INF);
-        panelAtajos.setBorder(new LineBorder(COLOR_BORDE_CIAN, 1));
+        panelAtajosContainer = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 6));
+        panelAtajosContainer.setBackground(cBarraInf);
+        panelAtajosContainer.setBorder(new LineBorder(cBordeCian, 1));
 
-        JLabel lblAtajos = new JLabel("(F5) Refrescar / Buscar    |    (Esc) Salir");
+        lblAtajos = new JLabel();
         lblAtajos.setFont(FUENTE_CONSOLA);
-        lblAtajos.setForeground(COLOR_TEXTO_CLARO);
-        panelAtajos.add(lblAtajos);
+        lblAtajos.setForeground(cTextoClaro);
+        actualizarTextoAtajos();
+        panelAtajosContainer.add(lblAtajos);
 
         panelInferiorContenedor.add(panelTotales, BorderLayout.NORTH);
-        panelInferiorContenedor.add(panelAtajos, BorderLayout.SOUTH);
+        panelInferiorContenedor.add(panelAtajosContainer, BorderLayout.SOUTH);
         add(panelInferiorContenedor, BorderLayout.SOUTH);
 
         configurarAtajos();
@@ -166,29 +312,29 @@ public class FrmKardexMercaderia extends JInternalFrame {
     private JLabel crearEtiqueta(String texto) {
         JLabel lbl = new JLabel(texto);
         lbl.setFont(FUENTE_CONSOLA);
-        lbl.setForeground(COLOR_TEXTO_CLARO);
+        lbl.setForeground(cTextoClaro);
         return lbl;
     }
 
     private JTextField crearCampoTexto(int columnas) {
         JTextField txt = new JTextField(columnas);
         txt.setFont(FUENTE_CONSOLA);
-        txt.setBackground(COLOR_PANEL_TABLA);
-        txt.setForeground(COLOR_BORDE_CIAN);
-        txt.setCaretColor(COLOR_BORDE_CIAN);
-        txt.setBorder(new LineBorder(COLOR_BORDE_CIAN, 1));
+        txt.setBackground(cPanelTabla);
+        txt.setForeground(cBordeCian);
+        txt.setCaretColor(cBordeCian);
+        txt.setBorder(new LineBorder(cBordeCian, 1));
 
         txt.addFocusListener(new FocusAdapter() {
             @Override
             public void focusGained(FocusEvent e) {
-                txt.setBackground(new Color(10, 35, 60));
+                txt.setBackground(new Color(Math.min(255, cPanelTabla.getRed() + 30), Math.min(255, cPanelTabla.getGreen() + 30), Math.min(255, cPanelTabla.getBlue() + 30)));
                 txt.setBorder(new LineBorder(Color.YELLOW, 2));
             }
 
             @Override
             public void focusLost(FocusEvent e) {
-                txt.setBackground(COLOR_PANEL_TABLA);
-                txt.setBorder(new LineBorder(COLOR_BORDE_CIAN, 1));
+                txt.setBackground(cPanelTabla);
+                txt.setBorder(new LineBorder(cBordeCian, 1));
             }
         });
 
@@ -247,6 +393,15 @@ public class FrmKardexMercaderia extends JInternalFrame {
                 txtBuscarProducto.setText("");
                 ejecutarBusqueda();
                 txtBuscarProducto.requestFocusInWindow();
+            }
+        });
+
+        // [F6] Ciclar Tema en tiempo real
+        root.getInputMap(cond).put(KeyStroke.getKeyStroke(KeyEvent.VK_F6, 0), "ciclar_tema");
+        root.getActionMap().put("ciclar_tema", new AbstractAction() {
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                ciclarSiguienteTema();
             }
         });
     }

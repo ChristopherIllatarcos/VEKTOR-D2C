@@ -18,31 +18,39 @@ public class FrmParametros extends JDialog {
     private JTextField txtGuiaDespacho;
     private JTextField txtIva;
     private JTextField txtFecha;
+    private JLabel lblAtajos;
+    private JPanel panelContenedor;
+    private JPanel panelInferior;
 
-    // Estética Clipper Clásica
-    private final Color COLOR_AZUL_FONDO = new Color(0, 0, 139);      // Azul clásico Clipper
-    private final Color COLOR_AMARILLO = new Color(255, 255, 0);       // Amarillo brillante
-    private final Color COLOR_CIAN = new Color(0, 255, 255);           // Cian para bordes
-    private final Color COLOR_ROJO_BARRA = new Color(178, 0, 0);       // Rojo barra inferior
+    // Variables de Colores Actuales del Tema
+    private Color cFondo, cCianBorde, cAmarilloTexto, cRojoBarra;
     private final Font FUENTE_CONSOLA = new Font("Courier New", Font.BOLD, 12);
+
+    // Sistema de Temas Ciclos [F6]
+    private final String[] listaTemas = {"Clipper Azul", "Morado Neón", "Turquesa Pro", "Esmeralda Terminal", "Naranja Fuego"};
+    private int indiceTemaActual = 0; // Empieza en Clipper Azul por defecto
 
     public FrmParametros(Window parent) {
         super(parent, " 6.- PARAMETROS Y CORRELATIVOS ", Dialog.ModalityType.APPLICATION_MODAL);
-        setSize(460, 305);
+        setSize(460, 315);
         setResizable(false);
         setLocationRelativeTo(parent);
-        getContentPane().setBackground(COLOR_AZUL_FONDO);
+
+        // Aplicar tema inicial
+        aplicarTema(listaTemas[indiceTemaActual]);
+
+        getContentPane().setBackground(cFondo);
         setLayout(null);
 
-        // Panel contenedor con borde cian
-        JPanel panelContenedor = new JPanel(null);
+        // Panel contenedor con borde dinámico
+        panelContenedor = new JPanel(null);
         panelContenedor.setBounds(15, 15, 415, 195);
-        panelContenedor.setBackground(COLOR_AZUL_FONDO);
+        panelContenedor.setBackground(cFondo);
         panelContenedor.setBorder(BorderFactory.createTitledBorder(
-                new LineBorder(COLOR_CIAN, 2), " PARAMETROS DEL SISTEMA ",
-                0, 0, FUENTE_CONSOLA, COLOR_AMARILLO
+                new LineBorder(cCianBorde, 2), " PARAMETROS DEL SISTEMA ",
+                0, 0, FUENTE_CONSOLA, cAmarilloTexto
         ));
-        ((javax.swing.border.TitledBorder) panelContenedor.getBorder()).setTitleColor(COLOR_AMARILLO);
+        ((javax.swing.border.TitledBorder) panelContenedor.getBorder()).setTitleColor(cAmarilloTexto);
         add(panelContenedor);
 
         // Posicionamiento milimétrico de etiquetas y campos estilo Clipper
@@ -58,15 +66,15 @@ public class FrmParametros extends JDialog {
         y += separacion;
         agregarFila(panelContenedor, "FECHA (Sistema):", txtFecha = new JTextField(), xLbl, xTxt, y, 120, alto);
 
-        // Barra inferior roja auténtica con atajos
-        JPanel panelInferior = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 5));
-        panelInferior.setBounds(0, 225, 445, 32);
-        panelInferior.setBackground(COLOR_ROJO_BARRA);
-        panelInferior.setBorder(new LineBorder(COLOR_AMARILLO, 1));
+        // Barra inferior dinámica con atajos
+        panelInferior = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 5));
+        panelInferior.setBounds(0, 225, 445, 38);
+        panelInferior.setBackground(cRojoBarra);
+        panelInferior.setBorder(new LineBorder(cAmarilloTexto, 1));
 
-        JLabel lblAtajos = new JLabel("<html><b style='color:#FFFF55;'>(Esc)</b> <span style='color:FFFFFF;'>Cancelar</span> &nbsp;&nbsp;|&nbsp;&nbsp; "
-                + "<b style='color:#FFFF55;'>(F3)</b> <span style='color:FFFFFF;'>Guardar Parámetros</span></html>");
+        lblAtajos = new JLabel();
         lblAtajos.setFont(FUENTE_CONSOLA);
+        actualizarTextoAtajos();
         panelInferior.add(lblAtajos);
         add(panelInferior);
 
@@ -74,10 +82,92 @@ public class FrmParametros extends JDialog {
         cargarParametros();
     }
 
+    // ==========================================
+    // SISTEMA DE CAMBIO DE TEMAS [F6]
+    // ==========================================
+    private void aplicarTema(String nombreTema) {
+        switch (nombreTema) {
+            case "Morado Neón":
+                cFondo = new Color(10, 10, 15);
+                cCianBorde = new Color(255, 110, 220);
+                cAmarilloTexto = new Color(255, 180, 240);
+                cRojoBarra = new Color(130, 0, 70);
+                break;
+            case "Turquesa Pro":
+                cFondo = new Color(5, 15, 20);
+                cCianBorde = new Color(0, 245, 255);
+                cAmarilloTexto = new Color(180, 255, 255);
+                cRojoBarra = new Color(0, 60, 70);
+                break;
+            case "Esmeralda Terminal":
+                cFondo = new Color(5, 20, 15);
+                cCianBorde = new Color(0, 255, 128);
+                cAmarilloTexto = new Color(180, 255, 200);
+                cRojoBarra = new Color(0, 60, 35);
+                break;
+            case "Naranja Fuego":
+                cFondo = new Color(15, 10, 8);
+                cCianBorde = new Color(245, 73, 39);
+                cAmarilloTexto = new Color(255, 200, 150);
+                cRojoBarra = new Color(60, 20, 12);
+                break;
+            case "Clipper Azul":
+            default:
+                cFondo = new Color(0, 0, 139);
+                cCianBorde = new Color(0, 255, 255);
+                cAmarilloTexto = new Color(255, 255, 0);
+                cRojoBarra = new Color(178, 0, 0);
+                break;
+        }
+    }
+
+    private void ciclarSiguienteTema() {
+        indiceTemaActual = (indiceTemaActual + 1) % listaTemas.length;
+        aplicarTema(listaTemas[indiceTemaActual]);
+
+        getContentPane().setBackground(cFondo);
+
+        if (panelContenedor != null) {
+            panelContenedor.setBackground(cFondo);
+            panelContenedor.setBorder(BorderFactory.createTitledBorder(
+                    new LineBorder(cCianBorde, 2), " PARAMETROS DEL SISTEMA ",
+                    0, 0, FUENTE_CONSOLA, cAmarilloTexto
+            ));
+            ((javax.swing.border.TitledBorder) panelContenedor.getBorder()).setTitleColor(cAmarilloTexto);
+
+            for (Component comp : panelContenedor.getComponents()) {
+                if (comp instanceof JLabel) {
+                    ((JLabel) comp).setForeground(cAmarilloTexto);
+                } else if (comp instanceof JTextField) {
+                    estilizarCampo((JTextField) comp);
+                }
+            }
+        }
+
+        if (panelInferior != null) {
+            panelInferior.setBackground(cRojoBarra);
+            panelInferior.setBorder(new LineBorder(cAmarilloTexto, 1));
+        }
+
+        actualizarTextoAtajos();
+
+        revalidate();
+        repaint();
+    }
+
+    private void actualizarTextoAtajos() {
+        String temaActual = listaTemas[indiceTemaActual];
+        if (lblAtajos != null) {
+            lblAtajos.setText("<html><b style='color:#FFFF55;'>(Esc)</b> <span style='color:FFFFFF;'>Salir</span> &nbsp;|&nbsp; "
+                    + "<b style='color:#FFFF55;'>(F3)</b> <span style='color:FFFFFF;'>Guardar</span> &nbsp;|&nbsp; "
+                    + "<b style='color:#FFFF55;'>(F6)</b> <span style='color:FFFFFF;'>Tema: " + temaActual + "</span></html>");
+        }
+    }
+
     private void agregarFila(JPanel panel, String textoLbl, JTextField campo, int xL, int xT, int y, int anchoTxt, int alto) {
         JLabel lbl = new JLabel(textoLbl);
         lbl.setBounds(xL, y, 150, alto);
-        lbl.setForeground(COLOR_AMARILLO);
+        lbl.setForeground(cAmarilloTexto);
         lbl.setFont(FUENTE_CONSOLA);
         panel.add(lbl);
 
@@ -87,18 +177,21 @@ public class FrmParametros extends JDialog {
     }
 
     private void estilizarCampo(JTextField campo) {
-        campo.setBackground(COLOR_AZUL_FONDO);
-        campo.setForeground(COLOR_AMARILLO);
-        campo.setCaretColor(COLOR_AMARILLO);
-        campo.setFont(FUENTE_CONSOLA);
-        campo.setBorder(new LineBorder(COLOR_CIAN, 1));
+        if (campo != null) {
+            campo.setBackground(cFondo);
+            campo.setForeground(cAmarilloTexto);
+            campo.setCaretColor(cAmarilloTexto);
+            campo.setFont(FUENTE_CONSOLA);
+            campo.setBorder(new LineBorder(cCianBorde, 1));
+        }
     }
 
     private void configurarAtajos() {
         JRootPane root = this.getRootPane();
+        int cond = JComponent.WHEN_IN_FOCUSED_WINDOW;
 
         // [ESC] Cerrar
-        root.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), "cerrar");
+        root.getInputMap(cond).put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), "cerrar");
         root.getActionMap().put("cerrar", new AbstractAction() {
             @Override
             public void actionPerformed(java.awt.event.ActionEvent e) {
@@ -107,11 +200,20 @@ public class FrmParametros extends JDialog {
         });
 
         // [F3] Guardar
-        root.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(KeyEvent.VK_F3, 0), "guardar");
+        root.getInputMap(cond).put(KeyStroke.getKeyStroke(KeyEvent.VK_F3, 0), "guardar");
         root.getActionMap().put("guardar", new AbstractAction() {
             @Override
             public void actionPerformed(java.awt.event.ActionEvent e) {
                 guardarParametros();
+            }
+        });
+
+        // [F6] Ciclar Tema
+        root.getInputMap(cond).put(KeyStroke.getKeyStroke(KeyEvent.VK_F6, 0), "ciclarTemaF6");
+        root.getActionMap().put("ciclarTemaF6", new AbstractAction() {
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                ciclarSiguienteTema();
             }
         });
     }

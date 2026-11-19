@@ -19,38 +19,182 @@ public class FrmInventarioCritico extends JInternalFrame {
     private JTable tablaCriticos;
     private DefaultTableModel modeloTabla;
     private JLabel lblTotalProductos;
+    private JLabel lblAtajos;
 
-    // Paleta Borgoña Oscuro / Rojo Alerta
-    private final Color COLOR_FONDO = new Color(58, 11, 11);          // Borgoña oscuro (#3A0B0B)
-    private final Color COLOR_PANEL_TABLA = new Color(28, 5, 5);      // Fondo tabla oscuro
-    private final Color COLOR_ZEBRA_1 = new Color(28, 5, 5);          // Fila cebra par
-    private final Color COLOR_ZEBRA_2 = new Color(38, 8, 8);          // Fila cebra impar
-    private final Color COLOR_BORDE_ALERTA = new Color(255, 102, 102);  // Rojo coral brillante (#FF6666)
-    private final Color COLOR_TEXTO_CLARO = new Color(255, 230, 230);   // Rosado / Crema claro
-    private final Color COLOR_BARRA_INF = new Color(100, 20, 20);     // Rojo borgoña medio
+    // Componentes estructurales para actualización dinámica de colores
+    private JPanel panelSuperior, panelInferiorContenedor, panelTotales, panelAtajosContainer;
+    private JScrollPane scrollTabla;
+
+    // Variables de Colores Actuales del Tema
+    private Color cFondo, cPanelTabla, cZebra1, cZebra2, cBordeAlerta, cTextoClaro, cBarraInf, cSeleccion;
     private final Font FUENTE_CONSOLA = new Font("Consolas", Font.BOLD, 14);
+
+    // Sistema de Temas Ciclos [F6]
+    private final String[] listaTemas = {"Clipper Clásico", "Turquesa Pro", "Esmeralda Terminal","Borgoña Oscuro" , "Naranja Fuego"};
+    private int indiceTemaActual = 0; // Empieza en Borgoña Oscuro por defecto
 
     public FrmInventarioCritico() {
         super("6.- INVENTARIO CRÍTICO", false, false, false, false);
+
+        // Aplicar tema inicial
+        aplicarTema(listaTemas[indiceTemaActual]);
+
         initComponentsManual();
         ejecutarBusqueda();
+       // Asignar el icono de Nexum directamente a este JInternalFrame
+        try {
+            setFrameIcon(new javax.swing.ImageIcon(getClass().getResource("/vektor/cubo-azul-16.png")));
+        } catch (Exception e) {
+            System.out.println("No se pudo cargar el icono interno: " + e.getMessage());
+        }
+    }
+    // ==========================================
+    // SISTEMA DE CAMBIO DE TEMAS [F6]
+    // ==========================================
+    private void aplicarTema(String nombreTema) {
+        switch (nombreTema) {
+            case "Turquesa Pro":
+                cFondo = new Color(5, 15, 20);
+                cPanelTabla = new Color(5, 20, 25);
+                cZebra1 = new Color(5, 20, 25);
+                cZebra2 = new Color(10, 35, 45);
+                cBordeAlerta = new Color(0, 245, 255);
+                cTextoClaro = new Color(220, 255, 255);
+                cBarraInf = new Color(0, 60, 70);
+                cSeleccion = new Color(0, 120, 140);
+                break;
+            case "Esmeralda Terminal":
+                cFondo = new Color(5, 20, 15);
+                cPanelTabla = new Color(5, 25, 18);
+                cZebra1 = new Color(5, 25, 18);
+                cZebra2 = new Color(12, 45, 30);
+                cBordeAlerta = new Color(0, 255, 128);
+                cTextoClaro = new Color(220, 255, 240);
+                cBarraInf = new Color(0, 60, 35);
+                cSeleccion = new Color(0, 140, 80);
+                break;
+            case "Clipper Clásico":
+                cFondo = Color.BLACK;
+                cPanelTabla = new Color(0, 0, 120);
+                cZebra1 = new Color(0, 0, 120);
+                cZebra2 = new Color(0, 0, 168);
+                cBordeAlerta = new Color(255, 255, 85);
+                cTextoClaro = Color.WHITE;
+                cBarraInf = new Color(168, 0, 0);
+                cSeleccion = new Color(0, 168, 168);
+                break;
+            case "Naranja Fuego":
+                cFondo = new Color(15, 10, 8);
+                cPanelTabla = new Color(25, 12, 10);
+                cZebra1 = new Color(25, 12, 10);
+                cZebra2 = new Color(50, 22, 15);
+                cBordeAlerta = new Color(245, 73, 39);
+                cTextoClaro = new Color(255, 235, 225);
+                cBarraInf = new Color(60, 20, 12);
+                cSeleccion = new Color(130, 42, 22);
+                break;
+            case "Borgoña Oscuro":
+            default:
+                cFondo = new Color(58, 11, 11);
+                cPanelTabla = new Color(28, 5, 5);
+                cZebra1 = new Color(28, 5, 5);
+                cZebra2 = new Color(38, 8, 8);
+                cBordeAlerta = new Color(255, 102, 102);
+                cTextoClaro = new Color(255, 230, 230);
+                cBarraInf = new Color(100, 20, 20);
+                cSeleccion = new Color(140, 30, 30);
+                break;
+        }
+    }
+
+    private void ciclarSiguienteTema() {
+        indiceTemaActual = (indiceTemaActual + 1) % listaTemas.length;
+        String nuevoTema = listaTemas[indiceTemaActual];
+        aplicarTema(nuevoTema);
+
+        getContentPane().setBackground(cFondo);
+
+        if (panelSuperior != null) {
+            panelSuperior.setBackground(cFondo);
+            panelSuperior.setBorder(BorderFactory.createTitledBorder(
+                    new LineBorder(cBordeAlerta, 2),
+                    " INVENTARIO CRÍTICO - FILTRO DE BÚSQUEDA ",
+                    0, 0, FUENTE_CONSOLA, cBordeAlerta
+            ));
+        }
+
+        if (tablaCriticos != null) {
+            tablaCriticos.setBackground(cPanelTabla);
+            tablaCriticos.setForeground(cTextoClaro);
+            tablaCriticos.setGridColor(cBordeAlerta);
+            tablaCriticos.setSelectionBackground(cBarraInf);
+            tablaCriticos.setSelectionForeground(Color.YELLOW);
+            tablaCriticos.getTableHeader().setBackground(cFondo);
+            tablaCriticos.getTableHeader().setForeground(cBordeAlerta);
+            tablaCriticos.repaint();
+        }
+
+        if (scrollTabla != null) {
+            scrollTabla.getViewport().setBackground(cPanelTabla);
+            scrollTabla.setBorder(new LineBorder(cBordeAlerta, 1));
+        }
+
+        if (panelInferiorContenedor != null) {
+            panelInferiorContenedor.setBackground(cFondo);
+        }
+
+        if (panelTotales != null) {
+            panelTotales.setBackground(cFondo);
+            panelTotales.setBorder(BorderFactory.createMatteBorder(1, 0, 1, 0, cBordeAlerta));
+        }
+
+        if (lblTotalProductos != null) {
+            lblTotalProductos.setForeground(cBordeAlerta);
+        }
+
+        if (panelAtajosContainer != null) {
+            panelAtajosContainer.setBackground(cBarraInf);
+            panelAtajosContainer.setBorder(new LineBorder(cBordeAlerta, 1));
+        }
+
+        estilizarCampoDinamico(txtBuscarProducto);
+        actualizarTextoAtajos();
+
+        revalidate();
+        repaint();
+    }
+
+    private void estilizarCampoDinamico(JTextField txt) {
+        if (txt != null) {
+            txt.setBackground(cPanelTabla);
+            txt.setForeground(cBordeAlerta);
+            txt.setCaretColor(cBordeAlerta);
+            txt.setBorder(new LineBorder(cBordeAlerta, 1));
+        }
+    }
+
+    private void actualizarTextoAtajos() {
+        String temaActual = listaTemas[indiceTemaActual];
+        if (lblAtajos != null) {
+            lblAtajos.setText("(Ins) Nuevo | (F2) Editar | (Supr) Eliminar | (F5) Refrescar | (F6) Tema: " + temaActual + " | (Esc) Salir");
+        }
     }
 
     private void initComponentsManual() {
         setSize(1100, 680);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
-        getContentPane().setBackground(COLOR_FONDO);
+        getContentPane().setBackground(cFondo);
         setLayout(new BorderLayout(0, 6));
 
         // ==========================================
         // 1. PANEL SUPERIOR (Filtros)
         // ==========================================
-        JPanel panelSuperior = new JPanel(new BorderLayout());
-        panelSuperior.setBackground(COLOR_FONDO);
+        panelSuperior = new JPanel(new BorderLayout());
+        panelSuperior.setBackground(cFondo);
         panelSuperior.setBorder(BorderFactory.createTitledBorder(
-                new LineBorder(COLOR_BORDE_ALERTA, 2),
+                new LineBorder(cBordeAlerta, 2),
                 " INVENTARIO CRÍTICO - FILTRO DE BÚSQUEDA ",
-                0, 0, FUENTE_CONSOLA, COLOR_BORDE_ALERTA
+                0, 0, FUENTE_CONSOLA, cBordeAlerta
         ));
 
         JPanel panelCampos = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 10));
@@ -78,16 +222,16 @@ public class FrmInventarioCritico extends JInternalFrame {
 
         tablaCriticos = new JTable(modeloTabla);
         tablaCriticos.setFont(FUENTE_CONSOLA);
-        tablaCriticos.setBackground(COLOR_PANEL_TABLA);
+        tablaCriticos.setBackground(cPanelTabla);
         tablaCriticos.setForeground(Color.WHITE);
-        tablaCriticos.setGridColor(new Color(80, 25, 25));
+        tablaCriticos.setGridColor(cBordeAlerta);
         tablaCriticos.setRowHeight(28);
-        tablaCriticos.setSelectionBackground(COLOR_BARRA_INF);
+        tablaCriticos.setSelectionBackground(cBarraInf);
         tablaCriticos.setSelectionForeground(Color.YELLOW);
 
         tablaCriticos.getTableHeader().setFont(FUENTE_CONSOLA);
-        tablaCriticos.getTableHeader().setBackground(COLOR_FONDO);
-        tablaCriticos.getTableHeader().setForeground(COLOR_BORDE_ALERTA);
+        tablaCriticos.getTableHeader().setBackground(cFondo);
+        tablaCriticos.getTableHeader().setForeground(cBordeAlerta);
 
         DefaultTableCellRenderer renderizadorCebra = new DefaultTableCellRenderer() {
             @Override
@@ -95,19 +239,18 @@ public class FrmInventarioCritico extends JInternalFrame {
                 Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
 
                 if (isSelected) {
-                    c.setBackground(COLOR_BARRA_INF);
+                    c.setBackground(cBarraInf);
                     c.setForeground(Color.YELLOW);
                 } else {
                     if (row % 2 == 0) {
-                        c.setBackground(COLOR_ZEBRA_1);
+                        c.setBackground(cZebra1);
                     } else {
-                        c.setBackground(COLOR_ZEBRA_2);
+                        c.setBackground(cZebra2);
                     }
-                    // Resaltar en rojo claro si el stock es crítico
                     if (column == 4) {
                         c.setForeground(new Color(255, 150, 150));
                     } else {
-                        c.setForeground(Color.WHITE);
+                        c.setForeground(cTextoClaro);
                     }
                 }
 
@@ -132,36 +275,37 @@ public class FrmInventarioCritico extends JInternalFrame {
         tablaCriticos.getColumnModel().getColumn(4).setPreferredWidth(110);
         tablaCriticos.getColumnModel().getColumn(5).setPreferredWidth(120);
 
-        JScrollPane scrollTabla = new JScrollPane(tablaCriticos);
-        scrollTabla.getViewport().setBackground(COLOR_PANEL_TABLA);
-        scrollTabla.setBorder(new LineBorder(COLOR_BORDE_ALERTA, 1));
+        scrollTabla = new JScrollPane(tablaCriticos);
+        scrollTabla.getViewport().setBackground(cPanelTabla);
+        scrollTabla.setBorder(new LineBorder(cBordeAlerta, 1));
         add(scrollTabla, BorderLayout.CENTER);
 
         // ==========================================
         // 3. PANEL INFERIOR (Totales + Atajos)
         // ==========================================
-        JPanel panelInferiorContenedor = new JPanel(new BorderLayout());
-        panelInferiorContenedor.setBackground(COLOR_FONDO);
+        panelInferiorContenedor = new JPanel(new BorderLayout());
+        panelInferiorContenedor.setBackground(cFondo);
 
-        JPanel panelTotales = new JPanel(new FlowLayout(FlowLayout.RIGHT, 25, 6));
-        panelTotales.setBackground(COLOR_FONDO);
-        panelTotales.setBorder(BorderFactory.createMatteBorder(1, 0, 1, 0, COLOR_BORDE_ALERTA));
+        panelTotales = new JPanel(new FlowLayout(FlowLayout.RIGHT, 25, 6));
+        panelTotales.setBackground(cFondo);
+        panelTotales.setBorder(BorderFactory.createMatteBorder(1, 0, 1, 0, cBordeAlerta));
 
         lblTotalProductos = crearEtiqueta("PRODUCTOS EN ESTADO CRÍTICO: 0");
-        lblTotalProductos.setForeground(COLOR_BORDE_ALERTA);
+        lblTotalProductos.setForeground(cBordeAlerta);
         panelTotales.add(lblTotalProductos);
 
-        JPanel panelAtajos = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 6));
-        panelAtajos.setBackground(COLOR_BARRA_INF);
-        panelAtajos.setBorder(new LineBorder(COLOR_BORDE_ALERTA, 1));
+        panelAtajosContainer = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 6));
+        panelAtajosContainer.setBackground(cBarraInf);
+        panelAtajosContainer.setBorder(new LineBorder(cBordeAlerta, 1));
 
-        JLabel lblAtajos = new JLabel("(Ins) Nuevo    |    (F2) Editar    |    (Supr) Eliminar    |    (F5) Refrescar    |    (Esc) Salir");
+        lblAtajos = new JLabel();
         lblAtajos.setFont(FUENTE_CONSOLA);
-        lblAtajos.setForeground(COLOR_TEXTO_CLARO);
-        panelAtajos.add(lblAtajos);
+        lblAtajos.setForeground(cTextoClaro);
+        actualizarTextoAtajos();
+        panelAtajosContainer.add(lblAtajos);
 
         panelInferiorContenedor.add(panelTotales, BorderLayout.NORTH);
-        panelInferiorContenedor.add(panelAtajos, BorderLayout.SOUTH);
+        panelInferiorContenedor.add(panelAtajosContainer, BorderLayout.SOUTH);
         add(panelInferiorContenedor, BorderLayout.SOUTH);
 
         configurarAtajos();
@@ -170,29 +314,29 @@ public class FrmInventarioCritico extends JInternalFrame {
     private JLabel crearEtiqueta(String texto) {
         JLabel lbl = new JLabel(texto);
         lbl.setFont(FUENTE_CONSOLA);
-        lbl.setForeground(COLOR_TEXTO_CLARO);
+        lbl.setForeground(cTextoClaro);
         return lbl;
     }
 
     private JTextField crearCampoTexto(int columnas) {
         JTextField txt = new JTextField(columnas);
         txt.setFont(FUENTE_CONSOLA);
-        txt.setBackground(COLOR_PANEL_TABLA);
-        txt.setForeground(COLOR_BORDE_ALERTA);
-        txt.setCaretColor(COLOR_BORDE_ALERTA);
-        txt.setBorder(new LineBorder(COLOR_BORDE_ALERTA, 1));
+        txt.setBackground(cPanelTabla);
+        txt.setForeground(cBordeAlerta);
+        txt.setCaretColor(cBordeAlerta);
+        txt.setBorder(new LineBorder(cBordeAlerta, 1));
 
         txt.addFocusListener(new FocusAdapter() {
             @Override
             public void focusGained(FocusEvent e) {
-                txt.setBackground(new Color(65, 15, 15));
+                txt.setBackground(new Color(Math.min(255, cPanelTabla.getRed() + 35), Math.min(255, cPanelTabla.getGreen() + 20), Math.min(255, cPanelTabla.getBlue() + 20)));
                 txt.setBorder(new LineBorder(Color.YELLOW, 2));
             }
 
             @Override
             public void focusLost(FocusEvent e) {
-                txt.setBackground(COLOR_PANEL_TABLA);
-                txt.setBorder(new LineBorder(COLOR_BORDE_ALERTA, 1));
+                txt.setBackground(cPanelTabla);
+                txt.setBorder(new LineBorder(cBordeAlerta, 1));
             }
         });
 
@@ -249,15 +393,15 @@ public class FrmInventarioCritico extends JInternalFrame {
         JDialog dialogo = new JDialog(JOptionPane.getFrameForComponent(this), esEdicion ? "EDITAR ITEM CRÍTICO" : "NUEVO ITEM CRÍTICO", true);
         dialogo.setSize(500, 400);
         dialogo.setLocationRelativeTo(this);
-        dialogo.getContentPane().setBackground(COLOR_FONDO);
+        dialogo.getContentPane().setBackground(cFondo);
         dialogo.setLayout(new BorderLayout());
 
         JPanel panelCentro = new JPanel(new GridBagLayout());
-        panelCentro.setBackground(COLOR_FONDO);
+        panelCentro.setBackground(cFondo);
         panelCentro.setBorder(BorderFactory.createTitledBorder(
-                new LineBorder(COLOR_BORDE_ALERTA, 2),
+                new LineBorder(cBordeAlerta, 2),
                 esEdicion ? " MODIFICAR PARAMETROS CRÍTICOS " : " REGISTRAR STOCK CRÍTICO ",
-                0, 0, FUENTE_CONSOLA, COLOR_BORDE_ALERTA
+                0, 0, FUENTE_CONSOLA, cBordeAlerta
         ));
 
         GridBagConstraints gbc = new GridBagConstraints();
@@ -316,8 +460,8 @@ public class FrmInventarioCritico extends JInternalFrame {
         dialogo.add(panelCentro, BorderLayout.CENTER);
 
         JPanel panelBotones = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 10));
-        panelBotones.setBackground(COLOR_BARRA_INF);
-        panelBotones.setBorder(new LineBorder(COLOR_BORDE_ALERTA, 1));
+        panelBotones.setBackground(cBarraInf);
+        panelBotones.setBorder(new LineBorder(cBordeAlerta, 1));
 
         JButton btnGuardar = new JButton("Guardar [F3]");
         btnGuardar.setFont(FUENTE_CONSOLA);
@@ -333,8 +477,6 @@ public class FrmInventarioCritico extends JInternalFrame {
                 String b = txtB.getText().trim();
                 String fam = txtFam.getText().trim();
                 String n = txtN.getText().trim();
-
-                
                 String cost = txtCost.getText().trim();
                 String stock = txtS.getText().trim();
                 String crit = txtCrit.getText().trim();
@@ -379,15 +521,15 @@ public class FrmInventarioCritico extends JInternalFrame {
         JDialog dialogo = new JDialog(JOptionPane.getFrameForComponent(this), "CONFIRMAR ELIMINACIÓN", true);
         dialogo.setSize(480, 220);
         dialogo.setLocationRelativeTo(this);
-        dialogo.getContentPane().setBackground(COLOR_FONDO);
+        dialogo.getContentPane().setBackground(cFondo);
         dialogo.setLayout(new BorderLayout());
 
         JPanel panelCentro = new JPanel(new GridBagLayout());
-        panelCentro.setBackground(COLOR_FONDO);
+        panelCentro.setBackground(cFondo);
         panelCentro.setBorder(BorderFactory.createTitledBorder(
-                new LineBorder(COLOR_BORDE_ALERTA, 2),
+                new LineBorder(cBordeAlerta, 2),
                 " ADVERTENCIA DE ELIMINACIÓN ",
-                0, 0, FUENTE_CONSOLA, COLOR_BORDE_ALERTA
+                0, 0, FUENTE_CONSOLA, cBordeAlerta
         ));
 
         GridBagConstraints gbc = new GridBagConstraints();
@@ -403,16 +545,16 @@ public class FrmInventarioCritico extends JInternalFrame {
 
         gbc.gridy = 1;
         gbc.insets = new Insets(5, 15, 10, 15);
-        JLabel lblDetalle = new JLabel("<html><center>" + nombre + "<br><font color='#FF6666'>[Barra: " + barra + "]</font></center></html>");
+        JLabel lblDetalle = new JLabel("<html><center>" + nombre + "<br><font color='" + colorToHex(cBordeAlerta) + "'>[Barra: " + barra + "]</font></center></html>");
         lblDetalle.setFont(new Font("Consolas", Font.BOLD, 13));
-        lblDetalle.setForeground(COLOR_TEXTO_CLARO);
+        lblDetalle.setForeground(cTextoClaro);
         panelCentro.add(lblDetalle, gbc);
 
         dialogo.add(panelCentro, BorderLayout.CENTER);
 
         JPanel panelBotones = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 10));
-        panelBotones.setBackground(COLOR_BARRA_INF);
-        panelBotones.setBorder(new LineBorder(COLOR_BORDE_ALERTA, 1));
+        panelBotones.setBackground(cBarraInf);
+        panelBotones.setBorder(new LineBorder(cBordeAlerta, 1));
 
         JButton btnSi = new JButton("Sí [Enter]");
         btnSi.setFont(FUENTE_CONSOLA);
@@ -443,6 +585,10 @@ public class FrmInventarioCritico extends JInternalFrame {
         dialogo.setVisible(true);
     }
 
+    private String colorToHex(Color color) {
+        return String.format("#%02x%02x%02x", color.getRed(), color.getGreen(), color.getBlue());
+    }
+
     private void configurarAtajos() {
         JRootPane root = getRootPane();
         int cond = JComponent.WHEN_IN_FOCUSED_WINDOW;
@@ -462,6 +608,15 @@ public class FrmInventarioCritico extends JInternalFrame {
                 txtBuscarProducto.setText("");
                 ejecutarBusqueda();
                 txtBuscarProducto.requestFocusInWindow();
+            }
+        });
+
+        // [F6] Ciclar Tema en tiempo real
+        root.getInputMap(cond).put(KeyStroke.getKeyStroke(KeyEvent.VK_F6, 0), "ciclar_tema");
+        root.getActionMap().put("ciclar_tema", new AbstractAction() {
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                ciclarSiguienteTema();
             }
         });
 
