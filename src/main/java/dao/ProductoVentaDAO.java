@@ -1,18 +1,27 @@
 package dao;
 
 import conexion.Conexion;
+import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import modelo.InventarioItemDTO;
 
 public class ProductoVentaDAO {
+
+    private static final Logger LOGGER = Logger.getLogger(ProductoVentaDAO.class.getName());
 
     // 1. Búsqueda para el buscador flotante de ventas
     public List<Object[]> buscarProductosYVendedorDAO(String textoBusqueda) {
         List<Object[]> lista = new ArrayList<>();
+        String filtro = textoBusqueda != null ? textoBusqueda.trim() : "";
 
         String sql = "SELECT \"PXBARRA\", \"PXNOMBRE\", \"PXILA\", \"PXVENTA0\" "
                 + "FROM pproduc_dbf "
@@ -20,37 +29,22 @@ public class ProductoVentaDAO {
 
         try (Connection conn = Conexion.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
-            String parametro = "%" + textoBusqueda + "%";
+            String parametro = "%" + filtro + "%";
             pstmt.setString(1, parametro);
             pstmt.setString(2, parametro);
 
             try (ResultSet rs = pstmt.executeQuery()) {
                 while (rs.next()) {
                     Object[] fila = new Object[4];
-                    fila[0] = rs.getString("PXBARRA");
-                    fila[1] = rs.getString("PXNOMBRE");
-                    fila[2] = rs.getString("PXILA");
-
-                    double precioFinal = 0.0;
-                    try {
-                        String val = rs.getString("PXVENTA0");
-                        if (val != null && !val.trim().isEmpty()) {
-                            // Limpiamos y convertimos a double nativo
-                            String limpio = val.trim().replace(".", "").replace(",", ".");
-                            precioFinal = Double.parseDouble(limpio);
-                        }
-                    } catch (Exception e) {
-                        System.err.println("Error convirtiendo precio: " + e.getMessage());
-                    }
-
-                    // Entregamos el valor como Double para que la interfaz lo pinte bien
-                    fila[3] = precioFinal;
+                    fila[0] = valorSeguro(rs.getString("PXBARRA"));
+                    fila[1] = valorSeguro(rs.getString("PXNOMBRE"));
+                    fila[2] = valorSeguro(rs.getString("PXILA"));
+                    fila[3] = parsearDecimalSeguro(rs.getString("PXVENTA0")).doubleValue();
                     lista.add(fila);
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Error al buscar productos: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error al buscar productos", e);
         }
         return lista;
     }
@@ -64,231 +58,222 @@ public class ProductoVentaDAO {
 
             while (rs.next()) {
                 Object[] fila = new Object[4];
-                fila[0] = rs.getString("PXBARRA");
-                fila[1] = rs.getString("PXNOMBRE");
-                fila[2] = rs.getString("PXILA");
-                fila[3] = rs.getString("PXVENTA0");
+                fila[0] = valorSeguro(rs.getString("PXBARRA"));
+                fila[1] = valorSeguro(rs.getString("PXNOMBRE"));
+                fila[2] = valorSeguro(rs.getString("PXILA"));
+                fila[3] = valorSeguro(rs.getString("PXVENTA0"));
                 lista.add(fila);
             }
         } catch (SQLException e) {
-            System.err.println("Error al obtener todos los productos: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error al obtener todos los productos", e);
         }
         return lista;
     }
 
-    // 1. Obtener un producto específico por su código de barra para rellenar el formulario de modificación
-    public java.util.Map<String, Object> obtenerProductoPorBarra(String barra) {
-        java.util.Map<String, Object> producto = new java.util.HashMap<>();
+    // Obtener un producto específico por su código de barra
+    public Map<String, Object> obtenerProductoPorBarra(String barra) {
+        Map<String, Object> producto = new HashMap<>();
+        String barraLimpia = barra != null ? barra.trim() : "";
+        if (barraLimpia.isEmpty()) {
+            return producto;
+        }
+
         String sql = "SELECT \"PXBARRA\", \"PXNOMBRE\", \"PXILA\", \"PXVENTA0\" FROM pproduc_dbf WHERE \"PXBARRA\" = ?";
 
         try (Connection conn = Conexion.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
-            pstmt.setString(1, barra);
+            pstmt.setString(1, barraLimpia);
             try (ResultSet rs = pstmt.executeQuery()) {
                 if (rs.next()) {
-                    producto.put("barra", rs.getString("PXBARRA"));
-                    producto.put("nombre", rs.getString("PXNOMBRE"));
-                    producto.put("ila", rs.getString("PXILA"));
-                    producto.put("precio", rs.getString("PXVENTA0"));
+                    producto.put("barra", valorSeguro(rs.getString("PXBARRA")));
+                    producto.put("nombre", valorSeguro(rs.getString("PXNOMBRE")));
+                    producto.put("ila", valorSeguro(rs.getString("PXILA")));
+                    producto.put("precio", valorSeguro(rs.getString("PXVENTA0")));
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Error al obtener producto por barra: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error al obtener producto por barra", e);
         }
         return producto;
     }
 
-    // 3. Insertar un nuevo producto
+    // Insertar un nuevo producto con validación básica
     public boolean insertarProducto(String barra, String nombre, double precio) {
+        String barraLimpia = barra != null ? barra.trim() : "";
+        String nombreLimpio = nombre != null ? nombre.trim() : "";
+
+        if (barraLimpia.isEmpty() || nombreLimpio.isEmpty()) {
+            LOGGER.warning("Intento de insertar producto con barra o nombre vacío.");
+            return false;
+        }
+        if (Double.isNaN(precio) || Double.isInfinite(precio) || precio < 0) {
+            LOGGER.warning("Intento de insertar producto con precio inválido.");
+            return false;
+        }
+
         String sql = "INSERT INTO pproduc_dbf (\"PXBARRA\", \"PXNOMBRE\", \"PXVENTA0\") VALUES (?, ?, ?)";
 
         try (Connection conn = Conexion.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
-            pstmt.setString(1, barra);
-            pstmt.setString(2, nombre);
+            pstmt.setString(1, barraLimpia);
+            pstmt.setString(2, nombreLimpio);
+            pstmt.setString(3, BigDecimal.valueOf(precio).toPlainString().replace(".", ","));
 
-            // Como PXVENTA0 es varchar(50) en tu BD, guardamos el número convertido a texto de forma segura
-            pstmt.setString(3, String.valueOf(precio).replace(".", ",")); // O usa String.valueOf(precio) si prefieres con punto
-
-            pstmt.executeUpdate();
-            return true;
-
+            return pstmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            System.err.println("Error al insertar producto: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error al insertar producto", e);
             return false;
         }
     }
 
-    // 4. Actualizar un producto existente (con 4 parámetros según la vista)
-// 1. Método para 4 parámetros (Usado por DlgNuevoProducto)
+    // Actualizar producto usando precio numérico
     public boolean actualizarProducto(String codigoOriginal, String barra, String nombre, double precio) {
+        String originalLimpio = codigoOriginal != null ? codigoOriginal.trim() : "";
+        String barraLimpia = barra != null ? barra.trim() : "";
+        String nombreLimpio = nombre != null ? nombre.trim() : "";
+
+        if (originalLimpio.isEmpty() || barraLimpia.isEmpty() || nombreLimpio.isEmpty()) {
+            LOGGER.warning("Intento de actualizar producto con campos obligatorios vacíos.");
+            return false;
+        }
+        if (Double.isNaN(precio) || Double.isInfinite(precio) || precio < 0) {
+            LOGGER.warning("Intento de actualizar producto con precio inválido.");
+            return false;
+        }
+
         String sql = "UPDATE pproduc_dbf SET \"PXBARRA\" = ?, \"PXNOMBRE\" = ?, \"PXVENTA0\" = ? WHERE \"PXBARRA\" = ?";
 
         try (Connection conn = Conexion.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
-            pstmt.setString(1, barra);
-            pstmt.setString(2, nombre);
-            pstmt.setDouble(3, precio);
-            pstmt.setString(4, codigoOriginal);
+            pstmt.setString(1, barraLimpia);
+            pstmt.setString(2, nombreLimpio);
+            pstmt.setString(3, BigDecimal.valueOf(precio).toPlainString().replace(".", ","));
+            pstmt.setString(4, originalLimpio);
 
-            int filas = pstmt.executeUpdate();
-            return filas > 0;
-
+            return pstmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            System.err.println("Error al actualizar producto (4 params): " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error al actualizar producto", e);
             return false;
         }
     }
 
-    // 2. Método para 5 parámetros (Usado por DlgModificarProducto con ILA incluido)
+    // Sobrecarga para formularios que reciben el precio como texto
     public boolean actualizarProducto(String nuevaBarra, String nombre, String precioStr, String barraOriginal) {
-        String sql = "UPDATE pproduc_dbf SET \"PXBARRA\" = ?, \"PXNOMBRE\" = ?, \"PXVENTA0\" = ? WHERE \"PXBARRA\" = ?";
+        if (precioStr == null || precioStr.trim().isEmpty()) {
+            LOGGER.warning("Intento de actualizar producto con precio vacío.");
+            return false;
+        }
 
-        try (Connection conn = Conexion.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
-            pstmt.setString(1, nuevaBarra);
-            pstmt.setString(2, nombre);
-
-            double precio = 0.0;
-            if (precioStr != null && !precioStr.trim().isEmpty()) {
-                try {
-                    precio = Double.parseDouble(precioStr.replace(",", "."));
-                } catch (NumberFormatException e) {
-                    precio = 0.0;
-                }
+        try {
+            BigDecimal precioDecimal = parsearDecimalEstricto(precioStr);
+            if (precioDecimal.compareTo(BigDecimal.ZERO) < 0) {
+                LOGGER.warning("Intento de actualizar producto con precio negativo.");
+                return false;
             }
-            pstmt.setDouble(3, precio);
-            pstmt.setString(4, barraOriginal);
-
-            int filas = pstmt.executeUpdate();
-            return filas > 0;
-
-        } catch (SQLException e) {
-            System.err.println("Error al actualizar producto: " + e.getMessage());
-            e.printStackTrace();
+            return actualizarProducto(barraOriginal, nuevaBarra, nombre, precioDecimal.doubleValue());
+        } catch (NumberFormatException e) {
+            LOGGER.warning(() -> "Precio no válido al actualizar producto: " + precioStr);
             return false;
         }
     }
 
-    public java.util.List<Object[]> obtenerProductosParaTabla() {
-        java.util.List<Object[]> listaProductos = new java.util.ArrayList<>();
-
-        // Consulta usando los nombres reales de la estructura de tu tabla pproduc_dbf
+    public List<Object[]> obtenerProductosParaTabla() {
+        List<Object[]> listaProductos = new ArrayList<>();
         String sql = "SELECT \"PXNOMBRE\", \"PXBARRA\", \"PXVENTA0\" FROM pproduc_dbf ORDER BY \"PXNOMBRE\" ASC";
 
-        try (java.sql.Connection conn = conexion.Conexion.getConnection(); java.sql.PreparedStatement pstmt = conn.prepareStatement(sql); java.sql.ResultSet rs = pstmt.executeQuery()) {
+        try (Connection conn = Conexion.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql); ResultSet rs = pstmt.executeQuery()) {
 
             while (rs.next()) {
-                String desc = rs.getString("PXNOMBRE");
-                String barra = rs.getString("PXBARRA");
-                String venta0Str = rs.getString("PXVENTA0");
+                String desc = valorSeguro(rs.getString("PXNOMBRE"));
+                String barra = valorSeguro(rs.getString("PXBARRA"));
+                BigDecimal precio = parsearDecimalSeguro(rs.getString("PXVENTA0"));
 
-                // Parsear el precio de forma segura ya que PXVENTA0 es varchar y puede traer comas (ej: "0,00")
-                java.math.BigDecimal precio = java.math.BigDecimal.ZERO;
-                if (venta0Str != null && !venta0Str.trim().isEmpty()) {
-                    try {
-                        String limpio = venta0Str.trim().replace(",", ".");
-                        precio = new java.math.BigDecimal(limpio);
-                    } catch (NumberFormatException e) {
-                        precio = java.math.BigDecimal.ZERO;
-                    }
-                }
-
-                Object[] fila = new Object[]{
-                    desc != null ? desc.trim() : "",
-                    barra != null ? barra.trim() : "",
-                    precio
-                };
-                listaProductos.add(fila);
+                listaProductos.add(new Object[]{desc, barra, precio});
             }
-
-        } catch (java.sql.SQLException e) {
-            System.err.println("Error al obtener productos para la tabla: " + e.getMessage());
-            e.printStackTrace();
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error al obtener productos para la tabla", e);
         }
-
         return listaProductos;
     }
 
     public boolean eliminarProducto(String barra) {
+        String barraLimpia = barra != null ? barra.trim() : "";
+        if (barraLimpia.isEmpty()) {
+            LOGGER.warning("Intento de eliminar producto con barra vacía.");
+            return false;
+        }
+
         String sql = "DELETE FROM pproduc_dbf WHERE \"PXBARRA\" = ?";
 
         try (Connection conn = Conexion.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
-            pstmt.setString(1, barra);
-            int filasAfectadas = pstmt.executeUpdate();
-            return filasAfectadas > 0;
-
+            pstmt.setString(1, barraLimpia);
+            return pstmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            System.err.println("Error al eliminar producto: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error al eliminar producto", e);
             return false;
         }
     }
 
-    public java.util.List<modelo.InventarioItemDTO> listarInventario() {
-        java.util.List<modelo.InventarioItemDTO> listaItems = new java.util.ArrayList<>();
-        // Incluimos PXSTOCK y PXILA en la consulta SQL
+    public List<InventarioItemDTO> listarInventario() {
+        List<InventarioItemDTO> listaItems = new ArrayList<>();
         String sql = "SELECT \"PXBARRA\", \"PXNOMBRE\", \"PXILA\", \"PXSTOCK\", \"PXVENTA0\" FROM pproduc_dbf ORDER BY \"PXNOMBRE\" ASC";
 
-        try (java.sql.Connection conn = conexion.Conexion.getConnection(); java.sql.PreparedStatement pstmt = conn.prepareStatement(sql); java.sql.ResultSet rs = pstmt.executeQuery()) {
+        try (Connection conn = Conexion.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql); ResultSet rs = pstmt.executeQuery()) {
 
             while (rs.next()) {
-                String codigoStr = rs.getString("PXBARRA");
-                String descripcion = rs.getString("PXNOMBRE");
-                String familia = rs.getString("PXILA");
-                String stockStr = rs.getString("PXSTOCK");
-                String venta0Str = rs.getString("PXVENTA0");
+                String codigoStr = valorSeguro(rs.getString("PXBARRA"));
+                String descripcion = valorSeguro(rs.getString("PXNOMBRE"));
+                String familiaRaw = valorSeguro(rs.getString("PXILA"));
+                String familia = familiaRaw.isEmpty() ? "GENERAL" : familiaRaw;
 
-                // 1. Limpieza y conversión segura del precio
-                double precioFinal = 0.0;
-                if (venta0Str != null && !venta0Str.trim().isEmpty()) {
-                    try {
-                        String limpio = venta0Str.trim().replace(".", "").replace(",", ".");
-                        precioFinal = Double.parseDouble(limpio);
-                    } catch (Exception e) {
-                        precioFinal = 0.0;
-                    }
-                }
-
-                // 2. Limpieza y conversión segura del stock
-                double stockFinal = 0.0;
-                if (stockStr != null && !stockStr.trim().isEmpty()) {
-                    try {
-                        String stockLimpio = stockStr.trim().replace(".", "").replace(",", ".");
-                        stockFinal = Double.parseDouble(stockLimpio);
-                    } catch (Exception e) {
-                        stockFinal = 0.0;
-                    }
-                }
+                double precioFinal = parsearDecimalSeguro(rs.getString("PXVENTA0")).doubleValue();
+                double stockFinal = parsearDecimalSeguro(rs.getString("PXSTOCK")).doubleValue();
 
                 int codigo = 0;
-                try {
-                    if (codigoStr != null && !codigoStr.trim().isEmpty()) {
-                        codigo = Integer.parseInt(codigoStr.replaceAll("[^0-9]", ""));
+                if (!codigoStr.isEmpty()) {
+                    String soloDigitos = codigoStr.replaceAll("[^0-9]", "");
+                    if (!soloDigitos.isEmpty()) {
+                        try {
+                            codigo = Integer.parseInt(soloDigitos);
+                        } catch (NumberFormatException ignored) {
+                            codigo = 0;
+                        }
                     }
-                } catch (Exception e) {
-                    codigo = 0;
                 }
 
-                // 3. Creamos el DTO pasando los datos en el orden correcto que espera el modelo
-                modelo.InventarioItemDTO item = new modelo.InventarioItemDTO(
+                InventarioItemDTO item = new InventarioItemDTO(
                         codigo,
-                        descripcion != null ? descripcion.trim() : "",
-                        familia != null ? familia.trim() : "GENERAL",
-                        String.valueOf(stockFinal), // Stock real parseado
-                        String.valueOf(precioFinal) // Precio real parseado
+                        descripcion,
+                        familia,
+                        BigDecimal.valueOf(stockFinal).toPlainString(),
+                        BigDecimal.valueOf(precioFinal).toPlainString()
                 );
                 listaItems.add(item);
             }
-        } catch (java.sql.SQLException e) {
-            System.err.println("Error al listar inventario: " + e.getMessage());
-            e.printStackTrace();
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error al listar inventario", e);
         }
         return listaItems;
+    }
+
+    private String valorSeguro(String valor) {
+        return valor != null ? valor.trim() : "";
+    }
+
+    private BigDecimal parsearDecimalEstricto(String texto) {
+        String limpio = texto.trim().replace(".", "").replace(",", ".");
+        return new BigDecimal(limpio);
+    }
+
+    private BigDecimal parsearDecimalSeguro(String texto) {
+        if (texto == null || texto.trim().isEmpty()) {
+            return BigDecimal.ZERO;
+        }
+        try {
+            return parsearDecimalEstricto(texto);
+        } catch (NumberFormatException e) {
+            return BigDecimal.ZERO;
+        }
     }
 }

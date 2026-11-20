@@ -212,18 +212,11 @@ public class FrmEliminarRecibo extends JInternalFrame {
             @Override
             public void keyPressed(KeyEvent e) {
                 switch (e.getKeyCode()) {
-                    case KeyEvent.VK_DELETE:
-                    case KeyEvent.VK_F3:
-                        confirmarYEliminarSeleccionado();
-                        break;
-                    case KeyEvent.VK_ESCAPE:
-                        dispose();
-                        break;
-                    case KeyEvent.VK_F6:
-                        ciclarSiguienteTema();
-                        break;
-                    default:
-                        break;
+                    case KeyEvent.VK_DELETE, KeyEvent.VK_F3 -> confirmarYEliminarSeleccionado();
+                    case KeyEvent.VK_ESCAPE -> dispose();
+                    case KeyEvent.VK_F6 -> ciclarSiguienteTema();
+                    default -> {
+                    }
                 }
             }
         });

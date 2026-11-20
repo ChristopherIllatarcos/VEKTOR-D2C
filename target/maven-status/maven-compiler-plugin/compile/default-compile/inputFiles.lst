@@ -44,6 +44,7 @@ C:\Users\caill\Documents\NetBeansProjects\NEXUM\src\main\java\modelo\VentaDTO.ja
 C:\Users\caill\Documents\NetBeansProjects\NEXUM\src\main\java\modelo\VentaFamiliaDTO.java
 C:\Users\caill\Documents\NetBeansProjects\NEXUM\src\main\java\NEXUM.java
 C:\Users\caill\Documents\NetBeansProjects\NEXUM\src\main\java\utilidades\ClienteUtils.java
+C:\Users\caill\Documents\NetBeansProjects\NEXUM\src\main\java\utilidades\crearDateChooserConsola.java
 C:\Users\caill\Documents\NetBeansProjects\NEXUM\src\main\java\utilidades\IconoUtils.java
 C:\Users\caill\Documents\NetBeansProjects\NEXUM\src\main\java\utilidades\PDFUtils.java
 C:\Users\caill\Documents\NetBeansProjects\NEXUM\src\main\java\utilidades\ValidadorRespaldoUtils.java
@@ -71,6 +72,7 @@ C:\Users\caill\Documents\NetBeansProjects\NEXUM\src\main\java\vista\compras\DlgM
 C:\Users\caill\Documents\NetBeansProjects\NEXUM\src\main\java\vista\compras\FrmIngresoCompra.java
 C:\Users\caill\Documents\NetBeansProjects\NEXUM\src\main\java\vista\compras\FrmLibroCompras.java
 C:\Users\caill\Documents\NetBeansProjects\NEXUM\src\main\java\vista\compras\FrmProveedores.java
+C:\Users\caill\Documents\NetBeansProjects\NEXUM\src\main\java\vista\ctacte\DialogoSalidaNexum.java
 C:\Users\caill\Documents\NetBeansProjects\NEXUM\src\main\java\vista\ctacte\FrmBuscarCliente.java
 C:\Users\caill\Documents\NetBeansProjects\NEXUM\src\main\java\vista\ctacte\FrmCarteraCheques.java
 C:\Users\caill\Documents\NetBeansProjects\NEXUM\src\main\java\vista\ctacte\FrmCartolaCliente.java
@@ -96,6 +98,7 @@ C:\Users\caill\Documents\NetBeansProjects\NEXUM\src\main\java\vista\ventas\FrmCo
 C:\Users\caill\Documents\NetBeansProjects\NEXUM\src\main\java\vista\ventas\FrmDetalleVendedor.java
 C:\Users\caill\Documents\NetBeansProjects\NEXUM\src\main\java\vista\ventas\FrmFichaVendedores.java
 C:\Users\caill\Documents\NetBeansProjects\NEXUM\src\main\java\vista\ventas\FrmHojaRuta.java
+C:\Users\caill\Documents\NetBeansProjects\NEXUM\src\main\java\vista\ventas\FrmHojaRuta_respaldo.java
 C:\Users\caill\Documents\NetBeansProjects\NEXUM\src\main\java\vista\ventas\FrmMantencionVentas.java
 C:\Users\caill\Documents\NetBeansProjects\NEXUM\src\main\java\vista\ventas\FrmModificarVenta.java
 C:\Users\caill\Documents\NetBeansProjects\NEXUM\src\main\java\vista\ventas\FrmResultadoVentaCliente.java

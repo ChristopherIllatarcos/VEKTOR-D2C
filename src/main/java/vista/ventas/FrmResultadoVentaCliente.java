@@ -1,11 +1,11 @@
 package vista.ventas;
 
+import com.toedter.calendar.JDateChooser;
 import modelo.VentaClienteDTO;
 import dao.VentaDAO;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
-import javax.swing.border.LineBorder;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableColumnModel;
@@ -15,19 +15,24 @@ import java.awt.event.ActionEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.text.DecimalFormat;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.Date;
 import java.util.List;
 import utilidades.PDFUtils;
 
 public class FrmResultadoVentaCliente extends JInternalFrame {
 
+    private static final DateTimeFormatter FORMATO_FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
     private JTable tablaResultados;
     private DefaultTableModel modeloTabla;
     private TableRowSorter<DefaultTableModel> sorter;
 
-    private JTextField txtFechaIni;
-    private JTextField txtFechaFin;
+    private JDateChooser dcFechaIni;
+    private JDateChooser dcFechaFin;
     private JTextField txtBuscar;
     private JLabel lblRegistros;
     private JLabel lblTotalGeneral;
@@ -44,7 +49,7 @@ public class FrmResultadoVentaCliente extends JInternalFrame {
 
     // Sistema de Temas Ciclos [F5]
     private final String[] listaTemas = {"Clipper Clásico", "Morado Neón", "Turquesa Pro", "Esmeralda Terminal", "Naranja Fuego"};
-    private int indiceTemaActual = 0; // Empieza en Naranja Fuego por defecto
+    private int indiceTemaActual = 0;
 
     private VentaDAO ventaDAO;
 
@@ -52,7 +57,6 @@ public class FrmResultadoVentaCliente extends JInternalFrame {
         super("5.- INFORME DE VENTAS POR CLIENTE", false, false, false, false);
         this.ventaDAO = new VentaDAO();
 
-        // Aplicar tema inicial
         aplicarTema(listaTemas[indiceTemaActual]);
 
         initComponents();
@@ -64,13 +68,19 @@ public class FrmResultadoVentaCliente extends JInternalFrame {
         setSize(980, 620);
         setVisible(true);
 
-        // Asignar el icono de Nexum directamente a este JInternalFrame
         try {
-            setFrameIcon(new javax.swing.ImageIcon(getClass().getResource("/vektor/cubo-azul-16.png")));
+            java.net.URL urlIcono = getClass().getResource("/vektor/cubo-azul-16.png");
+            if (urlIcono != null) {
+                setFrameIcon(new ImageIcon(urlIcono));
+            }
         } catch (Exception e) {
             System.out.println("No se pudo cargar el icono interno: " + e.getMessage());
         }
 
+        SwingUtilities.invokeLater(() -> {
+            estilizarDateChooser(dcFechaIni);
+            estilizarDateChooser(dcFechaFin);
+        });
     }
 
     // ==========================================
@@ -132,7 +142,6 @@ public class FrmResultadoVentaCliente extends JInternalFrame {
         String nuevoTema = listaTemas[indiceTemaActual];
         aplicarTema(nuevoTema);
 
-        // Refrescar componentes visuales en tiempo de ejecución
         panelPrincipal.setBackground(cFondoNegro);
         panelPrincipal.setBorder(BorderFactory.createLineBorder(cAcento, 2));
 
@@ -166,8 +175,8 @@ public class FrmResultadoVentaCliente extends JInternalFrame {
             panelComandos.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, cAcento));
         }
 
-        estilizarCampo(txtFechaIni);
-        estilizarCampo(txtFechaFin);
+        estilizarDateChooser(dcFechaIni);
+        estilizarDateChooser(dcFechaFin);
         estilizarCampo(txtBuscar);
         estilizarBotonConsola(btnConsultar, cEncabezadoTabla);
 
@@ -180,20 +189,73 @@ public class FrmResultadoVentaCliente extends JInternalFrame {
     private void actualizarTextoAtajos() {
         String temaActual = listaTemas[indiceTemaActual];
         if (lblAtajos != null) {
-            lblAtajos.setText("<html><b style='color:#FFFF55;'>(Esc)</b> <span style='color:FFFFFF;'>Cerrar</span> &nbsp;&nbsp;|&nbsp;&nbsp; "
-                    + "<b style='color:#FFFF55;'>(F3)</b> <span style='color:FFFFFF;'>Filtrar</span> &nbsp;&nbsp;|&nbsp;&nbsp; "
-                    + "<b style='color:#FFFF55;'>(F4)</b> <span style='color:FFFFFF;'>PDF</span> &nbsp;&nbsp;|&nbsp;&nbsp; "
+            lblAtajos.setText("<html><b style='color:#FFFF55;'>(Esc)</b> <span style='color:#FFFFFF;'>Cerrar</span> &nbsp;&nbsp;|&nbsp;&nbsp; "
+                    + "<b style='color:#FFFF55;'>(F3)</b> <span style='color:#FFFFFF;'>Filtrar</span> &nbsp;&nbsp;|&nbsp;&nbsp; "
+                    + "<b style='color:#FFFF55;'>(F4)</b> <span style='color:#FFFFFF;'>PDF</span> &nbsp;&nbsp;|&nbsp;&nbsp; "
                     + "<b style='color:#FFFF55;'>(F5)</b> <span style='color:#00FFCC;'>Tema: " + temaActual + "</span></html>");
         }
     }
 
+    private JDateChooser crearDateChooserConsola(LocalDate fechaInicial, int anchoPx) {
+        JDateChooser chooser = new JDateChooser();
+        chooser.setDateFormatString("dd/MM/yyyy");
+        chooser.setFont(FUENTE_CONSOLA);
+        chooser.setPreferredSize(new Dimension(anchoPx, 26));
+        if (fechaInicial != null) {
+            chooser.setDate(Date.from(fechaInicial.atStartOfDay(ZoneId.systemDefault()).toInstant()));
+        }
+        estilizarDateChooser(chooser);
+        return chooser;
+    }
+
+    private void estilizarDateChooser(JDateChooser chooser) {
+        if (chooser == null) {
+            return;
+        }
+        Color fondoCampo = new Color(
+                Math.max(0, cFondoNegro.getRed() + 10),
+                Math.max(0, cFondoNegro.getGreen() + 10),
+                Math.max(0, cFondoNegro.getBlue() + 10)
+        );
+        chooser.setBackground(cFondoNegro);
+        chooser.setForeground(Color.WHITE);
+        chooser.setFont(FUENTE_CONSOLA);
+
+        Component editor = chooser.getDateEditor().getUiComponent();
+        if (editor instanceof JComponent jcomp) {
+            jcomp.setBackground(fondoCampo);
+            jcomp.setForeground(Color.WHITE);
+            jcomp.setFont(FUENTE_CONSOLA);
+            jcomp.setBorder(BorderFactory.createLineBorder(cAcento));
+        }
+        if (editor instanceof JTextField tf) {
+            tf.setBackground(fondoCampo);
+            tf.setForeground(Color.WHITE);
+            tf.setDisabledTextColor(Color.WHITE);
+            tf.setCaretColor(cAcento);
+            tf.setHorizontalAlignment(JTextField.CENTER);
+            tf.repaint();
+        }
+    }
+
+    private String obtenerTextoFecha(JDateChooser chooser) {
+        if (chooser == null || chooser.getDate() == null) {
+            return "";
+        }
+        LocalDate ld = Instant.ofEpochMilli(chooser.getDate().getTime())
+                .atZone(ZoneId.systemDefault())
+                .toLocalDate();
+        return ld.format(FORMATO_FECHA);
+    }
+
     private void cargarFechasAutomaticas() {
-        DateTimeFormatter formato = DateTimeFormatter.ofPattern("dd/MM/yyyy");
         LocalDate hoy = LocalDate.now();
         LocalDate primerDiaMes = hoy.withDayOfMonth(1);
 
-        txtFechaIni.setText(primerDiaMes.format(formato));
-        txtFechaFin.setText(hoy.format(formato));
+        dcFechaIni.setDate(Date.from(primerDiaMes.atStartOfDay(ZoneId.systemDefault()).toInstant()));
+        dcFechaFin.setDate(Date.from(hoy.atStartOfDay(ZoneId.systemDefault()).toInstant()));
+        estilizarDateChooser(dcFechaIni);
+        estilizarDateChooser(dcFechaFin);
     }
 
     private void initComponents() {
@@ -211,7 +273,7 @@ public class FrmResultadoVentaCliente extends JInternalFrame {
         JPanel panelFila1 = new JPanel(new BorderLayout());
         panelFila1.setOpaque(false);
 
-        JLabel lblTitulo = new JLabel("INFORME VENTAS POR CLIENTE");
+        JLabel lblTitulo = new JLabel("5.- INFORME VENTAS POR CLIENTE");
         lblTitulo.setFont(new Font("Monospaced", Font.BOLD, 16));
         lblTitulo.setForeground(cAcento);
         panelFila1.add(lblTitulo, BorderLayout.WEST);
@@ -231,26 +293,16 @@ public class FrmResultadoVentaCliente extends JInternalFrame {
         lblF1.setFont(FUENTE_CONSOLA);
         lblF1.setForeground(cAcento);
 
-        txtFechaIni = new JTextField(10);
-        estilizarCampo(txtFechaIni);
+        dcFechaIni = crearDateChooserConsola(null, 145);
 
         JLabel lblF2 = new JLabel("HASTA:");
         lblF2.setFont(FUENTE_CONSOLA);
         lblF2.setForeground(cAcento);
 
-        txtFechaFin = new JTextField(10);
-        estilizarCampo(txtFechaFin);
+        dcFechaFin = crearDateChooserConsola(null, 145);
 
-        KeyAdapter enterConsulta = new KeyAdapter() {
-            @Override
-            public void keyPressed(KeyEvent e) {
-                if (e.getKeyCode() == KeyEvent.VK_ENTER) {
-                    consultarDatos();
-                }
-            }
-        };
-        txtFechaIni.addKeyListener(enterConsulta);
-        txtFechaFin.addKeyListener(enterConsulta);
+        dcFechaIni.addPropertyChangeListener("date", evt -> estilizarDateChooser(dcFechaIni));
+        dcFechaFin.addPropertyChangeListener("date", evt -> estilizarDateChooser(dcFechaFin));
 
         btnConsultar = new JButton("Consultar");
         estilizarBotonConsola(btnConsultar, cEncabezadoTabla);
@@ -270,9 +322,9 @@ public class FrmResultadoVentaCliente extends JInternalFrame {
         });
 
         panelFiltros.add(lblF1);
-        panelFiltros.add(txtFechaIni);
+        panelFiltros.add(dcFechaIni);
         panelFiltros.add(lblF2);
-        panelFiltros.add(txtFechaFin);
+        panelFiltros.add(dcFechaFin);
         panelFiltros.add(btnConsultar);
         panelFiltros.add(lblBuscar);
         panelFiltros.add(txtBuscar);
@@ -389,7 +441,6 @@ public class FrmResultadoVentaCliente extends JInternalFrame {
         panelPrincipal.add(panelSurGeneral, BorderLayout.SOUTH);
 
         add(panelPrincipal);
-
     }
 
     private void estilizarCampo(JTextField txt) {
@@ -411,8 +462,8 @@ public class FrmResultadoVentaCliente extends JInternalFrame {
     }
 
     private void consultarDatos() {
-        String fi = txtFechaIni.getText().trim();
-        String ff = txtFechaFin.getText().trim();
+        String fi = obtenerTextoFecha(dcFechaIni);
+        String ff = obtenerTextoFecha(dcFechaFin);
 
         setTitle("INFORME DE VENTAS POR CLIENTE (" + fi + " al " + ff + ")");
 
@@ -479,7 +530,6 @@ public class FrmResultadoVentaCliente extends JInternalFrame {
             }
         });
 
-        // [F5] Ciclar Tema
         rootPane.getInputMap(cond).put(KeyStroke.getKeyStroke(KeyEvent.VK_F5, 0), "CAMBIAR_TEMA_F5");
         rootPane.getActionMap().put("CAMBIAR_TEMA_F5", new AbstractAction() {
             @Override
@@ -490,7 +540,7 @@ public class FrmResultadoVentaCliente extends JInternalFrame {
     }
 
     private void exportarPDF() {
-        String subtitulo = "Período: " + txtFechaIni.getText().trim() + " al " + txtFechaFin.getText().trim();
+        String subtitulo = "Período: " + obtenerTextoFecha(dcFechaIni) + " al " + obtenerTextoFecha(dcFechaFin);
         PDFUtils.exportarTablaPDF(
                 tablaResultados,
                 "INFORME DE VENTAS POR CLIENTE",

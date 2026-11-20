@@ -42,10 +42,10 @@ public class FrmResultadoInventario extends JInternalFrame {
 
     public FrmResultadoInventario(List<InventarioItemDTO> items, String fechaCorteInicial) {
         setTitle("5.- INVENTARIO DE PRODUCTOS");
-        setClosable(true);
-        setIconifiable(true);
-        setMaximizable(true);
-        setResizable(true);
+        setClosable(false);
+        setIconifiable(false);
+        setMaximizable(false);
+        setResizable(false);
         setSize(950, 580);
 
         this.cacheItems = items;

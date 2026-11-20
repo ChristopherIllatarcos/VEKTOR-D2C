@@ -39,7 +39,7 @@ public class FrmMantencionVentas extends JInternalFrame {
     private int indiceTemaActual = 0;
 
     public FrmMantencionVentas() {
-        super(" 4.- MANTENCIÓN DE VENTAS ", false, true, false, true);
+        super(" 4.- MANTENCIÓN DE VENTAS ", false, false, false, false);
 
         // Aplicar tema inicial
         aplicarTema(listaTemas[indiceTemaActual]);

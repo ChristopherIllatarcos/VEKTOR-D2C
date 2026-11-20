@@ -63,6 +63,7 @@ vista\ventas\FrmComisionesVentas$4.class
 vista\ventas\FrmMantencionVentas$2.class
 vista\compras\DlgInsertarProveedor$1.class
 modelo\FamiliaDTO.class
+vista\ventas\FrmHojaRuta_respaldo$7.class
 vista\archivo\DlgAccesosFunciones$6.class
 modelo\ComisionVendedorDTO.class
 vista\compras\FrmIngresoCompra$9.class
@@ -94,6 +95,7 @@ vista\ventas\FrmComisionesVentas$1.class
 vista\ventas\FrmVenta$4.class
 vista\ventas\FrmArchivoClientes$5.class
 vista\ctacte\FrmCarteraCheques.class
+vista\ventas\FrmHojaRuta_respaldo$5.class
 vista\bodega\FrmInventarioCritico$1.class
 vista\bodega\FrmRegistroFamilias$1.class
 vista\bodega\DlgModificarProducto$2.class
@@ -122,6 +124,7 @@ vista\bodega\FrmRegistroFamilias$9.class
 vista\ventas\DlgClientes.class
 vista\bodega\FrmRegistroFamilias$3.class
 vista\DlgNuevoProducto.class
+vista\ventas\FrmHojaRuta_respaldo$9.class
 vista\DlgBuscadorProductos$2.class
 vista\ctacte\FrmBuscarCliente$1.class
 vista\bodega\FrmVentasPorFamilia.class
@@ -141,6 +144,7 @@ vista\compras\FrmProveedores$9.class
 vista\archivo\DlgUsuariosSistema$2.class
 dao\ParametrosDAO.class
 vista\archivo\DlgFoliadorHojas$6.class
+vista\ventas\FrmHojaRuta_respaldo$8.class
 vista\FrmPrincipal$1.class
 vista\bodega\FrmRegistroFamilias$5.class
 vista\bodega\FrmRotacionVentas$6.class
@@ -160,6 +164,7 @@ vista\compras\FrmIngresoCompra$6.class
 vista\archivo\DlgFoliadorHojas$1.class
 vista\DlgBuscadorProductos$3.class
 dao\ProveedorDAO.class
+vista\ctacte\FrmCartolaCliente$8.class
 vista\archivo\DlgUsuariosSistema$7.class
 vista\ctacte\FrmCartolaCliente$7.class
 vista\bodega\FrmRotacionVentas$8.class
@@ -199,6 +204,7 @@ vista\archivo\DlgLicenciaUso$4.class
 dao\InventarioDAO.class
 vista\ctacte\FrmCartolaPorFecha$1.class
 vista\bodega\FrmInventarioCritico.class
+vista\FrmPrincipal$3.class
 vista\bodega\DlgProductos$7.class
 vista\ventas\DlgVenta$6$1.class
 vista\ventas\DlgVenta$2.class
@@ -206,11 +212,11 @@ vista\archivo\DlgCamaraKey$1.class
 vista\compras\FrmProveedores$5.class
 vista\ventas\FrmConsultaDocumento.class
 vista\ventas\FrmHojaRuta$10.class
-vista\ctacte\FrmCarteraCheques$8.class
 vista\ventas\FrmMantencionVentas$6.class
 vista\DlgRegistroProductos$2.class
 vista\bodega\FrmResultadoInventario.class
 vista\bodega\FrmRotacionVentas$2.class
+vista\ventas\FrmHojaRuta_respaldo$6.class
 vista\archivo\DlgUsuariosSistema$4.class
 vista\ventas\FrmDetalleVendedor$2.class
 vista\bodega\DlgModificarProducto.class
@@ -240,11 +246,13 @@ vista\bodega\DlgProductos$2.class
 vista\archivo\DlgIndexacionDB$3.class
 vista\ctacte\FrmCarteraCheques$3.class
 vista\ventas\FrmComisionesVentas$5.class
+vista\ventas\FrmHojaRuta_respaldo$1.class
 vista\ctacte\FrmCartolaCliente$3.class
 vista\bodega\FrmKardexMercaderia$4.class
 vista\compras\FrmLibroCompras$2.class
 vista\compras\FrmIngresoCompra$8.class
 vista\bodega\DlgParametrosInventario$2.class
+vista\ventas\FrmHojaRuta_respaldo$4.class
 vista\bodega\FrmIngresoMercaderia$9.class
 vista\archivo\FrmParametros$1.class
 vista\DlgBuscarCliente$5.class
@@ -259,7 +267,6 @@ vista\bodega\DlgProductos$9.class
 vista\ventas\FrmArchivoClientes$3.class
 vista\archivo\DlgLicenciaUso$2.class
 vista\ctacte\FrmBuscarCliente$5.class
-vista\ventas\FrmResultadoVentaCliente$8.class
 vista\archivo\DlgIndexacionDB$1.class
 vista\bodega\FrmKardexMercaderia$2.class
 dao\VentaFamiliaDAO.class
@@ -280,6 +287,7 @@ vista\archivo\DlgCamaraKey$3.class
 vista\compras\DlgModificarProveedor$2.class
 vista\ventas\FrmMantencionVentas$1.class
 vista\ventas\FrmFichaVendedores$1.class
+vista\bodega\DlgProductos$11.class
 vista\compras\FrmProveedores$10.class
 vista\ctacte\FrmEstadisticasClientes.class
 vista\bodega\FrmKardexMercaderia$1.class
@@ -300,6 +308,7 @@ vista\ventas\FrmHojaRuta$4.class
 vista\PanelDashboard.class
 vista\ventas\FrmMantencionVentas$3.class
 vista\bodega\FrmIngresoMercaderia$7.class
+vista\ventas\FrmHojaRuta_respaldo$3.class
 vista\ctacte\FrmEliminarRecibo$4.class
 controlador\ParametroController.class
 vista\archivo\DlgCamaraKey$4.class
@@ -311,7 +320,9 @@ vista\archivo\DlgFoliadorHojas.class
 vista\ventas\DlgVenta$5.class
 vista\bodega\FrmInventarioCritico$4.class
 vista\ventas\FrmConsultaDocumento$6.class
+vista\ventas\FrmHojaRuta_respaldo.class
 vista\ventas\FrmResultadoVentaCliente.class
+vista\ventas\FrmHojaRuta_respaldo$2.class
 vista\ventas\FrmMantencionVentas$4.class
 vista\ctacte\FrmEliminarRecibo$3.class
 vista\bodega\FrmResultadoInventario$5.class
@@ -330,6 +341,7 @@ vista\bodega\DlgProductos$3.class
 vista\bodega\FrmResultadoInventario$1.class
 vista\bodega\FrmInventarioCritico$9.class
 vista\ctacte\FrmEliminarRecibo$5.class
+vista\DialogoSalidaNexum.class
 vista\ventas\FrmHojaRuta$3.class
 vista\ctacte\FrmCuentasCobrarAlfabetico$5.class
 vista\bodega\FrmResultadoInventario$4.class
@@ -374,6 +386,7 @@ vista\ventas\FrmVenta$DlgDescuentoGlobal.class
 vista\bodega\FrmResultadoInventario$2.class
 vista\bodega\FrmVentasPorFamilia$5.class
 vista\ctacte\FrmCuentasCobrarAlfabetico$7.class
+vista\ventas\FrmHojaRuta_respaldo$10.class
 vista\archivo\DlgLicenciaUso.class
 vista\ventas\FrmResultadoVentaCliente$4.class
 dao\ParametroDAO.class

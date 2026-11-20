@@ -1,5 +1,6 @@
 package vista.ctacte;
 
+import com.toedter.calendar.JDateChooser;
 import modelo.DocumentoCarteraDTO;
 import conexion.Conexion;
 import dao.CuentaCorrienteDAO;
@@ -18,16 +19,25 @@ import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.sql.Connection;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class FrmCarteraCheques extends JInternalFrame {
 
+    private static final Logger LOGGER = Logger.getLogger(FrmCarteraCheques.class.getName());
+    private static final DateTimeFormatter FORMATO_FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
     private JTextField txtCliente;
-    private JTextField txtFechaInicio;
-    private JTextField txtFechaFin;
+    private JDateChooser dcFechaInicio;
+    private JDateChooser dcFechaFin;
     private JTable tablaResultados;
     private DefaultTableModel modeloTabla;
     private JButton btnGrafico;
@@ -49,7 +59,7 @@ public class FrmCarteraCheques extends JInternalFrame {
 
     // Sistema de Temas Ciclos [F6]
     private final String[] listaTemas = {"Clipper Azul", "Morado Neón", "Turquesa Pro", "Esmeralda Terminal", "Naranja Fuego"};
-    private int indiceTemaActual = 0; // Empieza en Clipper Azul por defecto
+    private int indiceTemaActual = 0;
 
     public FrmCarteraCheques() {
         setTitle("2.- MODULO CARTERA DE CHEQUES Y DOCUMENTOS");
@@ -69,26 +79,6 @@ public class FrmCarteraCheques extends JInternalFrame {
         panelPrincipal = new JPanel(new BorderLayout(10, 10));
         panelPrincipal.setBackground(cFondo);
         panelPrincipal.setBorder(new EmptyBorder(15, 15, 15, 15));
-
-        // Evento para cerrar la ventana con la tecla ESC
-        KeyStroke escapeKeyStroke = KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_ESCAPE, 0, false);
-        panelPrincipal.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(escapeKeyStroke, "ESCAPE");
-        panelPrincipal.getActionMap().put("ESCAPE", new AbstractAction() {
-            @Override
-            public void actionPerformed(java.awt.event.ActionEvent e) {
-                dispose();
-            }
-        });
-
-        // Evento para ciclar temas con F6
-        KeyStroke f6KeyStroke = KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_F6, 0, false);
-        panelPrincipal.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(f6KeyStroke, "CICLAR_TEMA");
-        panelPrincipal.getActionMap().put("CICLAR_TEMA", new AbstractAction() {
-            @Override
-            public void actionPerformed(java.awt.event.ActionEvent e) {
-                ciclarSiguienteTema();
-            }
-        });
 
         // ---------------------------------------------------------
         // 1. PANEL SUPERIOR: Filtros y Botones
@@ -124,8 +114,8 @@ public class FrmCarteraCheques extends JInternalFrame {
         panelFiltros.add(txtCliente, gbc);
 
         int anioActual = LocalDate.now().getYear();
-        String fechaInicioPorDefecto = "01-01-" + anioActual;
-        String fechaFinPorDefecto = "31-12-" + anioActual;
+        LocalDate fechaInicioPorDefecto = LocalDate.of(anioActual, 1, 1);
+        LocalDate fechaFinPorDefecto = LocalDate.of(anioActual, 12, 31);
 
         // Fila 1: Fechas
         gbc.gridwidth = 1;
@@ -138,9 +128,8 @@ public class FrmCarteraCheques extends JInternalFrame {
         panelFiltros.add(lblFecIni, gbc);
 
         gbc.gridx = 1;
-        txtFechaInicio = new JTextField(fechaInicioPorDefecto);
-        estilarCampoTexto(txtFechaInicio, 140);
-        panelFiltros.add(txtFechaInicio, gbc);
+        dcFechaInicio = crearDateChooserConsola(fechaInicioPorDefecto, 145);
+        panelFiltros.add(dcFechaInicio, gbc);
 
         gbc.gridx = 2;
         JLabel lblFecFin = new JLabel(" Fecha Final   :");
@@ -149,9 +138,11 @@ public class FrmCarteraCheques extends JInternalFrame {
         panelFiltros.add(lblFecFin, gbc);
 
         gbc.gridx = 3;
-        txtFechaFin = new JTextField(fechaFinPorDefecto);
-        estilarCampoTexto(txtFechaFin, 140);
-        panelFiltros.add(txtFechaFin, gbc);
+        dcFechaFin = crearDateChooserConsola(fechaFinPorDefecto, 145);
+        panelFiltros.add(dcFechaFin, gbc);
+
+        dcFechaInicio.addPropertyChangeListener("date", evt -> estilizarDateChooser(dcFechaInicio));
+        dcFechaFin.addPropertyChangeListener("date", evt -> estilizarDateChooser(dcFechaFin));
 
         // Panel de Botones (Consultar y Gráfico)
         panelBotones = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
@@ -217,12 +208,21 @@ public class FrmCarteraCheques extends JInternalFrame {
 
         add(panelPrincipal);
         atajoTeclado();
-        // Asignar el icono de Nexum directamente a este JInternalFrame
+
         try {
-            setFrameIcon(new javax.swing.ImageIcon(getClass().getResource("/vektor/cubo-azul-16.png")));
+            java.net.URL urlIcono = getClass().getResource("/vektor/cubo-azul-16.png");
+            if (urlIcono != null) {
+                setFrameIcon(new ImageIcon(urlIcono));
+            }
         } catch (Exception e) {
-            System.out.println("No se pudo cargar el icono interno: " + e.getMessage());
+            LOGGER.log(Level.WARNING, "No se pudo cargar el icono interno", e);
         }
+
+        SwingUtilities.invokeLater(() -> {
+            utilidades.IconoUtils.aplicarIcono(this);
+            estilizarDateChooser(dcFechaInicio);
+            estilizarDateChooser(dcFechaFin);
+        });
     }
 
     // ==========================================
@@ -298,8 +298,8 @@ public class FrmCarteraCheques extends JInternalFrame {
                     cBordeAcento
             ));
             for (Component comp : panelFiltros.getComponents()) {
-                if (comp instanceof JLabel) {
-                    ((JLabel) comp).setForeground(cTextoBlanco);
+                if (comp instanceof JLabel jLabel) {
+                    jLabel.setForeground(cTextoBlanco);
                 }
             }
         }
@@ -309,14 +309,11 @@ public class FrmCarteraCheques extends JInternalFrame {
         }
 
         if (txtCliente != null) {
-            estilarCampoTexto(txtCliente, txtCliente.getPreferredSize().width);
+            int anchoActual = txtCliente.getWidth() > 0 ? txtCliente.getWidth() : 340;
+            estilarCampoTexto(txtCliente, anchoActual);
         }
-        if (txtFechaInicio != null) {
-            estilarCampoTexto(txtFechaInicio, txtFechaInicio.getPreferredSize().width);
-        }
-        if (txtFechaFin != null) {
-            estilarCampoTexto(txtFechaFin, txtFechaFin.getPreferredSize().width);
-        }
+        estilizarDateChooser(dcFechaInicio);
+        estilizarDateChooser(dcFechaFin);
 
         if (tablaResultados != null) {
             estilarTabla(tablaResultados);
@@ -344,6 +341,51 @@ public class FrmCarteraCheques extends JInternalFrame {
         repaint();
     }
 
+    private JDateChooser crearDateChooserConsola(LocalDate fechaInicial, int anchoPx) {
+        JDateChooser chooser = new JDateChooser();
+        chooser.setDateFormatString("dd/MM/yyyy");
+        chooser.setFont(FUENTE_CONSOLA);
+        chooser.setPreferredSize(new Dimension(anchoPx, 26));
+        if (fechaInicial != null) {
+            chooser.setDate(Date.from(fechaInicial.atStartOfDay(ZoneId.systemDefault()).toInstant()));
+        }
+        estilizarDateChooser(chooser);
+        return chooser;
+    }
+
+    private void estilizarDateChooser(JDateChooser chooser) {
+        if (chooser == null) {
+            return;
+        }
+        chooser.setBackground(cFondo);
+        chooser.setForeground(Color.WHITE);
+        chooser.setFont(FUENTE_CONSOLA);
+
+        Component editor = chooser.getDateEditor().getUiComponent();
+        if (editor instanceof JComponent jcomp) {
+            jcomp.setBackground(cTablaFondo);
+            jcomp.setForeground(Color.WHITE);
+            jcomp.setFont(FUENTE_CONSOLA);
+            jcomp.setBorder(new LineBorder(cBordeAcento, 1));
+        }
+        if (editor instanceof JTextField tf) {
+            tf.setBackground(cTablaFondo);
+            tf.setForeground(Color.WHITE);
+            tf.setDisabledTextColor(Color.WHITE);
+            tf.setCaretColor(cTextoVerde);
+            tf.repaint();
+        }
+    }
+
+    private LocalDate obtenerLocalDate(JDateChooser chooser) {
+        if (chooser == null || chooser.getDate() == null) {
+            return null;
+        }
+        return Instant.ofEpochMilli(chooser.getDate().getTime())
+                .atZone(ZoneId.systemDefault())
+                .toLocalDate();
+    }
+
     private void actualizarTextoAyuda() {
         String temaActual = listaTemas[indiceTemaActual];
         if (lblAyuda != null) {
@@ -361,10 +403,16 @@ public class FrmCarteraCheques extends JInternalFrame {
     }
 
     private void estilizarBoton(JButton btn, Color bg, Color fg) {
+        if (btn == null) {
+            return;
+        }
         btn.setFont(FUENTE_CONSOLA);
+        btn.setOpaque(true);
+        btn.setContentAreaFilled(true);
         btn.setBackground(bg);
         btn.setForeground(fg);
         btn.setFocusPainted(false);
+        btn.setBorder(new LineBorder(cBordeAcento, 1));
         btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
     }
 
@@ -380,20 +428,26 @@ public class FrmCarteraCheques extends JInternalFrame {
     }
 
     private void buscarDocumentos() {
-        String cliente = txtCliente.getText().trim();
-        String fecIni = txtFechaInicio.getText().trim();
-        String fecFin = txtFechaFin.getText().trim();
+        LocalDate dIni = obtenerLocalDate(dcFechaInicio);
+        LocalDate dFin = obtenerLocalDate(dcFechaFin);
+        if (dIni != null && dFin != null && dIni.isAfter(dFin)) {
+            JOptionPane.showMessageDialog(this, "La Fecha Inicial no puede ser posterior a la Fecha Final.", "Aviso", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        String cliente = txtCliente != null ? txtCliente.getText().trim() : "";
+        String fecIni = dIni != null ? dIni.format(FORMATO_FECHA) : "";
+        String fecFin = dFin != null ? dFin.format(FORMATO_FECHA) : "";
 
         modeloTabla.setRowCount(0);
 
         try (Connection con = Conexion.getConnection()) {
-            listaUltimaConsulta = dao.listarDocumentosCartera(con, cliente, fecIni, fecFin);
-
+            listaUltimaConsulta = dao.listarDocumentosCarteraNormalizado(con, cliente, fecIni, fecFin);
             for (DocumentoCarteraDTO d : listaUltimaConsulta) {
                 modeloTabla.addRow(new Object[]{
-                    d.getFolio(),
-                    d.getFecha(),
-                    d.getCliente(),
+                    d.getFolio() != null ? d.getFolio() : "",
+                    d.getFecha() != null ? d.getFecha() : "",
+                    d.getCliente() != null ? d.getCliente() : "",
                     String.format("$ %,.0f", d.getMonto())
                 });
             }
@@ -403,7 +457,8 @@ public class FrmCarteraCheques extends JInternalFrame {
             }
 
         } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "Error al consultar la base de datos:\n" + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            LOGGER.log(Level.SEVERE, "Error al consultar documentos en cartera", ex);
+            JOptionPane.showMessageDialog(this, "No se pudo consultar la base de datos. Intente nuevamente.", "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 
@@ -416,16 +471,17 @@ public class FrmCarteraCheques extends JInternalFrame {
             return;
         }
 
-        // Ordenamos de mayor a menor según el monto
         List<DocumentoCarteraDTO> listaOrdenada = new ArrayList<>(listaUltimaConsulta);
         listaOrdenada.sort((a, b) -> Double.compare(b.getMonto(), a.getMonto()));
 
         DefaultCategoryDataset dataset = new DefaultCategoryDataset();
-        int limite = Math.min(10, listaOrdenada.size()); // Top 10
+        int limite = Math.min(10, listaOrdenada.size());
 
         for (int i = limite - 1; i >= 0; i--) {
             DocumentoCarteraDTO d = listaOrdenada.get(i);
-            String etiqueta = d.getFolio() + " - " + d.getCliente();
+            String folioStr = d.getFolio() != null ? d.getFolio() : "";
+            String clienteStr = d.getCliente() != null ? d.getCliente() : "";
+            String etiqueta = folioStr + " - " + clienteStr;
             if (etiqueta.length() > 24) {
                 etiqueta = etiqueta.substring(0, 24) + "..";
             }
@@ -452,7 +508,7 @@ public class FrmCarteraCheques extends JInternalFrame {
         plot.getRangeAxis().setTickLabelPaint(Color.WHITE);
 
         BarRenderer renderer = (BarRenderer) plot.getRenderer();
-        renderer.setSeriesPaint(0, cTextoVerde); // Barras color acorde al tema
+        renderer.setSeriesPaint(0, cTextoVerde);
 
         barChart.setBackgroundPaint(cFondo);
         barChart.getTitle().setPaint(cBordeAcento);
@@ -496,46 +552,54 @@ public class FrmCarteraCheques extends JInternalFrame {
     }
 
     private void atajoTeclado() {
+        JRootPane root = getRootPane();
         int cond = JComponent.WHEN_IN_FOCUSED_WINDOW;
 
-        // F2: Foco al cliente
-        getRootPane().getInputMap(cond).put(KeyStroke.getKeyStroke(KeyEvent.VK_F2, 0), "F2_BUSCAR");
-        getRootPane().getActionMap().put("F2_BUSCAR", new AbstractAction() {
+        // ESC: Cerrar ventana interna
+        root.getInputMap(cond).put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), "ESCAPE");
+        root.getActionMap().put("ESCAPE", new AbstractAction() {
             @Override
-            public void actionPerformed(java.awt.event.ActionEvent e) {
+            public void actionPerformed(ActionEvent e) {
+                dispose();
+            }
+        });
+
+        // F2: Foco al cliente
+        root.getInputMap(cond).put(KeyStroke.getKeyStroke(KeyEvent.VK_F2, 0), "F2_BUSCAR");
+        root.getActionMap().put("F2_BUSCAR", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
                 txtCliente.requestFocus();
                 txtCliente.selectAll();
             }
         });
 
         // F3: Abrir Gráfico Ejecutivo
-        getRootPane().getInputMap(cond).put(KeyStroke.getKeyStroke(KeyEvent.VK_F3, 0), "F3_GRAFICO");
-        getRootPane().getActionMap().put("F3_GRAFICO", new AbstractAction() {
+        root.getInputMap(cond).put(KeyStroke.getKeyStroke(KeyEvent.VK_F3, 0), "F3_GRAFICO");
+        root.getActionMap().put("F3_GRAFICO", new AbstractAction() {
             @Override
-            public void actionPerformed(java.awt.event.ActionEvent e) {
+            public void actionPerformed(ActionEvent e) {
                 abrirVentanaGrafico();
             }
         });
 
         // F6: Ciclar Temas
-        getRootPane().getInputMap(cond).put(KeyStroke.getKeyStroke(KeyEvent.VK_F6, 0), "F6_CICLAR_TEMA");
-        getRootPane().getActionMap().put("F6_CICLAR_TEMA", new AbstractAction() {
+        root.getInputMap(cond).put(KeyStroke.getKeyStroke(KeyEvent.VK_F6, 0), "F6_CICLAR_TEMA");
+        root.getActionMap().put("F6_CICLAR_TEMA", new AbstractAction() {
             @Override
-            public void actionPerformed(java.awt.event.ActionEvent e) {
+            public void actionPerformed(ActionEvent e) {
                 ciclarSiguienteTema();
             }
         });
 
-        // ENTER en campos de texto
+        // ENTER en campo cliente
         txtCliente.addActionListener(e -> buscarDocumentos());
-        txtFechaInicio.addActionListener(e -> buscarDocumentos());
-        txtFechaFin.addActionListener(e -> buscarDocumentos());
 
         // F8: Buscador de clientes
-        getRootPane().getInputMap(cond).put(KeyStroke.getKeyStroke(KeyEvent.VK_F8, 0), "F8_BUSCAR_CLIENTE");
-        getRootPane().getActionMap().put("F8_BUSCAR_CLIENTE", new AbstractAction() {
+        root.getInputMap(cond).put(KeyStroke.getKeyStroke(KeyEvent.VK_F8, 0), "F8_BUSCAR_CLIENTE");
+        root.getActionMap().put("F8_BUSCAR_CLIENTE", new AbstractAction() {
             @Override
-            public void actionPerformed(java.awt.event.ActionEvent e) {
+            public void actionPerformed(ActionEvent e) {
                 abrirBuscadorClientesF8();
             }
         });

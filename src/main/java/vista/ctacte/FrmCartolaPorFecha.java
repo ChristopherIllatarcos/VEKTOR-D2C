@@ -1,5 +1,6 @@
 package vista.ctacte;
 
+import com.toedter.calendar.JDateChooser;
 import conexion.Conexion;
 import dao.CuentaCorrienteDAO;
 import javax.swing.*;
@@ -8,17 +9,22 @@ import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.sql.Connection;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.Date;
 import java.util.List;
 import modelo.DocumentoCarteraDTO;
 import utilidades.PDFUtils;
 
 public class FrmCartolaPorFecha extends JInternalFrame {
 
+    private static final DateTimeFormatter FORMATO_FECHA = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+
     private JTextField txtRut;
-    private JTextField txtFechaDesde;
-    private JTextField txtFechaHasta;
+    private JDateChooser dcFechaDesde;
+    private JDateChooser dcFechaHasta;
     private JTable tablaCartola;
     private DefaultTableModel modeloTabla;
     private JLabel lblTotal;
@@ -37,14 +43,13 @@ public class FrmCartolaPorFecha extends JInternalFrame {
 
     // Sistema de Temas Ciclos [F6]
     private final String[] listaTemas = {"Terminal Verde", "Morado Neón", "Turquesa Pro", "Esmeralda Terminal", "Naranja Fuego"};
-    private int indiceTemaActual = 0; // Empieza en Terminal Verde por defecto
+    private int indiceTemaActual = 0;
 
     public FrmCartolaPorFecha() {
-        super("5.- CARTOLA DE MOVIMIENTOS POR FECHA ", false, true, false, false);
+        super("5.- CARTOLA DE MOVIMIENTOS POR FECHA ", false, false, false, false);
         setSize(850, 520);
         setLocation(50, 30);
 
-        // Aplicar tema inicial
         aplicarTema(listaTemas[indiceTemaActual]);
 
         getContentPane().setBackground(cFondo);
@@ -79,32 +84,31 @@ public class FrmCartolaPorFecha extends JInternalFrame {
         // Fecha Desde
         gbc.gridx = 2;
         gbc.gridy = 0;
-        lblDesdeLabel = new JLabel("Desde (DD-MM-YYYY):");
+        lblDesdeLabel = new JLabel("Desde:");
         lblDesdeLabel.setForeground(cTexto);
         lblDesdeLabel.setFont(FUENTE_CONSOLA);
         panelFiltros.add(lblDesdeLabel, gbc);
 
         gbc.gridx = 3;
         gbc.gridy = 0;
-        txtFechaDesde = new JTextField(10);
-        estilizarCampo(txtFechaDesde);
-        txtFechaDesde.setText("01-01-2026");
-        panelFiltros.add(txtFechaDesde, gbc);
+        dcFechaDesde = crearDateChooserConsola(LocalDate.of(2026, 1, 1), 145);
+        panelFiltros.add(dcFechaDesde, gbc);
 
         // Fecha Hasta
         gbc.gridx = 0;
         gbc.gridy = 1;
-        lblHastaLabel = new JLabel("Hasta (DD-MM-YYYY):");
+        lblHastaLabel = new JLabel("Hasta:");
         lblHastaLabel.setForeground(cTexto);
         lblHastaLabel.setFont(FUENTE_CONSOLA);
         panelFiltros.add(lblHastaLabel, gbc);
 
         gbc.gridx = 1;
         gbc.gridy = 1;
-        txtFechaHasta = new JTextField(10);
-        estilizarCampo(txtFechaHasta);
-        txtFechaHasta.setText(LocalDate.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy")));
-        panelFiltros.add(txtFechaHasta, gbc);
+        dcFechaHasta = crearDateChooserConsola(LocalDate.now(), 145);
+        panelFiltros.add(dcFechaHasta, gbc);
+
+        dcFechaDesde.addPropertyChangeListener("date", evt -> estilizarDateChooser(dcFechaDesde));
+        dcFechaHasta.addPropertyChangeListener("date", evt -> estilizarDateChooser(dcFechaHasta));
 
         // Botón Consultar
         gbc.gridx = 3;
@@ -154,14 +158,22 @@ public class FrmCartolaPorFecha extends JInternalFrame {
 
         add(panelInferior, BorderLayout.SOUTH);
 
-        // 4. CONFIGURACIÓN DE ATAJOS DE TECLADO GLOBALES EN LA VENTANA
         configurarAtajosTeclado();
-        // Asignar el icono de Nexum directamente a este JInternalFrame
+
         try {
-            setFrameIcon(new javax.swing.ImageIcon(getClass().getResource("/vektor/cubo-azul-16.png")));
+            java.net.URL urlIcono = getClass().getResource("/vektor/cubo-azul-16.png");
+            if (urlIcono != null) {
+                setFrameIcon(new ImageIcon(urlIcono));
+            }
         } catch (Exception e) {
             System.out.println("No se pudo cargar el icono interno: " + e.getMessage());
         }
+
+        SwingUtilities.invokeLater(() -> {
+            utilidades.IconoUtils.aplicarIcono(this);
+            estilizarDateChooser(dcFechaDesde);
+            estilizarDateChooser(dcFechaHasta);
+        });
     }
 
     // ==========================================
@@ -232,8 +244,8 @@ public class FrmCartolaPorFecha extends JInternalFrame {
         }
 
         estilizarCampo(txtRut);
-        estilizarCampo(txtFechaDesde);
-        estilizarCampo(txtFechaHasta);
+        estilizarDateChooser(dcFechaDesde);
+        estilizarDateChooser(dcFechaHasta);
         estilizarBoton(btnConsultar);
 
         if (tablaCartola != null) {
@@ -265,6 +277,52 @@ public class FrmCartolaPorFecha extends JInternalFrame {
         repaint();
     }
 
+    private JDateChooser crearDateChooserConsola(LocalDate fechaInicial, int anchoPx) {
+        JDateChooser chooser = new JDateChooser();
+        chooser.setDateFormatString("dd-MM-yyyy");
+        chooser.setFont(FUENTE_CONSOLA);
+        chooser.setPreferredSize(new Dimension(anchoPx, 24));
+        if (fechaInicial != null) {
+            chooser.setDate(Date.from(fechaInicial.atStartOfDay(ZoneId.systemDefault()).toInstant()));
+        }
+        estilizarDateChooser(chooser);
+        return chooser;
+    }
+
+    private void estilizarDateChooser(JDateChooser chooser) {
+        if (chooser == null) {
+            return;
+        }
+        chooser.setBackground(cFondo);
+        chooser.setForeground(Color.WHITE);
+        chooser.setFont(FUENTE_CONSOLA);
+
+        Component editor = chooser.getDateEditor().getUiComponent();
+        if (editor instanceof JComponent jcomp) {
+            jcomp.setBackground(cFondo);
+            jcomp.setForeground(Color.WHITE);
+            jcomp.setFont(FUENTE_CONSOLA);
+            jcomp.setBorder(new LineBorder(cBordeCian, 1));
+        }
+        if (editor instanceof JTextField tf) {
+            tf.setBackground(cFondo);
+            tf.setForeground(Color.WHITE);
+            tf.setDisabledTextColor(Color.WHITE);
+            tf.setCaretColor(cTexto);
+            tf.repaint();
+        }
+    }
+
+    private String obtenerTextoFecha(JDateChooser chooser) {
+        if (chooser == null || chooser.getDate() == null) {
+            return "";
+        }
+        LocalDate ld = Instant.ofEpochMilli(chooser.getDate().getTime())
+                .atZone(ZoneId.systemDefault())
+                .toLocalDate();
+        return ld.format(FORMATO_FECHA);
+    }
+
     private void actualizarTextoAtajos() {
         String temaActual = listaTemas[indiceTemaActual];
         if (lblAtajos != null) {
@@ -279,7 +337,6 @@ public class FrmCartolaPorFecha extends JInternalFrame {
             campo.setCaretColor(cTexto);
             campo.setFont(FUENTE_CONSOLA);
             campo.setBorder(new LineBorder(cBordeCian, 1));
-            // Asegurar acción de enter
             for (java.awt.event.ActionListener al : campo.getActionListeners()) {
                 campo.removeActionListener(al);
             }
@@ -317,7 +374,6 @@ public class FrmCartolaPorFecha extends JInternalFrame {
         JRootPane rootPane = this.getRootPane();
         int cond = JComponent.WHEN_IN_FOCUSED_WINDOW;
 
-        // Atajo [ESC] para cerrar la ventana
         rootPane.getInputMap(cond).put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), "cerrarVentana");
         rootPane.getActionMap().put("cerrarVentana", new AbstractAction() {
             @Override
@@ -326,7 +382,6 @@ public class FrmCartolaPorFecha extends JInternalFrame {
             }
         });
 
-        // Atajo [F6] para ciclar temas en tiempo real
         rootPane.getInputMap(cond).put(KeyStroke.getKeyStroke(KeyEvent.VK_F6, 0), "ciclarTemaF6");
         rootPane.getActionMap().put("ciclarTemaF6", new AbstractAction() {
             @Override
@@ -335,7 +390,6 @@ public class FrmCartolaPorFecha extends JInternalFrame {
             }
         });
 
-        // Atajo [P] o [p] para imprimir / exportar a PDF
         rootPane.getInputMap(cond).put(KeyStroke.getKeyStroke(KeyEvent.VK_P, 0), "imprimirPdf");
         rootPane.getActionMap().put("imprimirPdf", new AbstractAction() {
             @Override
@@ -347,8 +401,8 @@ public class FrmCartolaPorFecha extends JInternalFrame {
 
     private void realizarConsulta() {
         String rut = txtRut.getText().trim();
-        String fechaDesde = txtFechaDesde.getText().trim();
-        String fechaHasta = txtFechaHasta.getText().trim();
+        String fechaDesde = obtenerTextoFecha(dcFechaDesde);
+        String fechaHasta = obtenerTextoFecha(dcFechaHasta);
 
         if (rut.isEmpty()) {
             JOptionPane.showMessageDialog(this, "Debe ingresar un RUT de cliente válido.", "Advertencia", JOptionPane.WARNING_MESSAGE);
@@ -393,9 +447,9 @@ public class FrmCartolaPorFecha extends JInternalFrame {
 
         try {
             String rutCliente = txtRut.getText().trim();
-            String fechaDesde = txtFechaDesde.getText().trim();
-            String fechaHasta = txtFechaHasta.getText().trim();
-            String fechaActual = LocalDate.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy"));
+            String fechaDesde = obtenerTextoFecha(dcFechaDesde);
+            String fechaHasta = obtenerTextoFecha(dcFechaHasta);
+            String fechaActual = LocalDate.now().format(FORMATO_FECHA);
 
             PDFUtils.generarCartolaPorFechaPDF(
                     modeloTabla,

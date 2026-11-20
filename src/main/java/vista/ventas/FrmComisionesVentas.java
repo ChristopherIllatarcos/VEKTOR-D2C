@@ -1,5 +1,6 @@
 package vista.ventas;
 
+import com.toedter.calendar.JDateChooser;
 import dao.ComisionDAO;
 import modelo.ComisionVendedorDTO;
 import org.jfree.chart.ChartFactory;
@@ -20,18 +21,21 @@ import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 import java.sql.SQLException;
 import java.text.DecimalFormat;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 public class FrmComisionesVentas extends JInternalFrame {
 
     private static final DateTimeFormatter FORMATO_FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
-    private JTextField txtFechaInicio;
-    private JTextField txtFechaFin;
+    private JDateChooser dcFechaInicio;
+    private JDateChooser dcFechaFin;
     private JTable tablaReporte;
     private DefaultTableModel modeloTabla;
     private JLabel lblVentaTotalGlobal;
@@ -75,7 +79,9 @@ public class FrmComisionesVentas extends JInternalFrame {
         setVisible(true);
         SwingUtilities.invokeLater(() -> {
             utilidades.IconoUtils.aplicarIcono(this);
-            txtFechaInicio.requestFocusInWindow();
+            estilizarDateChooser(dcFechaInicio);
+            estilizarDateChooser(dcFechaFin);
+            dcFechaInicio.requestFocusInWindow();
         });
     }
 
@@ -176,8 +182,8 @@ public class FrmComisionesVentas extends JInternalFrame {
         panelComandos.setBackground(cBarraSur);
         panelComandos.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, cAcento));
 
-        estilizarCampoTexto(txtFechaInicio);
-        estilizarCampoTexto(txtFechaFin);
+        estilizarDateChooser(dcFechaInicio);
+        estilizarDateChooser(dcFechaFin);
         estilizarBotonConsola(btnConsultar, cEncabezadoTabla);
         estilizarBotonConsola(btnGrafico, cEncabezadoTabla);
 
@@ -196,6 +202,57 @@ public class FrmComisionesVentas extends JInternalFrame {
                     + "<b style='color:#FFFF55;'>(F3)</b> <span style='color:#FFFFFF;'>Gráfico</span> &nbsp;&nbsp;|&nbsp;&nbsp; "
                     + "<b style='color:#FFFF55;'>(F5)</b> <span style='color:#00FFCC;'>Tema: " + temaActual + "</span></html>");
         }
+    }
+
+    private JDateChooser crearDateChooserConsola(LocalDate fechaInicial, int anchoPx) {
+        JDateChooser chooser = new JDateChooser();
+        chooser.setDateFormatString("dd/MM/yyyy");
+        chooser.setFont(FUENTE_CONSOLA);
+        chooser.setPreferredSize(new Dimension(anchoPx, 26));
+        if (fechaInicial != null) {
+            chooser.setDate(Date.from(fechaInicial.atStartOfDay(ZoneId.systemDefault()).toInstant()));
+        }
+        estilizarDateChooser(chooser);
+        return chooser;
+    }
+
+    private void estilizarDateChooser(JDateChooser chooser) {
+        if (chooser == null) {
+            return;
+        }
+        Color fondoCampo = new Color(
+                Math.max(0, cFondoNegro.getRed() + 10),
+                Math.max(0, cFondoNegro.getGreen() + 10),
+                Math.max(0, cFondoNegro.getBlue() + 10)
+        );
+        chooser.setBackground(cFondoNegro);
+        chooser.setForeground(Color.WHITE);
+        chooser.setFont(FUENTE_CONSOLA);
+
+        Component editor = chooser.getDateEditor().getUiComponent();
+        if (editor instanceof JComponent jcomp) {
+            jcomp.setBackground(fondoCampo);
+            jcomp.setForeground(Color.WHITE);
+            jcomp.setFont(FUENTE_CONSOLA);
+            jcomp.setBorder(BorderFactory.createLineBorder(cAcento));
+        }
+        if (editor instanceof JTextField tf) {
+            tf.setBackground(fondoCampo);
+            tf.setForeground(Color.WHITE);
+            tf.setDisabledTextColor(Color.WHITE);
+            tf.setCaretColor(cAcento);
+            tf.repaint();
+        }
+    }
+
+    private String obtenerTextoFecha(JDateChooser chooser) {
+        if (chooser == null || chooser.getDate() == null) {
+            return "";
+        }
+        LocalDate ld = Instant.ofEpochMilli(chooser.getDate().getTime())
+                .atZone(ZoneId.systemDefault())
+                .toLocalDate();
+        return ld.format(FORMATO_FECHA);
     }
 
     private void initComponents() {
@@ -224,19 +281,17 @@ public class FrmComisionesVentas extends JInternalFrame {
         lblFI.setFont(FUENTE_CONSOLA);
         lblFI.setForeground(cTextoClaro);
 
-        String fechaHoy = LocalDate.now().format(FORMATO_FECHA);
-
-        txtFechaInicio = new JTextField(fechaHoy, 12);
-        estilizarCampoTexto(txtFechaInicio);
-        txtFechaInicio.addActionListener(e -> cargarReporteComisiones());
+        LocalDate hoy = LocalDate.now();
+        dcFechaInicio = crearDateChooserConsola(hoy, 145);
 
         JLabel lblFF = new JLabel("HASTA:");
         lblFF.setFont(FUENTE_CONSOLA);
         lblFF.setForeground(cTextoClaro);
 
-        txtFechaFin = new JTextField(fechaHoy, 12);
-        estilizarCampoTexto(txtFechaFin);
-        txtFechaFin.addActionListener(e -> cargarReporteComisiones());
+        dcFechaFin = crearDateChooserConsola(hoy, 145);
+
+        dcFechaInicio.addPropertyChangeListener("date", evt -> estilizarDateChooser(dcFechaInicio));
+        dcFechaFin.addPropertyChangeListener("date", evt -> estilizarDateChooser(dcFechaFin));
 
         btnConsultar = new JButton("Consultar [Enter]");
         estilizarBotonConsola(btnConsultar, cEncabezadoTabla);
@@ -248,9 +303,9 @@ public class FrmComisionesVentas extends JInternalFrame {
 
         panelFiltros.add(lblTitulo);
         panelFiltros.add(lblFI);
-        panelFiltros.add(txtFechaInicio);
+        panelFiltros.add(dcFechaInicio);
         panelFiltros.add(lblFF);
-        panelFiltros.add(txtFechaFin);
+        panelFiltros.add(dcFechaFin);
         panelFiltros.add(btnConsultar);
         panelFiltros.add(btnGrafico);
 
@@ -364,14 +419,6 @@ public class FrmComisionesVentas extends JInternalFrame {
         panelPrincipal.add(panelSurGeneral, BorderLayout.SOUTH);
 
         add(panelPrincipal);
-    }
-
-    private void estilizarCampoTexto(JTextField txt) {
-        txt.setFont(FUENTE_CONSOLA);
-        txt.setBackground(new Color(Math.max(0, cFondoNegro.getRed() + 10), Math.max(0, cFondoNegro.getGreen() + 10), Math.max(0, cFondoNegro.getBlue() + 10)));
-        txt.setForeground(cTextoClaro);
-        txt.setCaretColor(cAcento);
-        txt.setBorder(BorderFactory.createLineBorder(cAcento));
     }
 
     private void estilizarBotonConsola(JButton btn, Color bg) {
@@ -595,8 +642,8 @@ public class FrmComisionesVentas extends JInternalFrame {
     }
 
     private void cargarReporteComisiones() {
-        String fechaIni = txtFechaInicio.getText().trim();
-        String fechaFin = txtFechaFin.getText().trim();
+        String fechaIni = obtenerTextoFecha(dcFechaInicio);
+        String fechaFin = obtenerTextoFecha(dcFechaFin);
 
         if (fechaIni.isEmpty() || fechaFin.isEmpty()) {
             mostrarDialogoMsDos("AVISO", "Debe ingresar ambas fechas para el reporte.");

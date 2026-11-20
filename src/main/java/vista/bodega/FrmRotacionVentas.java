@@ -1,5 +1,6 @@
 package vista.bodega;
 
+import com.toedter.calendar.JDateChooser;
 import conexion.Conexion;
 import dao.ParametrosDAO;
 import dao.RotacionVentasDAO;
@@ -21,15 +22,21 @@ import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
 import java.awt.event.KeyEvent;
 import java.sql.Connection;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 public class FrmRotacionVentas extends JInternalFrame {
 
-    private JTextField txtFechaInicial;
-    private JTextField txtFechaFinal;
+    private static final DateTimeFormatter FORMATO_FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
+    private JDateChooser dcFechaInicial;
+    private JDateChooser dcFechaFinal;
     private JTextField txtBuscarProducto;
 
     private JTable tablaRotacion;
@@ -53,24 +60,32 @@ public class FrmRotacionVentas extends JInternalFrame {
     private final Font FUENTE_CONSOLA = new Font("Consolas", Font.BOLD, 14);
 
     // Sistema de Temas Ciclos [F6]
-    private final String[] listaTemas = {"Clipper Clásico", "Turquesa Pro", "Esmeralda Terminal","Terracota Cobre" , "Naranja Fuego"};
-    private int indiceTemaActual = 0; // Empieza en Terracota Cobre por defecto
+    private final String[] listaTemas = {"Clipper Clásico", "Turquesa Pro", "Esmeralda Terminal", "Terracota Cobre", "Naranja Fuego"};
+    private int indiceTemaActual = 0;
 
     public FrmRotacionVentas() {
         super("7.- ROTACIÓN DE MERCADERÍA POR VENTAS", false, false, false, false);
 
-        // Aplicar tema inicial
         aplicarTema(listaTemas[indiceTemaActual]);
 
         initComponentsManual();
         cargarFechaDesdeParametros();
         ejecutarBusquedaInicial();
-         // Asignar el icono de Nexum directamente a este JInternalFrame
+
         try {
-            setFrameIcon(new javax.swing.ImageIcon(getClass().getResource("/vektor/cubo-azul-16.png")));
+            java.net.URL urlIcono = getClass().getResource("/vektor/cubo-azul-16.png");
+            if (urlIcono != null) {
+                setFrameIcon(new ImageIcon(urlIcono));
+            }
         } catch (Exception e) {
             System.out.println("No se pudo cargar el icono interno: " + e.getMessage());
         }
+
+        SwingUtilities.invokeLater(() -> {
+            utilidades.IconoUtils.aplicarIcono(this);
+            estilizarDateChooser(dcFechaInicial);
+            estilizarDateChooser(dcFechaFinal);
+        });
     }
 
     // ==========================================
@@ -182,8 +197,8 @@ public class FrmRotacionVentas extends JInternalFrame {
             panelAtajosContainer.setBorder(new LineBorder(cBordeAmbar, 1));
         }
 
-        estilizarCampoDinamico(txtFechaInicial);
-        estilizarCampoDinamico(txtFechaFinal);
+        estilizarDateChooser(dcFechaInicial);
+        estilizarDateChooser(dcFechaFinal);
         estilizarCampoDinamico(txtBuscarProducto);
 
         if (btnConsultar != null) {
@@ -206,6 +221,52 @@ public class FrmRotacionVentas extends JInternalFrame {
             txt.setCaretColor(cBordeAmbar);
             txt.setBorder(new LineBorder(cBordeAmbar, 1));
         }
+    }
+
+    private JDateChooser crearDateChooserConsola(LocalDate fechaInicial, int anchoPx) {
+        JDateChooser chooser = new JDateChooser();
+        chooser.setDateFormatString("dd/MM/yyyy");
+        chooser.setFont(FUENTE_CONSOLA);
+        chooser.setPreferredSize(new Dimension(anchoPx, 26));
+        if (fechaInicial != null) {
+            chooser.setDate(Date.from(fechaInicial.atStartOfDay(ZoneId.systemDefault()).toInstant()));
+        }
+        estilizarDateChooser(chooser);
+        return chooser;
+    }
+
+    private void estilizarDateChooser(JDateChooser chooser) {
+        if (chooser == null) {
+            return;
+        }
+        chooser.setBackground(cFondo);
+        chooser.setForeground(Color.WHITE);
+        chooser.setFont(FUENTE_CONSOLA);
+
+        Component editor = chooser.getDateEditor().getUiComponent();
+        if (editor instanceof JComponent jcomp) {
+            jcomp.setBackground(cPanelTabla);
+            jcomp.setForeground(Color.WHITE);
+            jcomp.setFont(FUENTE_CONSOLA);
+            jcomp.setBorder(new LineBorder(cBordeAmbar, 1));
+        }
+        if (editor instanceof JTextField tf) {
+            tf.setBackground(cPanelTabla);
+            tf.setForeground(Color.WHITE);
+            tf.setDisabledTextColor(Color.WHITE);
+            tf.setCaretColor(cBordeAmbar);
+            tf.repaint();
+        }
+    }
+
+    private String obtenerTextoFecha(JDateChooser chooser) {
+        if (chooser == null || chooser.getDate() == null) {
+            return "";
+        }
+        LocalDate ld = Instant.ofEpochMilli(chooser.getDate().getTime())
+                .atZone(ZoneId.systemDefault())
+                .toLocalDate();
+        return ld.format(FORMATO_FECHA);
     }
 
     private void actualizarTextoAtajos() {
@@ -235,8 +296,9 @@ public class FrmRotacionVentas extends JInternalFrame {
         JPanel panelCampos = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 10));
         panelCampos.setOpaque(false);
 
-        txtFechaInicial = crearCampoTexto(12);
-        txtFechaFinal = crearCampoTexto(12);
+        LocalDate hoy = LocalDate.now();
+        dcFechaInicial = crearDateChooserConsola(hoy, 145);
+        dcFechaFinal = crearDateChooserConsola(hoy, 145);
         txtBuscarProducto = crearCampoTexto(18);
 
         btnConsultar = new JButton("Consultar [Enter]");
@@ -248,24 +310,16 @@ public class FrmRotacionVentas extends JInternalFrame {
         btnGrafico.addActionListener(e -> abrirVentanaGrafico());
 
         panelCampos.add(crearEtiqueta("F.Ini:"));
-        panelCampos.add(txtFechaInicial);
+        panelCampos.add(dcFechaInicial);
         panelCampos.add(crearEtiqueta("F.Fin:"));
-        panelCampos.add(txtFechaFinal);
+        panelCampos.add(dcFechaFinal);
         panelCampos.add(crearEtiqueta("Barra/Prod:"));
         panelCampos.add(txtBuscarProducto);
         panelCampos.add(btnConsultar);
         panelCampos.add(btnGrafico);
 
-        txtFechaInicial.addActionListener(e -> {
-            ejecutarBusqueda();
-            txtFechaFinal.requestFocusInWindow();
-            txtFechaFinal.selectAll();
-        });
-        txtFechaFinal.addActionListener(e -> {
-            ejecutarBusqueda();
-            txtBuscarProducto.requestFocusInWindow();
-            txtBuscarProducto.selectAll();
-        });
+        dcFechaInicial.addPropertyChangeListener("date", evt -> estilizarDateChooser(dcFechaInicial));
+        dcFechaFinal.addPropertyChangeListener("date", evt -> estilizarDateChooser(dcFechaFinal));
         txtBuscarProducto.addActionListener(e -> ejecutarBusqueda());
 
         panelSuperior.add(panelCampos, BorderLayout.CENTER);
@@ -417,17 +471,27 @@ public class FrmRotacionVentas extends JInternalFrame {
     }
 
     private void cargarFechaDesdeParametros() {
-        String fechaDefecto = LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+        String fechaDefectoStr = LocalDate.now().format(FORMATO_FECHA);
         try (Connection con = Conexion.getConnection()) {
             ParametrosDAO pDao = new ParametrosDAO();
             ParametrosDTO param = pDao.obtenerParametros(con);
             if (param.getFecha() != null && !param.getFecha().trim().isEmpty()) {
-                fechaDefecto = param.getFecha().trim();
+                fechaDefectoStr = param.getFecha().trim();
             }
         } catch (Exception ignored) {
         }
-        txtFechaInicial.setText(fechaDefecto);
-        txtFechaFinal.setText(fechaDefecto);
+
+        Date fechaDefecto = new Date();
+        try {
+            LocalDate ld = LocalDate.parse(fechaDefectoStr, FORMATO_FECHA);
+            fechaDefecto = Date.from(ld.atStartOfDay(ZoneId.systemDefault()).toInstant());
+        } catch (DateTimeParseException ignored) {
+        }
+
+        dcFechaInicial.setDate(fechaDefecto);
+        dcFechaFinal.setDate(fechaDefecto);
+        estilizarDateChooser(dcFechaInicial);
+        estilizarDateChooser(dcFechaFinal);
     }
 
     private void ejecutarBusquedaInicial() {
@@ -435,7 +499,11 @@ public class FrmRotacionVentas extends JInternalFrame {
     }
 
     private void ejecutarBusqueda() {
-        cargarTabla(txtFechaInicial.getText(), txtFechaFinal.getText(), txtBuscarProducto.getText());
+        cargarTabla(
+                obtenerTextoFecha(dcFechaInicial),
+                obtenerTextoFecha(dcFechaFinal),
+                txtBuscarProducto.getText()
+        );
     }
 
     private void cargarTabla(String fIni, String fFin, String prod) {
@@ -572,11 +640,13 @@ public class FrmRotacionVentas extends JInternalFrame {
         root.getActionMap().put("limpiar", new AbstractAction() {
             @Override
             public void actionPerformed(java.awt.event.ActionEvent e) {
-                txtFechaInicial.setText("");
-                txtFechaFinal.setText("");
+                dcFechaInicial.setDate(null);
+                dcFechaFinal.setDate(null);
+                estilizarDateChooser(dcFechaInicial);
+                estilizarDateChooser(dcFechaFinal);
                 txtBuscarProducto.setText("");
                 ejecutarBusqueda();
-                txtFechaInicial.requestFocusInWindow();
+                txtBuscarProducto.requestFocusInWindow();
             }
         });
 

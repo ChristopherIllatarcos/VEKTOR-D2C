@@ -74,8 +74,7 @@ public class VentaDAO {
 
         String sqlBuscaFamilia = "SELECT \"PXFAMILIA\" FROM \"pproduc_dbf\" WHERE \"PXBARRA\" = ?";
 
-        try (PreparedStatement pstmt = conn.prepareStatement(sqlInsert);
-             PreparedStatement pstmtFamilia = conn.prepareStatement(sqlBuscaFamilia)) {
+        try (PreparedStatement pstmt = conn.prepareStatement(sqlInsert); PreparedStatement pstmtFamilia = conn.prepareStatement(sqlBuscaFamilia)) {
 
             for (ItemVentaDTO item : items) {
                 int codigoFamilia = 0;
@@ -128,8 +127,7 @@ public class VentaDAO {
             return false;
         }
         String sql = "DELETE FROM pctacte_dbf WHERE TRIM(CAST(\"CTEFOLIO\" AS TEXT)) = ?";
-        try (Connection conn = Conexion.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+        try (Connection conn = Conexion.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, folio.trim());
             return pstmt.executeUpdate() > 0;
         } catch (SQLException e) {
@@ -266,16 +264,15 @@ public class VentaDAO {
                 + "        UPPER(TRIM(c.\"CLIRUT\") || COALESCE(TRIM(c.\"CLIDIGIT\"), '')) "
                 + "    ) "
                 + "WHERE (CASE "
-                + "    WHEN v.\"VFECHA\" ~ '^\\d{4}-\\d{2}-\\d{2}' THEN TO_DATE(SUBSTRING(v.\"VFECHA\", 1, 10), 'YYYY-MM-DD') "
-                + "    WHEN v.\"VFECHA\" ~ '^\\d{2}-\\d{2}-\\d{4}' THEN TO_DATE(SUBSTRING(v.\"VFECHA\", 1, 10), 'DD-MM-YYYY') "
-                + "    WHEN v.\"VFECHA\" ~ '^\\d{2}/\\d{2}/\\d{4}' THEN TO_DATE(SUBSTRING(v.\"VFECHA\", 1, 10), 'DD/MM/YYYY') "
+                + "    WHEN TRIM(CAST(v.\"VFECHA\" AS TEXT)) ~ '^\\d{4}-\\d{2}-\\d{2}' THEN TO_DATE(SUBSTRING(TRIM(CAST(v.\"VFECHA\" AS TEXT)), 1, 10), 'YYYY-MM-DD') "
+                + "    WHEN TRIM(CAST(v.\"VFECHA\" AS TEXT)) ~ '^\\d{2}-\\d{2}-\\d{4}' THEN TO_DATE(SUBSTRING(TRIM(CAST(v.\"VFECHA\" AS TEXT)), 1, 10), 'DD-MM-YYYY') "
+                + "    WHEN TRIM(CAST(v.\"VFECHA\" AS TEXT)) ~ '^\\d{2}/\\d{2}/\\d{4}' THEN TO_DATE(SUBSTRING(TRIM(CAST(v.\"VFECHA\" AS TEXT)), 1, 10), 'DD/MM/YYYY') "
                 + "    ELSE NULL "
                 + "END) BETWEEN TO_DATE(?, 'YYYY-MM-DD') AND TO_DATE(?, 'YYYY-MM-DD') "
                 + "GROUP BY TRIM(v.\"VCLIENTE\") "
                 + "ORDER BY total_ventas DESC";
 
-        try (Connection con = Conexion.getConnection();
-             PreparedStatement ps = con.prepareStatement(sql)) {
+        try (Connection con = Conexion.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
 
             ps.setString(1, fIni);
             ps.setString(2, fFin);
@@ -297,5 +294,5 @@ public class VentaDAO {
         }
         return lista;
     }
-}
 
+}

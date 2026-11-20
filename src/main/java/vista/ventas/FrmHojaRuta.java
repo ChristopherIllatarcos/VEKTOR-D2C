@@ -1,5 +1,6 @@
 package vista.ventas;
 
+import com.toedter.calendar.JDateChooser;
 import dao.HojaRutaDAO;
 import javax.swing.*;
 import javax.swing.border.LineBorder;
@@ -9,8 +10,12 @@ import java.awt.*;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
 import java.awt.event.KeyEvent;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.util.Date;
 import java.util.List;
 import java.awt.print.PrinterJob;
 import java.awt.print.Printable;
@@ -18,8 +23,10 @@ import java.awt.print.PrinterException;
 
 public class FrmHojaRuta extends JInternalFrame {
 
-    private JTextField txtFechaInicial;
-    private JTextField txtFechaFinal;
+    private static final DateTimeFormatter FORMATO_FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
+    private JDateChooser dcFechaInicial;
+    private JDateChooser dcFechaFinal;
     private JTextField txtBuscar;
 
     private JTable tablaRutas;
@@ -43,13 +50,14 @@ public class FrmHojaRuta extends JInternalFrame {
     public FrmHojaRuta() {
         super("3.- HOJAS DE RUTA (DESPACHOS)", false, false, false, false);
 
-        // Aplicar tema inicial
         aplicarTema(listaTemas[indiceTemaActual]);
 
         initComponentsManual();
-        // Asignar el icono Nexum a la ventana interna (JInternalFrame)
         try {
-            setFrameIcon(new javax.swing.ImageIcon(getClass().getResource("/vektor/cubo-azul-16.png")));
+            java.net.URL urlIcono = getClass().getResource("/vektor/cubo-azul-16.png");
+            if (urlIcono != null) {
+                setFrameIcon(new ImageIcon(urlIcono));
+            }
         } catch (Exception e) {
             System.out.println("No se pudo cargar el icono interno: " + e.getMessage());
         }
@@ -124,7 +132,6 @@ public class FrmHojaRuta extends JInternalFrame {
         String nuevoTema = listaTemas[indiceTemaActual];
         aplicarTema(nuevoTema);
 
-        // Refrescar colores en tiempo de ejecución
         getContentPane().setBackground(cFondo);
 
         if (panelSuperior != null) {
@@ -174,8 +181,8 @@ public class FrmHojaRuta extends JInternalFrame {
             panelAtajos.setBorder(new LineBorder(cAcento, 1));
         }
 
-        estilizarCampoTextoDinamico(txtFechaInicial);
-        estilizarCampoTextoDinamico(txtFechaFinal);
+        estilizarDateChooser(dcFechaInicial);
+        estilizarDateChooser(dcFechaFinal);
         estilizarCampoTextoDinamico(txtBuscar);
 
         actualizarTextoAtajos();
@@ -191,6 +198,67 @@ public class FrmHojaRuta extends JInternalFrame {
             txt.setCaretColor(cAcento);
             txt.setBorder(new LineBorder(cAcento, 1));
         }
+    }
+
+    private JDateChooser crearDateChooserConsola(LocalDate fechaInicial, int anchoPx) {
+        JDateChooser chooser = new JDateChooser();
+        chooser.setDateFormatString("dd/MM/yyyy");
+        chooser.setFont(FUENTE_CONSOLA);
+        chooser.setPreferredSize(new Dimension(anchoPx, 26));
+        if (fechaInicial != null) {
+            chooser.setDate(Date.from(fechaInicial.atStartOfDay(ZoneId.systemDefault()).toInstant()));
+        }
+        estilizarDateChooser(chooser);
+        return chooser;
+    }
+
+    private void estilizarDateChooser(JDateChooser chooser) {
+        if (chooser == null) {
+            return;
+        }
+        chooser.setBackground(cFondo);
+        chooser.setForeground(Color.WHITE);
+        chooser.setFont(FUENTE_CONSOLA);
+
+        Component editor = chooser.getDateEditor().getUiComponent();
+        if (editor instanceof JComponent jcomp) {
+            jcomp.setBackground(cPanelTablas);
+            jcomp.setForeground(Color.WHITE);
+            jcomp.setFont(FUENTE_CONSOLA);
+            jcomp.setBorder(new LineBorder(cAcento, 1));
+        }
+        if (editor instanceof JTextField tf) {
+            tf.setBackground(cPanelTablas);
+            tf.setForeground(Color.WHITE);
+            tf.setDisabledTextColor(Color.WHITE);
+            tf.setCaretColor(cAcento);
+            tf.repaint();
+        }
+    }
+
+    private void asignarFechaChooser(JDateChooser chooser, String fechaDdMmYyyy) {
+        if (chooser == null) {
+            return;
+        }
+        if (fechaDdMmYyyy != null && !fechaDdMmYyyy.trim().isEmpty()) {
+            try {
+                LocalDate ld = LocalDate.parse(fechaDdMmYyyy.trim(), FORMATO_FECHA);
+                chooser.setDate(Date.from(ld.atStartOfDay(ZoneId.systemDefault()).toInstant()));
+                return;
+            } catch (DateTimeParseException ignored) {
+            }
+        }
+        chooser.setDate(new Date());
+    }
+
+    private String obtenerTextoFecha(JDateChooser chooser) {
+        if (chooser == null || chooser.getDate() == null) {
+            return "";
+        }
+        LocalDate ld = Instant.ofEpochMilli(chooser.getDate().getTime())
+                .atZone(ZoneId.systemDefault())
+                .toLocalDate();
+        return ld.format(FORMATO_FECHA);
     }
 
     private void actualizarTextoAtajos() {
@@ -220,28 +288,21 @@ public class FrmHojaRuta extends JInternalFrame {
         JPanel panelCampos = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 10));
         panelCampos.setOpaque(false);
 
-        txtFechaInicial = crearCampoTexto(10);
-        txtFechaFinal = crearCampoTexto(10);
+        LocalDate hoy = LocalDate.now();
+        dcFechaInicial = crearDateChooserConsola(hoy, 145);
+        dcFechaFinal = crearDateChooserConsola(hoy, 145);
         txtBuscar = crearCampoTexto(22);
 
+        dcFechaInicial.addPropertyChangeListener("date", evt -> ejecutarBusqueda());
+        dcFechaFinal.addPropertyChangeListener("date", evt -> ejecutarBusqueda());
+        txtBuscar.addActionListener(e -> ejecutarBusqueda());
+
         panelCampos.add(crearEtiqueta("F. Inicial:"));
-        panelCampos.add(txtFechaInicial);
+        panelCampos.add(dcFechaInicial);
         panelCampos.add(crearEtiqueta("F. Final:"));
-        panelCampos.add(txtFechaFinal);
+        panelCampos.add(dcFechaFinal);
         panelCampos.add(crearEtiqueta("Guía / Cliente / Chofer / Patente:"));
         panelCampos.add(txtBuscar);
-
-        txtFechaInicial.addActionListener(e -> {
-            ejecutarBusqueda();
-            txtFechaFinal.requestFocusInWindow();
-            txtFechaFinal.selectAll();
-        });
-        txtFechaFinal.addActionListener(e -> {
-            ejecutarBusqueda();
-            txtBuscar.requestFocusInWindow();
-            txtBuscar.selectAll();
-        });
-        txtBuscar.addActionListener(e -> ejecutarBusqueda());
 
         panelSuperior.add(panelCampos, BorderLayout.CENTER);
         add(panelSuperior, BorderLayout.NORTH);
@@ -387,15 +448,19 @@ public class FrmHojaRuta extends JInternalFrame {
     }
 
     private void cargarFechasPorDefecto() {
-        String hoy = LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
-        txtFechaInicial.setText(hoy);
-        txtFechaFinal.setText(hoy);
+        Date hoy = new Date();
+        dcFechaInicial.setDate(hoy);
+        dcFechaFinal.setDate(hoy);
     }
 
     private void ejecutarBusqueda() {
         modeloTabla.setRowCount(0);
         HojaRutaDAO dao = new HojaRutaDAO();
-        List<Object[]> resultados = dao.buscarHojasRuta(txtFechaInicial.getText(), txtFechaFinal.getText(), txtBuscar.getText());
+        List<Object[]> resultados = dao.buscarHojasRuta(
+                obtenerTextoFecha(dcFechaInicial),
+                obtenerTextoFecha(dcFechaFinal),
+                txtBuscar.getText()
+        );
 
         double sumaMonto = 0;
 
@@ -419,7 +484,10 @@ public class FrmHojaRuta extends JInternalFrame {
     }
 
     private void abrirFormularioMantenimiento(boolean esEdicion) {
-        String fechaActual = txtFechaInicial.getText().isEmpty() ? LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) : txtFechaInicial.getText();
+        String fechaActual = obtenerTextoFecha(dcFechaInicial);
+        if (fechaActual.isEmpty()) {
+            fechaActual = LocalDate.now().format(FORMATO_FECHA);
+        }
         String fechaSel = "";
         String guiaSel = "";
         String despachoSel = "";
@@ -428,11 +496,12 @@ public class FrmHojaRuta extends JInternalFrame {
         String choferSel = "";
 
         if (esEdicion) {
-            int fila = tablaRutas.getSelectedRow();
-            if (fila == -1) {
+            int filaVista = tablaRutas.getSelectedRow();
+            if (filaVista == -1) {
                 JOptionPane.showMessageDialog(this, "Debe seleccionar una hoja de ruta de la tabla para editar.", "Aviso", JOptionPane.WARNING_MESSAGE);
                 return;
             }
+            int fila = tablaRutas.convertRowIndexToModel(filaVista);
             fechaSel = (String) modeloTabla.getValueAt(fila, 0);
             guiaSel = (String) modeloTabla.getValueAt(fila, 1);
             despachoSel = (String) modeloTabla.getValueAt(fila, 2);
@@ -461,8 +530,9 @@ public class FrmHojaRuta extends JInternalFrame {
         gbc.insets = new Insets(6, 10, 6, 10);
         gbc.anchor = GridBagConstraints.WEST;
 
-        JTextField txtF = crearCampoTexto(14);
-        txtF.setText(esEdicion ? fechaSel : fechaActual);
+        JDateChooser dcFecha = crearDateChooserConsola(null, 150);
+        asignarFechaChooser(dcFecha, esEdicion ? fechaSel : fechaActual);
+
         JTextField txtG = crearCampoTexto(14);
         txtG.setText(guiaSel);
         JTextField txtD = crearCampoTexto(14);
@@ -476,9 +546,9 @@ public class FrmHojaRuta extends JInternalFrame {
 
         gbc.gridx = 0;
         gbc.gridy = 0;
-        panelCentro.add(crearEtiqueta("Fecha (dd/MM/yyyy):"), gbc);
+        panelCentro.add(crearEtiqueta("Fecha:"), gbc);
         gbc.gridx = 1;
-        panelCentro.add(txtF, gbc);
+        panelCentro.add(dcFecha, gbc);
 
         gbc.gridx = 0;
         gbc.gridy = 1;
@@ -527,7 +597,11 @@ public class FrmHojaRuta extends JInternalFrame {
 
         Runnable guardarAccion = () -> {
             try {
-                String f = txtF.getText().trim();
+                String f = obtenerTextoFecha(dcFecha);
+                if (f.isEmpty()) {
+                    JOptionPane.showMessageDialog(dialogo, "Seleccione una fecha válida.", "Aviso", JOptionPane.WARNING_MESSAGE);
+                    return;
+                }
                 String g = txtG.getText().trim();
                 String d = txtD.getText().trim();
                 String c = txtC.getText().trim();
@@ -563,11 +637,12 @@ public class FrmHojaRuta extends JInternalFrame {
     }
 
     private void eliminarRegistroSeleccionado() {
-        int fila = tablaRutas.getSelectedRow();
-        if (fila == -1) {
+        int filaVista = tablaRutas.getSelectedRow();
+        if (filaVista == -1) {
             JOptionPane.showMessageDialog(this, "Debe seleccionar una hoja de ruta de la tabla para eliminar.", "Aviso", JOptionPane.WARNING_MESSAGE);
             return;
         }
+        int fila = tablaRutas.convertRowIndexToModel(filaVista);
         String guia = (String) modeloTabla.getValueAt(fila, 1);
         String cliente = (String) modeloTabla.getValueAt(fila, 3);
 
@@ -654,7 +729,6 @@ public class FrmHojaRuta extends JInternalFrame {
             }
         });
 
-        // [F5] Refrescar / Buscar
         root.getInputMap(cond).put(KeyStroke.getKeyStroke(KeyEvent.VK_F5, 0), "refrescar");
         root.getActionMap().put("refrescar", new AbstractAction() {
             @Override
@@ -663,7 +737,6 @@ public class FrmHojaRuta extends JInternalFrame {
             }
         });
 
-        // [F6] Ciclar Tema
         root.getInputMap(cond).put(KeyStroke.getKeyStroke(KeyEvent.VK_F6, 0), "ciclar_tema");
         root.getActionMap().put("ciclar_tema", new AbstractAction() {
             @Override

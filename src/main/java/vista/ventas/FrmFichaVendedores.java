@@ -155,7 +155,7 @@ public class FrmFichaVendedores extends javax.swing.JInternalFrame {
 
     private void initComponentsCustom() {
         setTitle("9.- FICHA DE VENDEDORES");
-        setClosable(true);
+        setClosable(false);
         setIconifiable(false);
         setMaximizable(false);
         setResizable(false);

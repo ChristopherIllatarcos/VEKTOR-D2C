@@ -5,8 +5,13 @@ import modelo.EstadisticasClienteDTO;
 import javax.swing.*;
 import javax.swing.border.LineBorder;
 import java.awt.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class FrmEstadisticasClientes extends javax.swing.JInternalFrame {
+
+    private static final Logger LOGGER = Logger.getLogger(FrmEstadisticasClientes.class.getName());
+    private static final String TEXTO_INICIAL_NOMBRE = "INGRESE UN RUT Y PRESIONE BUSCAR...";
 
     private JTextField txtRut;
     private JLabel lblNombre, lblSaldo;
@@ -19,7 +24,7 @@ public class FrmEstadisticasClientes extends javax.swing.JInternalFrame {
     private JPanel panelTop, panelCentral, panelNombre, panelSaldo, panelCompras, panelPagos, panelInferior;
     private JLabel lblTitulo, lblRutTitle, lblNomTitle, lblSalTitle;
 
-    private ClienteDAO clienteDAO = new ClienteDAO();
+    private final ClienteDAO clienteDAO = new ClienteDAO();
 
     // Variables de Colores Actuales del Tema
     private Color cFondo, cEncabezado, cAcento, cTextoClaro, cTextoDato, cBarraSur;
@@ -27,7 +32,7 @@ public class FrmEstadisticasClientes extends javax.swing.JInternalFrame {
 
     // Sistema de Temas Ciclos [F6]
     private final String[] listaTemas = {"Clipper Azul", "Morado Neón", "Turquesa Pro", "Esmeralda Terminal", "Naranja Fuego"};
-    private int indiceTemaActual = 0; // Empieza en Clipper Azul por defecto
+    private int indiceTemaActual = 0;
 
     public FrmEstadisticasClientes() {
         super("3.- ESTADÍSTICAS Y CUENTA CORRIENTE - CLIENTES");
@@ -75,7 +80,7 @@ public class FrmEstadisticasClientes extends javax.swing.JInternalFrame {
         lblNomTitle.setFont(FUENTE_MONO);
         lblNomTitle.setForeground(cAcento);
 
-        lblNombre = new JLabel("INGRESE UN RUT Y PRESIONE BUSCAR...");
+        lblNombre = new JLabel(TEXTO_INICIAL_NOMBRE);
         lblNombre.setFont(FUENTE_MONO);
         lblNombre.setForeground(cTextoClaro);
         panelNombre.add(lblNomTitle);
@@ -90,7 +95,7 @@ public class FrmEstadisticasClientes extends javax.swing.JInternalFrame {
         lblSalTitle.setFont(FUENTE_MONO);
         lblSalTitle.setForeground(cAcento);
 
-        lblSaldo = new JLabel("0");
+        lblSaldo = new JLabel("0,00");
         lblSaldo.setFont(FUENTE_MONO);
         lblSaldo.setForeground(cTextoDato);
         panelSaldo.add(lblSalTitle);
@@ -148,16 +153,17 @@ public class FrmEstadisticasClientes extends javax.swing.JInternalFrame {
                 KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_ESCAPE, 0),
                 JComponent.WHEN_IN_FOCUSED_WINDOW);
 
-        // [F6] Ciclar Tema en tiempo real
         getRootPane().registerKeyboardAction(e -> ciclarSiguienteTema(),
                 KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_F6, 0),
                 JComponent.WHEN_IN_FOCUSED_WINDOW);
-        
-        // Asignar el icono de Nexum directamente a este JInternalFrame
+
         try {
-            setFrameIcon(new javax.swing.ImageIcon(getClass().getResource("/vektor/cubo-azul-16.png")));
+            java.net.URL urlIcono = getClass().getResource("/vektor/cubo-azul-16.png");
+            if (urlIcono != null) {
+                setFrameIcon(new ImageIcon(urlIcono));
+            }
         } catch (Exception e) {
-            System.out.println("No se pudo cargar el icono interno: " + e.getMessage());
+            LOGGER.log(Level.WARNING, "No se pudo cargar el icono interno", e);
         }
     }
 
@@ -166,7 +172,6 @@ public class FrmEstadisticasClientes extends javax.swing.JInternalFrame {
         this();
 
         if (rut != null && !rut.trim().isEmpty()) {
-            txtRut.setText(rut);
             cargarDatosCliente(rut);
         }
 
@@ -240,16 +245,10 @@ public class FrmEstadisticasClientes extends javax.swing.JInternalFrame {
         }
 
         if (txtRut != null) {
-            txtRut.setBackground(cFondo);
-            txtRut.setForeground(cTextoDato);
-            txtRut.setCaretColor(cTextoDato);
-            txtRut.setBorder(new LineBorder(cAcento, 1));
+            estilarCampo(txtRut);
         }
-
         if (btnBuscar != null) {
-            btnBuscar.setBackground(cFondo);
-            btnBuscar.setForeground(cAcento);
-            btnBuscar.setBorder(new LineBorder(cAcento, 1));
+            estilarBoton(btnBuscar);
         }
 
         if (panelCentral != null) {
@@ -261,8 +260,12 @@ public class FrmEstadisticasClientes extends javax.swing.JInternalFrame {
         if (lblNomTitle != null) {
             lblNomTitle.setForeground(cAcento);
         }
-        if (lblNombre != null && lblNombre.getText().equals("INGRESE UN RUT Y PRESIONE BUSCAR...")) {
-            lblNombre.setForeground(cTextoClaro);
+        if (lblNombre != null) {
+            if (TEXTO_INICIAL_NOMBRE.equals(lblNombre.getText())) {
+                lblNombre.setForeground(cTextoClaro);
+            } else {
+                lblNombre.setForeground(cTextoDato);
+            }
         }
 
         if (panelSaldo != null) {
@@ -271,48 +274,41 @@ public class FrmEstadisticasClientes extends javax.swing.JInternalFrame {
         if (lblSalTitle != null) {
             lblSalTitle.setForeground(cAcento);
         }
-
-        if (panelCompras != null) {
-            panelCompras.setBackground(cFondo);
-            panelCompras.setBorder(BorderFactory.createTitledBorder(
-                    BorderFactory.createLineBorder(cAcento), " COMPRAS ", 0, 0,
-                    FUENTE_MONO, cAcento));
-            for (Component comp : panelCompras.getComponents()) {
-                if (comp instanceof JLabel) {
-                    JLabel l = (JLabel) comp;
-                    if (l.getForeground().equals(Color.WHITE) || l.getForeground().equals(cTextoClaro)) {
-                        l.setForeground(cTextoClaro);
-                    } else {
-                        l.setForeground(cTextoDato);
-                    }
-                }
-            }
+        if (lblSaldo != null) {
+            lblSaldo.setForeground(cTextoDato);
         }
 
-        if (panelPagos != null) {
-            panelPagos.setBackground(cFondo);
-            panelPagos.setBorder(BorderFactory.createTitledBorder(
-                    BorderFactory.createLineBorder(cAcento), " PAGOS ", 0, 0,
-                    FUENTE_MONO, cAcento));
-            for (Component comp : panelPagos.getComponents()) {
-                if (comp instanceof JLabel) {
-                    JLabel l = (JLabel) comp;
-                    if (l.getForeground().equals(Color.WHITE) || l.getForeground().equals(cTextoClaro)) {
-                        l.setForeground(cTextoClaro);
-                    } else {
-                        l.setForeground(cTextoDato);
-                    }
-                }
-            }
-        }
+        actualizarColoresSeccion(panelCompras, " COMPRAS ");
+        actualizarColoresSeccion(panelPagos, " PAGOS ");
 
         if (panelInferior != null) {
             panelInferior.setBackground(cBarraSur);
+        }
+        if (lblInfo != null) {
+            lblInfo.setForeground(cTextoClaro);
         }
         actualizarTextoAyuda();
 
         revalidate();
         repaint();
+    }
+
+    private void actualizarColoresSeccion(JPanel panel, String titulo) {
+        if (panel == null) {
+            return;
+        }
+        panel.setBackground(cFondo);
+        panel.setBorder(BorderFactory.createTitledBorder(
+                BorderFactory.createLineBorder(cAcento), titulo, 0, 0,
+                FUENTE_MONO, cAcento));
+
+        Component[] comps = panel.getComponents();
+        for (int i = 0; i < comps.length; i++) {
+            if (comps[i] instanceof JLabel l) {
+                boolean esEtiqueta = (i % 2 == 0);
+                l.setForeground(esEtiqueta ? cTextoClaro : cTextoDato);
+            }
+        }
     }
 
     private void actualizarTextoAyuda() {
@@ -357,86 +353,85 @@ public class FrmEstadisticasClientes extends javax.swing.JInternalFrame {
     }
 
     private void realizarBusqueda() {
-        String rutBuscado = txtRut.getText().trim();
+        String rutBuscado = txtRut != null ? txtRut.getText().trim() : "";
         if (rutBuscado.isEmpty()) {
             JOptionPane.showMessageDialog(this, "Por favor ingrese un RUT.", "Aviso", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
         try {
-            ClienteDAO dao = new ClienteDAO();
-            EstadisticasClienteDTO stats = dao.obtenerEstadisticasPorRut(rutBuscado);
-
+            EstadisticasClienteDTO stats = clienteDAO.obtenerEstadisticasPorRut(rutBuscado);
             if (stats != null) {
-                lblNombre.setText(stats.getNombre() != null ? stats.getNombre() : "SIN NOMBRE");
-                lblSaldo.setText(String.format("%,.2f", stats.getSaldoActual()));
-                lblVecesCompro.setText(String.valueOf(stats.getVecesCompro()));
-                lblTotalCompro.setText(String.format("%,.2f", stats.getTotalCompro()));
-                lblPromCompro.setText(String.format("%,.2f", stats.getPromCompro()));
-                lblUltimaCompra.setText(stats.getUltimaCompra() != null ? stats.getUltimaCompra() : "N/A");
-                lblMaxCompro.setText(String.format("%,.2f", stats.getMaxCompro()));
-                lblVecesPago.setText(String.valueOf(stats.getVecesPago()));
-                lblTotalPago.setText(String.format("%,.2f", stats.getTotalPago()));
-                lblPromPago.setText(String.format("%,.2f", stats.getPromPago()));
-                lblUltimoPago.setText(stats.getUltimoPago() != null ? stats.getUltimoPago() : "N/A");
-                lblMaxPago.setText(String.format("%,.2f", stats.getMaxPago()));
+                mostrarEstadisticas(stats);
             } else {
-                lblNombre.setText("CLIENTE NO ENCONTRADO");
-                lblSaldo.setText("0");
+                limpiarEstadisticas("CLIENTE NO ENCONTRADO");
             }
         } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error al consultar estadísticas del cliente", e);
             JOptionPane.showMessageDialog(this, "Error al consultar la base de datos.", "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 
     private void cargarDatosCliente(String rut) {
+        if (rut == null || rut.trim().isEmpty()) {
+            return;
+        }
+        String rutLimpio = rut.trim();
         if (txtRut != null) {
-            txtRut.setText(rut);
+            txtRut.setText(rutLimpio);
         }
 
-        EstadisticasClienteDTO stats = clienteDAO.obtenerEstadisticasPorRut(rut);
-
-        if (stats != null) {
-            if (lblNombre != null) {
-                lblNombre.setText(stats.getNombre());
+        try {
+            EstadisticasClienteDTO stats = clienteDAO.obtenerEstadisticasPorRut(rutLimpio);
+            if (stats != null) {
+                mostrarEstadisticas(stats);
+            } else {
+                limpiarEstadisticas("CLIENTE NO ENCONTRADO");
+                JOptionPane.showMessageDialog(this, "No se encontraron estadísticas para el RUT indicado.", "Aviso", JOptionPane.INFORMATION_MESSAGE);
             }
-            if (lblSaldo != null) {
-                lblSaldo.setText("$ " + String.format("%,.2f", stats.getSaldoActual()));
-            }
-
-            if (lblVecesCompro != null) {
-                lblVecesCompro.setText(String.valueOf(stats.getVecesCompro()));
-            }
-            if (lblTotalCompro != null) {
-                lblTotalCompro.setText("$ " + String.format("%,.2f", stats.getTotalCompro()));
-            }
-            if (lblPromCompro != null) {
-                lblPromCompro.setText("$ " + String.format("%,.2f", stats.getPromCompro()));
-            }
-            if (lblUltimaCompra != null) {
-                lblUltimaCompra.setText(stats.getUltimaCompra());
-            }
-            if (lblMaxCompro != null) {
-                lblMaxCompro.setText("$ " + String.format("%,.2f", stats.getMaxCompro()));
-            }
-
-            if (lblVecesPago != null) {
-                lblVecesPago.setText(String.valueOf(stats.getVecesPago()));
-            }
-            if (lblTotalPago != null) {
-                lblTotalPago.setText("$ " + String.format("%,.2f", stats.getTotalPago()));
-            }
-            if (lblPromPago != null) {
-                lblPromPago.setText("$ " + String.format("%,.2f", stats.getPromPago()));
-            }
-            if (lblUltimoPago != null) {
-                lblUltimoPago.setText(stats.getUltimoPago());
-            }
-            if (lblMaxPago != null) {
-                lblMaxPago.setText("$ " + String.format("%,.2f", stats.getMaxPago()));
-            }
-        } else {
-            JOptionPane.showMessageDialog(this, "No se encontraron estadísticas para el RUT: " + rut);
+        } catch (HeadlessException e) {
+            LOGGER.log(Level.SEVERE, "Error al cargar datos del cliente", e);
+            JOptionPane.showMessageDialog(this, "Error al consultar la base de datos.", "Error", JOptionPane.ERROR_MESSAGE);
         }
+    }
+
+    private void mostrarEstadisticas(EstadisticasClienteDTO stats) {
+        String nombre = (stats.getNombre() != null && !stats.getNombre().trim().isEmpty())
+                ? stats.getNombre().trim()
+                : "SIN NOMBRE";
+        lblNombre.setText(nombre);
+        lblNombre.setForeground(cTextoDato);
+
+        lblSaldo.setText(String.format("%,.2f", stats.getSaldoActual()));
+
+        lblVecesCompro.setText(String.valueOf(stats.getVecesCompro()));
+        lblTotalCompro.setText(String.format("%,.2f", stats.getTotalCompro()));
+        lblPromCompro.setText(String.format("%,.2f", stats.getPromCompro()));
+        lblUltimaCompra.setText(stats.getUltimaCompra() != null ? stats.getUltimaCompra() : "N/A");
+        lblMaxCompro.setText(String.format("%,.2f", stats.getMaxCompro()));
+
+        lblVecesPago.setText(String.valueOf(stats.getVecesPago()));
+        lblTotalPago.setText(String.format("%,.2f", stats.getTotalPago()));
+        lblPromPago.setText(String.format("%,.2f", stats.getPromPago()));
+        lblUltimoPago.setText(stats.getUltimoPago() != null ? stats.getUltimoPago() : "N/A");
+        lblMaxPago.setText(String.format("%,.2f", stats.getMaxPago()));
+    }
+
+    private void limpiarEstadisticas(String mensajeEstado) {
+        lblNombre.setText(mensajeEstado);
+        lblNombre.setForeground(cTextoClaro);
+        lblSaldo.setText("0,00");
+
+        lblVecesCompro.setText("0");
+        lblTotalCompro.setText("0,00");
+        lblPromCompro.setText("0,00");
+        lblUltimaCompra.setText("N/A");
+        lblMaxCompro.setText("0,00");
+
+        lblVecesPago.setText("0");
+        lblTotalPago.setText("0,00");
+        lblPromPago.setText("0,00");
+        lblUltimoPago.setText("N/A");
+        lblMaxPago.setText("0,00");
     }
 }

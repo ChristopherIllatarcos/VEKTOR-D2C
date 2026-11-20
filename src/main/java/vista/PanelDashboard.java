@@ -4,9 +4,11 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Font;
 import java.awt.Graphics;
+import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.GridLayout;
 import java.awt.Image;
+import java.awt.Insets;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import javax.swing.Box;
@@ -37,7 +39,7 @@ public class PanelDashboard extends javax.swing.JPanel {
     private int indiceTemaActual = 0;
 
     public PanelDashboard() {
-        // Layout principal para centrar todo en la pantalla
+        // Layout principal para centrar todo en el área visible del dashboard
         setLayout(new GridBagLayout());
         setFocusable(true);
 
@@ -55,6 +57,8 @@ public class PanelDashboard extends javax.swing.JPanel {
         contenedor = new JPanel();
         contenedor.setLayout(new BoxLayout(contenedor, BoxLayout.Y_AXIS));
         contenedor.setOpaque(false);
+        contenedor.setAlignmentX(Component.CENTER_ALIGNMENT);
+        contenedor.setAlignmentY(Component.CENTER_ALIGNMENT);
 
         lblTitulo = new JLabel();
         lblTitulo.setFont(new Font("Segoe UI", Font.BOLD, 26));
@@ -103,7 +107,15 @@ public class PanelDashboard extends javax.swing.JPanel {
         actualizarTextoPie();
         contenedor.add(lblAtajosPie);
 
-        add(contenedor);
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.weightx = 1.0;
+        gbc.weighty = 1.0;
+        gbc.anchor = GridBagConstraints.CENTER;
+        gbc.fill = GridBagConstraints.NONE;
+        gbc.insets = new Insets(0, 0, 0, 0);
+        add(contenedor, gbc);
 
         // Escuchador de eventos de teclado para el atajo [F6]
         addKeyListener(new KeyAdapter() {
@@ -122,6 +134,21 @@ public class PanelDashboard extends javax.swing.JPanel {
                 requestFocusInWindow();
             }
         });
+    }
+
+    @Override
+    public void doLayout() {
+        super.doLayout();
+        if (contenedor != null) {
+            int w = getWidth();
+            int h = getHeight();
+            if (w > 0 && h > 0) {
+                java.awt.Dimension pref = contenedor.getPreferredSize();
+                int x = Math.max(0, (w - pref.width) / 2);
+                int y = Math.max(0, (h - pref.height) / 2);
+                contenedor.setBounds(x, y, pref.width, pref.height);
+            }
+        }
     }
 
     // ==========================================

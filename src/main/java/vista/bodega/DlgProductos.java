@@ -9,8 +9,12 @@ import java.awt.*;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class DlgProductos extends JInternalFrame {
+
+    private static final Logger LOGGER = Logger.getLogger(DlgProductos.class.getName());
 
     private JTable tablaProductos;
     private DefaultTableModel modeloTabla;
@@ -28,22 +32,23 @@ public class DlgProductos extends JInternalFrame {
 
     // Sistema de Temas Ciclos [F6]
     private final String[] listaTemas = {"Clipper Clásico", "Morado Neón", "Turquesa Pro", "Esmeralda Terminal", "Naranja Fuego"};
-    private int indiceTemaActual = 0; // Empieza en Clipper Clásico por defecto
+    private int indiceTemaActual = 0;
 
     public DlgProductos() {
         super("1.- Fichero Productos (Principal)", false, false, false, false);
         putClientProperty("JInternalFrame.isPalette", Boolean.FALSE);
         setSize(1150, 650);
 
-        // Aplicar tema inicial
         aplicarTema(listaTemas[indiceTemaActual]);
-
         initComponentsCustom();
-         // Asignar el icono de Nexum directamente a este JInternalFrame
+
         try {
-            setFrameIcon(new javax.swing.ImageIcon(getClass().getResource("/vektor/cubo-azul-16.png")));
+            java.net.URL urlIcono = getClass().getResource("/vektor/cubo-azul-16.png");
+            if (urlIcono != null) {
+                setFrameIcon(new ImageIcon(urlIcono));
+            }
         } catch (Exception e) {
-            System.out.println("No se pudo cargar el icono interno: " + e.getMessage());
+            LOGGER.log(Level.WARNING, "No se pudo cargar el icono interno", e);
         }
     }
 
@@ -152,7 +157,7 @@ public class DlgProductos extends JInternalFrame {
     private void actualizarTextoAtajos() {
         String temaActual = listaTemas[indiceTemaActual];
         if (lblAcciones != null) {
-            lblAcciones.setText(" (INS) Insertar | (M) Modificar | (SUPR) Eliminar | (F6) Tema: " + temaActual + " | (ESC) Salir ");
+            lblAcciones.setText(" (INS) Insertar | (M) Modificar | (SUPR) Eliminar | (F5) Refrescar | (F6) Tema: " + temaActual + " | (ESC) Salir ");
         }
     }
 
@@ -272,7 +277,14 @@ public class DlgProductos extends JInternalFrame {
             }
         });
 
-        // [F6] Ciclar Tema
+        root.getInputMap(cond).put(KeyStroke.getKeyStroke(KeyEvent.VK_F5, 0), "refrescar");
+        root.getActionMap().put("refrescar", new AbstractAction() {
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                cargarDatosIniciales();
+            }
+        });
+
         root.getInputMap(cond).put(KeyStroke.getKeyStroke(KeyEvent.VK_F6, 0), "ciclar_tema");
         root.getActionMap().put("ciclar_tema", new AbstractAction() {
             @Override
@@ -321,7 +333,7 @@ public class DlgProductos extends JInternalFrame {
     }
 
     private void filtrarProductos() {
-        String texto = txtBuscar.getText().trim();
+        String texto = txtBuscar != null ? txtBuscar.getText().trim() : "";
         if (texto.isEmpty()) {
             sorter.setRowFilter(null);
         } else {
@@ -336,6 +348,7 @@ public class DlgProductos extends JInternalFrame {
                 modeloTabla.addRow(fila);
             }
         }
+        filtrarProductos();
     }
 
     private void cargarDatosIniciales() {
@@ -344,7 +357,8 @@ public class DlgProductos extends JInternalFrame {
             List<Object[]> lista = dao.obtenerProductosParaTabla();
             cargarProductosEnTabla(lista);
         } catch (Exception ex) {
-            System.err.println("Error al cargar productos iniciales: " + ex.getMessage());
+            LOGGER.log(Level.SEVERE, "Error al cargar productos iniciales", ex);
+            mostrarMensajeClipper("ERROR", "No se pudieron cargar los productos desde la base de datos.");
         }
     }
 
@@ -353,32 +367,26 @@ public class DlgProductos extends JInternalFrame {
         DlgInsertarProducto dlgInsertar = new DlgInsertarProducto(parentWindow);
         dlgInsertar.setVisible(true);
 
-        try {
-            ProductoVentaDAO dao = new ProductoVentaDAO();
-            List<Object[]> lista = dao.obtenerProductosParaTabla();
-            cargarProductosEnTabla(lista);
-        } catch (Exception ex) {
-            System.err.println("Error al refrescar tabla: " + ex.getMessage());
-        }
+        cargarDatosIniciales();
     }
 
     private void accionModificar() {
         int fila = tablaProductos.getSelectedRow();
         if (fila != -1) {
             int filaModelo = tablaProductos.convertRowIndexToModel(fila);
-            String barra = (String) modeloTabla.getValueAt(filaModelo, 1);
+            Object valBarra = modeloTabla.getValueAt(filaModelo, 1);
+            String barra = valBarra != null ? valBarra.toString().trim() : "";
+
+            if (barra.isEmpty()) {
+                mostrarMensajeClipper("AVISO", "El producto seleccionado no tiene código de barra válido.");
+                return;
+            }
 
             Window parentWindow = SwingUtilities.getWindowAncestor(this);
             DlgModificarProducto dlg = new DlgModificarProducto(parentWindow, barra);
             dlg.setVisible(true);
 
-            try {
-                ProductoVentaDAO daoProd = new ProductoVentaDAO();
-                cargarProductosEnTabla(daoProd.obtenerProductosParaTabla());
-            } catch (Exception ex) {
-                System.err.println("Error al recargar tabla tras modificar: " + ex.getMessage());
-            }
-
+            cargarDatosIniciales();
         } else {
             JOptionPane.showMessageDialog(this, "Por favor seleccione un producto para modificar.", "Aviso", JOptionPane.WARNING_MESSAGE);
         }
@@ -389,8 +397,15 @@ public class DlgProductos extends JInternalFrame {
         if (fila != -1) {
             int filaModelo = tablaProductos.convertRowIndexToModel(fila);
 
-            String desc = (String) modeloTabla.getValueAt(filaModelo, 0);
-            String barra = (String) modeloTabla.getValueAt(filaModelo, 1);
+            Object valDesc = modeloTabla.getValueAt(filaModelo, 0);
+            Object valBarra = modeloTabla.getValueAt(filaModelo, 1);
+            String desc = valDesc != null ? valDesc.toString() : "";
+            String barra = valBarra != null ? valBarra.toString().trim() : "";
+
+            if (barra.isEmpty()) {
+                mostrarMensajeClipper("AVISO", "No se puede eliminar un registro sin código de barra.");
+                return;
+            }
 
             JDialog dialogoConfirm = new JDialog(SwingUtilities.getWindowAncestor(this), "CONFIRMAR", Dialog.ModalityType.APPLICATION_MODAL);
             dialogoConfirm.setUndecorated(true);
@@ -417,7 +432,9 @@ public class DlgProductos extends JInternalFrame {
             lblPregunta.setForeground(cAcento);
             panelCentro.add(lblPregunta);
 
-            JLabel lblDetalle = new JLabel("<html><center>" + desc + "<br><font color='" + colorToHex(cAcento) + "'>[Barra: " + barra + "]</font></center></html>", JLabel.CENTER);
+            String detalleHtml = "<html><center>" + escaparHtml(desc)
+                    + "<br><font color='" + colorToHex(cAcento) + "'>[Barra: " + escaparHtml(barra) + "]</font></center></html>";
+            JLabel lblDetalle = new JLabel(detalleHtml, JLabel.CENTER);
             lblDetalle.setFont(new Font("Consolas", Font.PLAIN, 13));
             lblDetalle.setForeground(cTextoClaro);
             panelCentro.add(lblDetalle);
@@ -473,14 +490,13 @@ public class DlgProductos extends JInternalFrame {
 
                     if (exito) {
                         dialogoConfirm.dispose();
-                        List<Object[]> lista = dao.obtenerProductosParaTabla();
-                        cargarProductosEnTabla(lista);
+                        cargarDatosIniciales();
                     } else {
                         mostrarMensajeClipper("ERROR", "No se pudo eliminar el producto de la base de datos.");
                     }
                 } catch (Exception ex) {
-                    mostrarMensajeClipper("ERROR", "Error de sistema al eliminar: " + ex.getMessage());
-                    ex.printStackTrace();
+                    LOGGER.log(Level.SEVERE, "Error de sistema al eliminar producto con barra: " + barra, ex);
+                    mostrarMensajeClipper("ERROR", "Error de sistema al eliminar el producto.");
                 }
             };
 
@@ -511,12 +527,12 @@ public class DlgProductos extends JInternalFrame {
                 BorderFactory.createEmptyBorder(10, 10, 10, 10)
         ));
 
-        JLabel lblTituloBox = new JLabel(" " + titulo + " ", JLabel.CENTER);
+        JLabel lblTituloBox = new JLabel(" " + escaparHtml(titulo) + " ", JLabel.CENTER);
         lblTituloBox.setFont(new Font("Consolas", Font.BOLD, 14));
         lblTituloBox.setForeground(cAcento);
         panelBox.add(lblTituloBox, BorderLayout.NORTH);
 
-        JLabel lblMensaje = new JLabel("<html><center>" + mensaje + "</center></html>", JLabel.CENTER);
+        JLabel lblMensaje = new JLabel("<html><center>" + escaparHtml(mensaje) + "</center></html>", JLabel.CENTER);
         lblMensaje.setFont(new Font("Consolas", Font.BOLD, 13));
         lblMensaje.setForeground(cTextoClaro);
         panelBox.add(lblMensaje, BorderLayout.CENTER);
@@ -557,6 +573,15 @@ public class DlgProductos extends JInternalFrame {
 
         SwingUtilities.invokeLater(() -> btnAceptar.requestFocusInWindow());
         dlg.setVisible(true);
+    }
+
+    private String escaparHtml(String texto) {
+        if (texto == null) {
+            return "";
+        }
+        return texto.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;");
     }
 
     private String colorToHex(Color color) {

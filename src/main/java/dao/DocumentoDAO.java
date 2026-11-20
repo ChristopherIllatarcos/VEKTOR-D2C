@@ -1,36 +1,52 @@
 package dao;
 
 import conexion.Conexion;
-import modelo.DetalleDocumentoDTO;
-
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import modelo.DetalleDocumentoDTO;
 
 public class DocumentoDAO {
 
-    public List<DetalleDocumentoDTO> obtenerDetalleDocumento(String tipoDoc, int folio) throws SQLException {
-        List<DetalleDocumentoDTO> lista = new ArrayList<>();
+    private static final Logger LOGGER = Logger.getLogger(DocumentoDAO.class.getName());
 
-        // Seleccionamos la columna exacta de pventas_dbf según el tipo de documento
-        String columnaFolio = "";
-        switch (tipoDoc) {
-            case "FAC" -> columnaFolio = "v.\"VFACTURA\"";
-            case "BOL" -> columnaFolio = "v.\"VBOLETA\"";
-            case "GUI" -> columnaFolio = "v.\"VGUIA\"";
-            case "VAL" -> columnaFolio = "v.\"VVALE\"";
-            case "COT" -> columnaFolio = "v.\"VCOTIZA\"";
-            default -> throw new SQLException("Tipo de documento no reconocido: " + tipoDoc);
+    public List<DetalleDocumentoDTO> obtenerDetalleDocumento(String tipoDoc, int folio) throws SQLException {
+        if (tipoDoc == null || tipoDoc.trim().isEmpty()) {
+            throw new IllegalArgumentException("El tipo de documento no puede ser nulo o vacío.");
+        }
+        if (folio <= 0) {
+            throw new IllegalArgumentException("El número de folio debe ser mayor que cero.");
         }
 
-        // Conversión explícita CAST para evitar el conflicto entre numeric y varchar
+        String tipoLimpio = tipoDoc.trim().toUpperCase();
+        String columnaFolio;
+
+        switch (tipoLimpio) {
+            case "FAC" ->
+                columnaFolio = "v.\"VFACTURA\"";
+            case "BOL" ->
+                columnaFolio = "v.\"VBOLETA\"";
+            case "GUI" ->
+                columnaFolio = "v.\"VGUIA\"";
+            case "VAL" ->
+                columnaFolio = "v.\"VVALE\"";
+            case "COT" ->
+                columnaFolio = "v.\"VCOTIZA\"";
+            default ->
+                throw new IllegalArgumentException("Tipo de documento no reconocido: " + tipoLimpio);
+        }
+
         String sql = "SELECT d.\"DCODIGO\", d.\"DDESCRIP\", d.\"DCANTIDAD\", d.\"DPRECIO\", d.\"DTOTAL\" "
                 + "FROM \"pdetalle_dbf\" d "
                 + "JOIN \"pventas_dbf\" v ON CAST(d.\"DPEDIDO\" AS VARCHAR) = CAST(v.\"VCODIGO\" AS VARCHAR) "
                 + "WHERE CAST(" + columnaFolio + " AS VARCHAR) = ?";
+
+        List<DetalleDocumentoDTO> lista = new ArrayList<>();
 
         try (Connection conn = Conexion.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
@@ -38,9 +54,12 @@ public class DocumentoDAO {
 
             try (ResultSet rs = pstmt.executeQuery()) {
                 while (rs.next()) {
+                    String codigo = rs.getString("DCODIGO");
+                    String descrip = rs.getString("DDESCRIP");
+
                     DetalleDocumentoDTO dto = new DetalleDocumentoDTO(
-                            rs.getString("DCODIGO"),
-                            rs.getString("DDESCRIP"),
+                            codigo != null ? codigo.trim() : "",
+                            descrip != null ? descrip.trim() : "",
                             rs.getDouble("DCANTIDAD"),
                             rs.getDouble("DPRECIO"),
                             rs.getDouble("DTOTAL")
@@ -48,7 +67,11 @@ public class DocumentoDAO {
                     lista.add(dto);
                 }
             }
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error al obtener detalle del documento tipo " + tipoLimpio + " y folio " + folio, e);
+            throw e;
         }
+
         return lista;
     }
 }

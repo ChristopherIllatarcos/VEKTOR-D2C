@@ -7,7 +7,9 @@ import dao.CuentaCorrienteDAO;
 import dao.ProductoVentaDAO;
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Dialog;
 import java.awt.Dimension;
+import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.Frame;
 import java.awt.Image;
@@ -19,15 +21,20 @@ import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.ImageIcon;
+import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JDesktopPane;
+import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
 import javax.swing.JRootPane;
 import javax.swing.KeyStroke;
+import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 import javax.swing.UnsupportedLookAndFeelException;
@@ -190,12 +197,24 @@ public class FrmPrincipal extends javax.swing.JFrame {
         });
 
         this.addWindowStateListener(e -> {
-            if ((Frame.NORMAL) != 0 || (e.getNewState() & Frame.MAXIMIZED_BOTH) != 0) {
+            int nuevoEstado = e.getNewState();
+            boolean estaMaximizada = (nuevoEstado & Frame.MAXIMIZED_BOTH) == Frame.MAXIMIZED_BOTH;
+            boolean estaNormal = (nuevoEstado & Frame.ICONIFIED) == 0 && !estaMaximizada;
+
+            if (estaNormal) {
+                setSize(1280, 820);
+                setLocationRelativeTo(null);
+            }
+
+            if (estaNormal || estaMaximizada) {
                 if (getJMenuBar() != null) {
                     getJMenuBar().revalidate();
                     getJMenuBar().repaint();
                 }
-                repaint();
+                SwingUtilities.invokeLater(() -> {
+                    revalidate();
+                    repaint();
+                });
             }
         });
     }
@@ -692,8 +711,27 @@ public class FrmPrincipal extends javax.swing.JFrame {
             final int indexAccion = i + 1;
             item.addActionListener(e -> {
                 switch (indexAccion) {
-                    case 1 ->
-                        this.dispose();
+                    case 1 -> {
+                        java.awt.Component compPadre = (e.getSource() instanceof java.awt.Component)
+                                ? (java.awt.Component) e.getSource()
+                                : null;
+                        Window padre = compPadre != null ? SwingUtilities.getWindowAncestor(compPadre) : null;
+
+                        if (confirmarSalidaClipper(padre) == JOptionPane.YES_OPTION) {
+                            DialogoSalidaNexum dlg = new DialogoSalidaNexum(
+                                    padre,
+                                    5000,
+                                    null,
+                                    null,
+                                    null,
+                                    null,
+                                    null,
+                                    null
+                            );
+                            dlg.iniciarYFinalizarPrograma();
+                        }
+                    }
+
                     case 2 -> {
                         DlgUsuariosSistema dlg = new DlgUsuariosSistema(this);
                         dlg.setVisible(true);
@@ -757,13 +795,95 @@ public class FrmPrincipal extends javax.swing.JFrame {
 //        } catch (Exception e) {
 //            System.out.println("No se pudo cargar el icono de la barra: " + e.getMessage());
 //        }
-
         lblTitulo.setBorder(BorderFactory.createEmptyBorder(0, 10, 0, 15));
         menuBar.add(lblTitulo);
 
         setJMenuBar(menuBar);
         revalidate();
         repaint();
+    }
+
+    private int confirmarSalidaClipper(Window padre) {
+        Color cFondo = new Color(0, 0, 132);
+        Color cBorde = Color.CYAN;
+        Color cTexto = Color.WHITE;
+        Color cVerde = Color.GREEN;
+        Font fuente = new Font("Courier New", Font.BOLD, 13);
+
+        JDialog dlg = new JDialog(padre, "CONFIRMAR SALIDA", Dialog.ModalityType.APPLICATION_MODAL);
+        dlg.setUndecorated(true);
+        dlg.setSize(450, 165);
+        dlg.setLocationRelativeTo(padre);
+        dlg.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
+
+        final int[] resultado = {JOptionPane.NO_OPTION};
+
+        JPanel root = new JPanel(new BorderLayout(10, 10));
+        root.setBackground(cFondo);
+        root.setBorder(BorderFactory.createCompoundBorder(
+                new javax.swing.border.LineBorder(cBorde, 2),
+                new javax.swing.border.EmptyBorder(14, 16, 14, 16)
+        ));
+
+        JLabel lblTitulo = new JLabel(" :: SALIDA DEL SISTEMA :: ", SwingConstants.CENTER);
+        lblTitulo.setFont(fuente);
+        lblTitulo.setForeground(cBorde);
+
+        JLabel lblPregunta = new JLabel("¿Seguro que deseas finalizar el programa?", SwingConstants.CENTER);
+        lblPregunta.setFont(fuente);
+        lblPregunta.setForeground(cTexto);
+
+        JButton btnSi = new JButton("[ SÍ ]");
+        JButton btnNo = new JButton("[ NO ]");
+
+        for (JButton b : new JButton[]{btnSi, btnNo}) {
+            b.setFont(fuente);
+            b.setFocusPainted(false);
+            b.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+            b.setBorder(new javax.swing.border.LineBorder(cBorde, 1));
+        }
+        btnSi.setBackground(new Color(0, 80, 0));
+        btnSi.setForeground(cVerde);
+        btnNo.setBackground(new Color(0, 0, 80));
+        btnNo.setForeground(cTexto);
+
+        btnSi.addActionListener(e -> {
+            resultado[0] = JOptionPane.YES_OPTION;
+            dlg.dispose();
+        });
+
+        btnNo.addActionListener(e -> {
+            resultado[0] = JOptionPane.NO_OPTION;
+            dlg.dispose();
+        });
+
+        // Atajos de teclado: ESC = NO, ENTER = SÍ (cuando tiene foco)
+        JRootPane rp = dlg.getRootPane();
+        rp.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
+                .put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), "CANCELAR");
+        rp.getActionMap().put("CANCELAR", new AbstractAction() {
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                resultado[0] = JOptionPane.NO_OPTION;
+                dlg.dispose();
+            }
+        });
+        rp.setDefaultButton(btnSi);
+
+        JPanel panelBotones = new JPanel(new FlowLayout(FlowLayout.CENTER, 18, 0));
+        panelBotones.setBackground(cFondo);
+        panelBotones.add(btnSi);
+        panelBotones.add(btnNo);
+
+        root.add(lblTitulo, BorderLayout.NORTH);
+        root.add(lblPregunta, BorderLayout.CENTER);
+        root.add(panelBotones, BorderLayout.SOUTH);
+
+        dlg.setContentPane(root);
+        SwingUtilities.invokeLater(btnNo::requestFocusInWindow);
+        dlg.setVisible(true);
+
+        return resultado[0];
     }
 
     private void verificarRespaldoAutomatico() {
@@ -820,7 +940,7 @@ public class FrmPrincipal extends javax.swing.JFrame {
         pack();
     }// </editor-fold>//GEN-END:initComponents
 
-   /**
+    /**
      * @param args the command line arguments
      */
     public static void main(String[] args) {

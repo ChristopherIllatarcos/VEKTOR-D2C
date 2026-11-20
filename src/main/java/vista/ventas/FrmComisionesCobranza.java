@@ -1,5 +1,6 @@
 package vista.ventas;
 
+import com.toedter.calendar.JDateChooser;
 import dao.ComisionDAO;
 import modelo.ComisionVendedorDTO;
 import org.jfree.chart.ChartFactory;
@@ -20,15 +21,20 @@ import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 import java.sql.SQLException;
 import java.text.DecimalFormat;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 public class FrmComisionesCobranza extends JInternalFrame {
 
-    private JTextField txtFechaInicio;
-    private JTextField txtFechaFin;
+    private static final DateTimeFormatter FORMATO_FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
+    private JDateChooser dcFechaInicio;
+    private JDateChooser dcFechaFin;
     private JTable tablaReporte;
     private DefaultTableModel modeloTabla;
     private JLabel lblVentaTotalGlobal;
@@ -48,19 +54,20 @@ public class FrmComisionesCobranza extends JInternalFrame {
 
     // Sistema de Temas Ciclos [F5]
     private final String[] listaTemas = {"Clipper Clásico", "Morado Neón", "Turquesa Pro", "Esmeralda Terminal", "Naranja Fuego"};
-    private int indiceTemaActual = 0; // Empieza en Naranja Fuego
+    private int indiceTemaActual = 0;
 
     public FrmComisionesCobranza() {
         super("8.- COMISIONES X COBRANZA", true, false, false, false);
         this.comisionDAO = new ComisionDAO();
 
-        // Aplicar tema inicial
         aplicarTema(listaTemas[indiceTemaActual]);
 
         initComponents();
-        // Asignar el icono Nexum a la ventana interna (JInternalFrame)
         try {
-            setFrameIcon(new javax.swing.ImageIcon(getClass().getResource("/vektor/cubo-azul-16.png")));
+            java.net.URL urlIcono = getClass().getResource("/vektor/cubo-azul-16.png");
+            if (urlIcono != null) {
+                setFrameIcon(new ImageIcon(urlIcono));
+            }
         } catch (Exception e) {
             System.out.println("No se pudo cargar el icono interno: " + e.getMessage());
         }
@@ -70,8 +77,10 @@ public class FrmComisionesCobranza extends JInternalFrame {
         setVisible(true);
         SwingUtilities.invokeLater(() -> {
             utilidades.IconoUtils.aplicarIcono(this);
+            estilizarDateChooser(dcFechaInicio);
+            estilizarDateChooser(dcFechaFin);
+            dcFechaInicio.requestFocusInWindow();
         });
-
     }
 
     // ==========================================
@@ -133,7 +142,6 @@ public class FrmComisionesCobranza extends JInternalFrame {
         String nuevoTema = listaTemas[indiceTemaActual];
         aplicarTema(nuevoTema);
 
-        // Refrescar componentes visuales
         panelPrincipal.setBackground(cFondoNegro);
         panelPrincipal.setBorder(BorderFactory.createLineBorder(cAcento, 2));
 
@@ -162,12 +170,11 @@ public class FrmComisionesCobranza extends JInternalFrame {
         panelComandos.setBackground(cBarraSur);
         panelComandos.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, cAcento));
 
-        estilizarCampoTexto(txtFechaInicio);
-        estilizarCampoTexto(txtFechaFin);
+        estilizarDateChooser(dcFechaInicio);
+        estilizarDateChooser(dcFechaFin);
         estilizarBotonConsola(btnConsultar, cEncabezadoTabla);
         estilizarBotonConsola(btnGrafico, cEncabezadoTabla);
 
-        // Actualizar texto de atajos en la barra inferior
         actualizarTextoAtajos();
 
         panelPrincipal.revalidate();
@@ -176,10 +183,61 @@ public class FrmComisionesCobranza extends JInternalFrame {
 
     private void actualizarTextoAtajos() {
         String temaActual = listaTemas[indiceTemaActual];
-        lblAtajos.setText("<html><b style='color:#FFFF55;'>(Esc)</b> <span style='color:FFFFFF;'>Cerrar</span> &nbsp;&nbsp;|&nbsp;&nbsp; "
-                + "<b style='color:#FFFF55;'>(Enter)</b> <span style='color:FFFFFF;'>Consultar</span> &nbsp;&nbsp;|&nbsp;&nbsp; "
-                + "<b style='color:#FFFF55;'>(F3)</b> <span style='color:FFFFFF;'>Gráfico</span> &nbsp;&nbsp;|&nbsp;&nbsp; "
+        lblAtajos.setText("<html><b style='color:#FFFF55;'>(Esc)</b> <span style='color:#FFFFFF;'>Cerrar</span> &nbsp;&nbsp;|&nbsp;&nbsp; "
+                + "<b style='color:#FFFF55;'>(Enter)</b> <span style='color:#FFFFFF;'>Consultar</span> &nbsp;&nbsp;|&nbsp;&nbsp; "
+                + "<b style='color:#FFFF55;'>(F3)</b> <span style='color:#FFFFFF;'>Gráfico</span> &nbsp;&nbsp;|&nbsp;&nbsp; "
                 + "<b style='color:#FFFF55;'>(F5)</b> <span style='color:#00FFCC;'>Tema: " + temaActual + "</span></html>");
+    }
+
+    private JDateChooser crearDateChooserConsola(LocalDate fechaInicial, int anchoPx) {
+        JDateChooser chooser = new JDateChooser();
+        chooser.setDateFormatString("dd/MM/yyyy");
+        chooser.setFont(FUENTE_CONSOLA);
+        chooser.setPreferredSize(new Dimension(anchoPx, 26));
+        if (fechaInicial != null) {
+            chooser.setDate(Date.from(fechaInicial.atStartOfDay(ZoneId.systemDefault()).toInstant()));
+        }
+        estilizarDateChooser(chooser);
+        return chooser;
+    }
+
+    private void estilizarDateChooser(JDateChooser chooser) {
+        if (chooser == null) {
+            return;
+        }
+        Color fondoCampo = new Color(
+                Math.max(0, cFondoNegro.getRed() + 10),
+                Math.max(0, cFondoNegro.getGreen() + 10),
+                Math.max(0, cFondoNegro.getBlue() + 10)
+        );
+        chooser.setBackground(cFondoNegro);
+        chooser.setForeground(Color.WHITE);
+        chooser.setFont(FUENTE_CONSOLA);
+
+        Component editor = chooser.getDateEditor().getUiComponent();
+        if (editor instanceof JComponent jcomp) {
+            jcomp.setBackground(fondoCampo);
+            jcomp.setForeground(Color.WHITE);
+            jcomp.setFont(FUENTE_CONSOLA);
+            jcomp.setBorder(BorderFactory.createLineBorder(cAcento));
+        }
+        if (editor instanceof JTextField tf) {
+            tf.setBackground(fondoCampo);
+            tf.setForeground(Color.WHITE);
+            tf.setDisabledTextColor(Color.WHITE);
+            tf.setCaretColor(cAcento);
+            tf.repaint();
+        }
+    }
+
+    private String obtenerTextoFecha(JDateChooser chooser) {
+        if (chooser == null || chooser.getDate() == null) {
+            return "";
+        }
+        LocalDate ld = Instant.ofEpochMilli(chooser.getDate().getTime())
+                .atZone(ZoneId.systemDefault())
+                .toLocalDate();
+        return ld.format(FORMATO_FECHA);
     }
 
     private void initComponents() {
@@ -208,17 +266,17 @@ public class FrmComisionesCobranza extends JInternalFrame {
         lblFI.setFont(FUENTE_CONSOLA);
         lblFI.setForeground(cTextoClaro);
 
-        String fechaHoy = LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
-
-        txtFechaInicio = new JTextField(fechaHoy, 12);
-        estilizarCampoTexto(txtFechaInicio);
+        LocalDate hoy = LocalDate.now();
+        dcFechaInicio = crearDateChooserConsola(hoy, 145);
 
         JLabel lblFF = new JLabel("HASTA:");
         lblFF.setFont(FUENTE_CONSOLA);
         lblFF.setForeground(cTextoClaro);
 
-        txtFechaFin = new JTextField(fechaHoy, 12);
-        estilizarCampoTexto(txtFechaFin);
+        dcFechaFin = crearDateChooserConsola(hoy, 145);
+
+        dcFechaInicio.addPropertyChangeListener("date", evt -> estilizarDateChooser(dcFechaInicio));
+        dcFechaFin.addPropertyChangeListener("date", evt -> estilizarDateChooser(dcFechaFin));
 
         btnConsultar = new JButton("Consultar [Enter]");
         estilizarBotonConsola(btnConsultar, cEncabezadoTabla);
@@ -230,9 +288,9 @@ public class FrmComisionesCobranza extends JInternalFrame {
 
         panelFiltros.add(lblTitulo);
         panelFiltros.add(lblFI);
-        panelFiltros.add(txtFechaInicio);
+        panelFiltros.add(dcFechaInicio);
         panelFiltros.add(lblFF);
-        panelFiltros.add(txtFechaFin);
+        panelFiltros.add(dcFechaFin);
         panelFiltros.add(btnConsultar);
         panelFiltros.add(btnGrafico);
 
@@ -334,14 +392,6 @@ public class FrmComisionesCobranza extends JInternalFrame {
         add(panelPrincipal);
     }
 
-    private void estilizarCampoTexto(JTextField txt) {
-        txt.setFont(FUENTE_CONSOLA);
-        txt.setBackground(new Color(Math.max(0, cFondoNegro.getRed() + 10), Math.max(0, cFondoNegro.getGreen() + 10), Math.max(0, cFondoNegro.getBlue() + 10)));
-        txt.setForeground(cTextoClaro);
-        txt.setCaretColor(cAcento);
-        txt.setBorder(BorderFactory.createLineBorder(cAcento));
-    }
-
     private void estilizarBotonConsola(JButton btn, Color bg) {
         btn.setFont(FUENTE_CONSOLA);
         btn.setBackground(bg);
@@ -379,7 +429,6 @@ public class FrmComisionesCobranza extends JInternalFrame {
             }
         });
 
-        // [F5] Ciclar Tema en la Barra Inferior
         rootPane.getInputMap(cond).put(KeyStroke.getKeyStroke(KeyEvent.VK_F5, 0), "CAMBIAR_TEMA_F5");
         rootPane.getActionMap().put("CAMBIAR_TEMA_F5", new AbstractAction() {
             @Override
@@ -390,8 +439,8 @@ public class FrmComisionesCobranza extends JInternalFrame {
     }
 
     private void cargarReporteCobranza() {
-        String fechaIni = txtFechaInicio.getText().trim();
-        String fechaFin = txtFechaFin.getText().trim();
+        String fechaIni = obtenerTextoFecha(dcFechaInicio);
+        String fechaFin = obtenerTextoFecha(dcFechaFin);
 
         if (fechaIni.isEmpty() || fechaFin.isEmpty()) {
             return;
@@ -470,7 +519,7 @@ public class FrmComisionesCobranza extends JInternalFrame {
         barChart.getTitle().setPaint(cAcento);
         barChart.getTitle().setFont(new Font("Monospaced", Font.BOLD, 15));
 
-        JDialog dlgGrafico = new JDialog(javax.swing.JOptionPane.getFrameForComponent(this), "Gráfico Ejecutivo - Comisiones", true);
+        JDialog dlgGrafico = new JDialog(JOptionPane.getFrameForComponent(this), "Gráfico Ejecutivo - Comisiones", true);
         dlgGrafico.setSize(850, 520);
         dlgGrafico.setLocationRelativeTo(this);
         dlgGrafico.setUndecorated(true);

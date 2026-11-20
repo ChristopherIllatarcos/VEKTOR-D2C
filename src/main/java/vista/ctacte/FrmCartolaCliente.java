@@ -1,8 +1,10 @@
 package vista.ctacte;
 
 import dao.ClienteDAO;
+import dao.CuentaCorrienteDAO;
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Dialog;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridLayout;
@@ -11,10 +13,13 @@ import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.awt.event.KeyEvent;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.JComponent;
+import javax.swing.JDialog;
 import javax.swing.JInternalFrame;
 import javax.swing.JLabel;
 import javax.swing.JLayeredPane;
@@ -22,6 +27,7 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
+import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
@@ -35,6 +41,8 @@ import vista.ventas.DlgClientes;
  * @author caill
  */
 public class FrmCartolaCliente extends JInternalFrame {
+
+    private static final Logger LOGGER = Logger.getLogger(FrmCartolaCliente.class.getName());
 
     private JTextField txtRutCliente;
     private JLabel lblNombreCliente;
@@ -61,23 +69,25 @@ public class FrmCartolaCliente extends JInternalFrame {
 
     // Sistema de Temas Ciclos [F6]
     private final String[] listaTemas = {"Clipper Azul", "Morado Neón", "Turquesa Pro", "Esmeralda Terminal", "Naranja Fuego"};
-    private int indiceTemaActual = 0; // Empieza en Clipper Azul por defecto
+    private int indiceTemaActual = 0;
 
     public FrmCartolaCliente() {
-        super("4.- Cartola Interna CtaCte Cliente", true, true, true, true);
+        super("4.- Cartola Interna CtaCte Cliente", false, false, false, false);
         putClientProperty("JInternalFrame.isPalette", Boolean.FALSE);
 
-        // Aplicar tema inicial
         aplicarTema(listaTemas[indiceTemaActual]);
 
         initComponentsManual();
         configurarTablaDetalle();
         modeloTablaCartola = (DefaultTableModel) tablaCartola.getModel();
-        // Asignar el icono de Nexum directamente a este JInternalFrame
+
         try {
-            setFrameIcon(new javax.swing.ImageIcon(getClass().getResource("/vektor/cubo-azul-16.png")));
+            java.net.URL urlIcono = getClass().getResource("/vektor/cubo-azul-16.png");
+            if (urlIcono != null) {
+                setFrameIcon(new javax.swing.ImageIcon(urlIcono));
+            }
         } catch (Exception e) {
-            System.out.println("No se pudo cargar el icono interno: " + e.getMessage());
+            LOGGER.log(Level.WARNING, "No se pudo cargar el icono interno", e);
         }
     }
 
@@ -205,7 +215,7 @@ public class FrmCartolaCliente extends JInternalFrame {
     private void actualizarTextoAtajos() {
         String temaActual = listaTemas[indiceTemaActual];
         if (lblAtajos != null) {
-            lblAtajos.setText("  (Esc)apar    (F8): Buscar Cliente    (F2): Detalle    (F6) Tema: " + temaActual + "    (Print): Imprimir");
+            lblAtajos.setText("  (Esc)apar    (F8): Buscar Cliente    (F2): Detalle    (F6) Tema: " + temaActual + "    (F7): Imprimir PDF");
         }
     }
 
@@ -295,7 +305,12 @@ public class FrmCartolaCliente extends JInternalFrame {
         // 2. CENTRO (Tabla de Detalle / Cartola de Movimientos)
         // ==========================================
         String[] columnasCartola = {"Tipo Doc", "N° Doc", "Fecha Emisión", "Vencimiento", "Cargo ($)", "Abono ($)", "Saldo ($)"};
-        modeloTablaCartola = new DefaultTableModel(columnasCartola, 0);
+        modeloTablaCartola = new DefaultTableModel(columnasCartola, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
 
         tablaCartola = new JTable(modeloTablaCartola);
         tablaCartola.setFont(fConsola);
@@ -357,8 +372,8 @@ public class FrmCartolaCliente extends JInternalFrame {
 
                 if (w > 0 && h > 0) {
                     panelSuperior.setBounds(0, 0, w, 110);
-                    scrollCartola.setBounds(0, 110, w, h - 215);
-                    panelInferior.setBounds(0, h - 105, w, 105);
+                    scrollCartola.setBounds(0, 110, w, Math.max(0, h - 215));
+                    panelInferior.setBounds(0, Math.max(0, h - 105), w, 105);
                 }
             }
         });
@@ -372,10 +387,8 @@ public class FrmCartolaCliente extends JInternalFrame {
 
         atajarF8Cliente();
 
-        // F6 para Ciclar Tema en tiempo real
         getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
                 .put(KeyStroke.getKeyStroke(KeyEvent.VK_F6, 0), "ciclarTemaF6");
-
         getRootPane().getActionMap().put("ciclarTemaF6", new AbstractAction() {
             @Override
             public void actionPerformed(java.awt.event.ActionEvent e) {
@@ -383,11 +396,8 @@ public class FrmCartolaCliente extends JInternalFrame {
             }
         });
 
-        // F7 o evento alternativo para Imprimir / Exportar Cartola (o se mantiene F6 si prefieres, pero F6 ahora cambia el tema, asignamos F7 para imprimir o combinamos)
-        // Nota: El usuario usaba F6 para imprimir cartola previamente. Dado que F6 ahora es el estándar en todo el sistema para cambiar de tema, cambiamos Imprimir Cartola a F7 o dejamos F6 para tema y F7 para imprimir.
         getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
                 .put(KeyStroke.getKeyStroke(KeyEvent.VK_F7, 0), "imprimirCartolaF7");
-
         getRootPane().getActionMap().put("imprimirCartolaF7", new AbstractAction() {
             @Override
             public void actionPerformed(java.awt.event.ActionEvent e) {
@@ -395,10 +405,8 @@ public class FrmCartolaCliente extends JInternalFrame {
             }
         });
 
-        // F2 para Ver Detalle del Documento seleccionado en la tabla
         getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
                 .put(KeyStroke.getKeyStroke(KeyEvent.VK_F2, 0), "verDetalleF2");
-
         getRootPane().getActionMap().put("verDetalleF2", new AbstractAction() {
             @Override
             public void actionPerformed(java.awt.event.ActionEvent e) {
@@ -412,12 +420,10 @@ public class FrmCartolaCliente extends JInternalFrame {
     }
 
     private void configurarTablaDetalle() {
-        javax.swing.table.DefaultTableModel modeloTabla = (javax.swing.table.DefaultTableModel) tablaCartola.getModel();
+        tablaCartola.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)
+                .put(KeyStroke.getKeyStroke(KeyEvent.VK_F2, 0), "verDetalleF2");
 
-        tablaCartola.getInputMap(javax.swing.JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)
-                .put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_F2, 0), "verDetalleF2");
-
-        tablaCartola.getActionMap().put("verDetalleF2", new javax.swing.AbstractAction() {
+        tablaCartola.getActionMap().put("verDetalleF2", new AbstractAction() {
             @Override
             public void actionPerformed(java.awt.event.ActionEvent e) {
                 verDetalleDocumentoF2();
@@ -448,24 +454,24 @@ public class FrmCartolaCliente extends JInternalFrame {
                     List<Object[]> listaClientes = dao.cargarClientesDAO("");
                     buscador.cargarClientesEnTabla(listaClientes);
                 } catch (Exception ex) {
+                    LOGGER.log(Level.SEVERE, "Error al cargar clientes desde buscador F8", ex);
                     JOptionPane.showMessageDialog(FrmCartolaCliente.this,
-                            "Error al cargar los clientes: " + ex.getMessage(),
+                            "No se pudo cargar el listado de clientes.",
                             "Error de Base de Datos",
                             JOptionPane.ERROR_MESSAGE);
+                    return;
                 }
 
                 buscador.setVisible(true);
 
                 String[] datosCliente = buscador.getClienteSeleccionado();
-                if (datosCliente != null) {
-                    if (datosCliente.length > 0) {
-                        txtRutCliente.setText(datosCliente[0]);
+                if (datosCliente != null && datosCliente.length > 0) {
+                    String rutSeleccionado = datosCliente[0] != null ? datosCliente[0].trim() : "";
+                    txtRutCliente.setText(rutSeleccionado);
+                    if (datosCliente.length > 1 && datosCliente[1] != null) {
+                        lblNombreCliente.setText(datosCliente[1].trim());
                     }
-                    if (datosCliente.length > 1) {
-                        lblNombreCliente.setText(datosCliente[1]);
-                    }
-
-                    cargarCartolaCliente(datosCliente[0]);
+                    cargarCartolaCliente(rutSeleccionado);
                 }
             }
         });
@@ -482,19 +488,24 @@ public class FrmCartolaCliente extends JInternalFrame {
             ClienteDAO dao = new ClienteDAO();
             List<Object[]> listaClientes = dao.cargarClientesDAO(rut);
 
-            boolean encontrado = false;
+            String rutEncontrado = null;
+            String nombreEncontrado = "Sin Nombre";
+
             for (Object[] cli : listaClientes) {
-                String rutCli = cli[0] != null ? cli[0].toString() : "";
-                if (rutCli.equalsIgnoreCase(rut) || rutCli.contains(rut)) {
-                    txtRutCliente.setText(rutCli);
-                    lblNombreCliente.setText(cli[1] != null ? cli[1].toString() : "Sin Nombre");
-                    encontrado = true;
+                String rutCli = cli != null && cli.length > 0 && cli[0] != null ? cli[0].toString().trim() : "";
+                if (rutCli.equalsIgnoreCase(rut) || (!rutCli.isEmpty() && rutCli.contains(rut))) {
+                    rutEncontrado = rutCli;
+                    if (cli.length > 1 && cli[1] != null && !cli[1].toString().trim().isEmpty()) {
+                        nombreEncontrado = cli[1].toString().trim();
+                    }
                     break;
                 }
             }
 
-            if (encontrado) {
-                cargarCartolaCliente(rut);
+            if (rutEncontrado != null) {
+                txtRutCliente.setText(rutEncontrado);
+                lblNombreCliente.setText(nombreEncontrado);
+                cargarCartolaCliente(rutEncontrado);
             } else {
                 lblNombreCliente.setText("CLIENTE NO ENCONTRADO");
                 modeloTablaCartola.setRowCount(0);
@@ -502,7 +513,8 @@ public class FrmCartolaCliente extends JInternalFrame {
             }
 
         } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "Error al buscar el cliente: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            LOGGER.log(Level.SEVERE, "Error al buscar el cliente en cartola", ex);
+            JOptionPane.showMessageDialog(this, "No se pudo consultar el cliente.", "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 
@@ -510,9 +522,14 @@ public class FrmCartolaCliente extends JInternalFrame {
         modeloTablaCartola.setRowCount(0);
         double saldoTotalCalculado = 0.0;
 
+        if (rutCliente == null || rutCliente.trim().isEmpty()) {
+            lblTotalDeuda.setText("0");
+            return;
+        }
+
         try {
-            dao.CuentaCorrienteDAO ctaCteDao = new dao.CuentaCorrienteDAO();
-            List<Object[]> movimientos = ctaCteDao.obtenerCartolaCliente(rutCliente);
+            CuentaCorrienteDAO ctaCteDao = new CuentaCorrienteDAO();
+            List<Object[]> movimientos = ctaCteDao.obtenerCartolaCliente(rutCliente.trim());
 
             if (movimientos.isEmpty()) {
                 JOptionPane.showMessageDialog(this,
@@ -521,30 +538,20 @@ public class FrmCartolaCliente extends JInternalFrame {
                         JOptionPane.INFORMATION_MESSAGE);
             } else {
                 for (Object[] mov : movimientos) {
-                    double cargo = 0.0;
-                    double abono = 0.0;
-                    double saldo = 0.0;
-
-                    try {
-                        if (mov[4] != null) {
-                            cargo = Double.parseDouble(mov[4].toString());
-                        }
-                        if (mov[5] != null) {
-                            abono = Double.parseDouble(mov[5].toString());
-                        }
-                        if (mov[6] != null) {
-                            saldo = Double.parseDouble(mov[6].toString());
-                        }
-                    } catch (NumberFormatException e) {
-                        // Ignorar formato incorrecto
+                    if (mov == null || mov.length < 7) {
+                        continue;
                     }
+
+                    double cargo = parsearMontoTabla(mov[4]);
+                    double abono = parsearMontoTabla(mov[5]);
+                    double saldo = parsearMontoTabla(mov[6]);
 
                     saldoTotalCalculado += saldo;
 
                     modeloTablaCartola.addRow(new Object[]{
-                        mov[0],
-                        mov[1],
-                        mov[2],
+                        mov[0] != null ? mov[0] : "",
+                        mov[1] != null ? mov[1] : "",
+                        mov[2] != null ? mov[2] : "",
                         mov[3] != null ? mov[3] : "-",
                         String.format("$%,.0f", cargo),
                         String.format("$%,.0f", abono),
@@ -556,11 +563,25 @@ public class FrmCartolaCliente extends JInternalFrame {
             lblTotalDeuda.setText(String.format("%,.0f", saldoTotalCalculado));
 
         } catch (Exception ex) {
+            LOGGER.log(Level.SEVERE, "Error al cargar la cartola desde la base de datos", ex);
             JOptionPane.showMessageDialog(this,
-                    "Error al cargar la cartola desde la base de datos: " + ex.getMessage(),
+                    "No se pudo cargar la cartola desde la base de datos.",
                     "Error",
                     JOptionPane.ERROR_MESSAGE);
-            ex.printStackTrace();
+        }
+    }
+
+    private double parsearMontoTabla(Object valor) {
+        if (valor == null) {
+            return 0.0;
+        }
+        if (valor instanceof Number num) {
+            return num.doubleValue();
+        }
+        try {
+            return Double.parseDouble(valor.toString().trim().replace(",", "."));
+        } catch (NumberFormatException e) {
+            return 0.0;
         }
     }
 
@@ -581,8 +602,9 @@ public class FrmCartolaCliente extends JInternalFrame {
             utilidades.PDFUtils.generarCartolaClientePDF(rutCliente, nombreCliente, totalDeuda, modeloTablaCartola);
             JOptionPane.showMessageDialog(this, "¡Cartola exportada a PDF con éxito!");
         } catch (Exception ex) {
+            LOGGER.log(Level.SEVERE, "Error al generar el PDF de la cartola", ex);
             JOptionPane.showMessageDialog(this,
-                    "Error al generar el PDF de la cartola: " + ex.getMessage(),
+                    "No se pudo generar el PDF de la cartola.",
                     "Error de Impresión",
                     JOptionPane.ERROR_MESSAGE);
         }
@@ -592,30 +614,33 @@ public class FrmCartolaCliente extends JInternalFrame {
         int filaSeleccionada = tablaCartola.getSelectedRow();
 
         if (filaSeleccionada == -1) {
-            javax.swing.JOptionPane.showMessageDialog(this,
+            JOptionPane.showMessageDialog(this,
                     "Por favor, seleccione un movimiento de la tabla para ver su detalle.",
                     "Aviso",
-                    javax.swing.JOptionPane.WARNING_MESSAGE);
+                    JOptionPane.WARNING_MESSAGE);
             return;
         }
 
-        String tipoDoc = tablaCartola.getValueAt(filaSeleccionada, 0) != null ? tablaCartola.getValueAt(filaSeleccionada, 0).toString() : "";
-        String nroDoc = tablaCartola.getValueAt(filaSeleccionada, 1) != null ? tablaCartola.getValueAt(filaSeleccionada, 1).toString() : "";
-        String fechaEmision = tablaCartola.getValueAt(filaSeleccionada, 2) != null ? tablaCartola.getValueAt(filaSeleccionada, 2).toString() : "";
-        String vencimiento = tablaCartola.getValueAt(filaSeleccionada, 3) != null ? tablaCartola.getValueAt(filaSeleccionada, 3).toString() : "";
-        String cargo = tablaCartola.getValueAt(filaSeleccionada, 4) != null ? tablaCartola.getValueAt(filaSeleccionada, 4).toString() : "0";
-        String abono = tablaCartola.getValueAt(filaSeleccionada, 5) != null ? tablaCartola.getValueAt(filaSeleccionada, 5).toString() : "0";
-        String saldo = tablaCartola.getValueAt(filaSeleccionada, 6) != null ? tablaCartola.getValueAt(filaSeleccionada, 6).toString() : "0";
+        int filaModelo = tablaCartola.convertRowIndexToModel(filaSeleccionada);
 
-        javax.swing.JDialog dialogDetalle = new javax.swing.JDialog((java.awt.Frame) null, " Detalle de Documento [F2] ", true);
+        String tipoDoc = modeloTablaCartola.getValueAt(filaModelo, 0) != null ? modeloTablaCartola.getValueAt(filaModelo, 0).toString() : "";
+        String nroDoc = modeloTablaCartola.getValueAt(filaModelo, 1) != null ? modeloTablaCartola.getValueAt(filaModelo, 1).toString() : "";
+        String fechaEmision = modeloTablaCartola.getValueAt(filaModelo, 2) != null ? modeloTablaCartola.getValueAt(filaModelo, 2).toString() : "";
+        String vencimiento = modeloTablaCartola.getValueAt(filaModelo, 3) != null ? modeloTablaCartola.getValueAt(filaModelo, 3).toString() : "";
+        String cargo = modeloTablaCartola.getValueAt(filaModelo, 4) != null ? modeloTablaCartola.getValueAt(filaModelo, 4).toString() : "0";
+        String abono = modeloTablaCartola.getValueAt(filaModelo, 5) != null ? modeloTablaCartola.getValueAt(filaModelo, 5).toString() : "0";
+        String saldo = modeloTablaCartola.getValueAt(filaModelo, 6) != null ? modeloTablaCartola.getValueAt(filaModelo, 6).toString() : "0";
+
+        Window padre = SwingUtilities.getWindowAncestor(this);
+        JDialog dialogDetalle = new JDialog(padre, " Detalle de Documento [F2] ", Dialog.ModalityType.APPLICATION_MODAL);
         dialogDetalle.setSize(450, 320);
         dialogDetalle.setLocationRelativeTo(this);
-        dialogDetalle.setLayout(new java.awt.BorderLayout());
+        dialogDetalle.setLayout(new BorderLayout());
 
-        javax.swing.JPanel panelFondo = new javax.swing.JPanel();
+        JPanel panelFondo = new JPanel();
         panelFondo.setBackground(cFondo);
-        panelFondo.setLayout(new java.awt.BorderLayout(10, 10));
-        panelFondo.setBorder(javax.swing.BorderFactory.createLineBorder(cBordeAcento, 2));
+        panelFondo.setLayout(new BorderLayout(10, 10));
+        panelFondo.setBorder(BorderFactory.createLineBorder(cBordeAcento, 2));
 
         String contenido
                 = """
@@ -633,22 +658,22 @@ public class FrmCartolaCliente extends JInternalFrame {
                 + " Saldo Parcial ($) : " + saldo + "\n"
                 + " ═════════════════════════════════════════";
 
-        javax.swing.JTextArea areaTexto = new javax.swing.JTextArea(contenido);
-        areaTexto.setFont(new java.awt.Font("Monospaced", java.awt.Font.BOLD, 13));
+        JTextArea areaTexto = new JTextArea(contenido);
+        areaTexto.setFont(new Font("Monospaced", Font.BOLD, 13));
         areaTexto.setForeground(cTextoAmarillo);
         areaTexto.setBackground(cFondo);
         areaTexto.setEditable(false);
         areaTexto.setMargin(new java.awt.Insets(15, 15, 15, 15));
 
-        panelFondo.add(areaTexto, java.awt.BorderLayout.CENTER);
+        panelFondo.add(areaTexto, BorderLayout.CENTER);
 
         dialogDetalle.getRootPane().registerKeyboardAction(e -> dialogDetalle.dispose(),
-                javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_ESCAPE, 0),
-                javax.swing.JComponent.WHEN_IN_FOCUSED_WINDOW);
+                KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0),
+                JComponent.WHEN_IN_FOCUSED_WINDOW);
 
         dialogDetalle.getRootPane().registerKeyboardAction(e -> dialogDetalle.dispose(),
-                javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_ENTER, 0),
-                javax.swing.JComponent.WHEN_IN_FOCUSED_WINDOW);
+                KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0),
+                JComponent.WHEN_IN_FOCUSED_WINDOW);
 
         dialogDetalle.add(panelFondo);
         dialogDetalle.setVisible(true);

@@ -1,5 +1,6 @@
 package vista.bodega;
 
+import com.toedter.calendar.JDateChooser;
 import dao.VentaFamiliaDAO;
 import modelo.VentaFamiliaDTO;
 import org.jfree.chart.ChartFactory;
@@ -20,13 +21,20 @@ import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 import java.sql.SQLException;
 import java.text.DecimalFormat;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 public class FrmVentasPorFamilia extends JInternalFrame {
 
-    private JTextField txtFechaInicio;
-    private JTextField txtFechaFin;
+    private static final DateTimeFormatter FORMATO_FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
+    private JDateChooser dcFechaInicio;
+    private JDateChooser dcFechaFin;
     private JTable tablaReporte;
     private DefaultTableModel modeloTabla;
     private VentaFamiliaDAO ventaFamiliaDAO;
@@ -46,7 +54,7 @@ public class FrmVentasPorFamilia extends JInternalFrame {
 
     // Sistema de Temas Ciclos [F6]
     private final String[] listaTemas = {"Clipper Clásico", "Morado Neón", "Turquesa Pro", "Esmeralda Terminal", "Naranja Fuego"};
-    private int indiceTemaActual = 0; // Empieza en Clipper Clásico por defecto
+    private int indiceTemaActual = 0;
 
     // Lista en memoria para alimentar el gráfico ejecutivo con la última consulta
     private List<VentaFamiliaDTO> listaUltimaConsulta = new ArrayList<>();
@@ -55,7 +63,6 @@ public class FrmVentasPorFamilia extends JInternalFrame {
         super("8.- VENTAS POR FAMILIA", true, false, false, false);
         this.ventaFamiliaDAO = new VentaFamiliaDAO();
 
-        // Aplicar tema inicial
         aplicarTema(listaTemas[indiceTemaActual]);
 
         initComponents();
@@ -63,12 +70,21 @@ public class FrmVentasPorFamilia extends JInternalFrame {
 
         setSize(950, 520);
         setVisible(true);
-        // Asignar el icono de Nexum directamente a este JInternalFrame
+
         try {
-            setFrameIcon(new javax.swing.ImageIcon(getClass().getResource("/vektor/cubo-azul-16.png")));
+            java.net.URL urlIcono = getClass().getResource("/vektor/cubo-azul-16.png");
+            if (urlIcono != null) {
+                setFrameIcon(new ImageIcon(urlIcono));
+            }
         } catch (Exception e) {
             System.out.println("No se pudo cargar el icono interno: " + e.getMessage());
         }
+
+        SwingUtilities.invokeLater(() -> {
+            utilidades.IconoUtils.aplicarIcono(this);
+            estilizarDateChooser(dcFechaInicio);
+            estilizarDateChooser(dcFechaFin);
+        });
     }
 
     // ==========================================
@@ -160,14 +176,8 @@ public class FrmVentasPorFamilia extends JInternalFrame {
             lblFF.setForeground(cBordeAcento);
         }
 
-        if (txtFechaInicio != null) {
-            txtFechaInicio.setBackground(cTextoAmarillo);
-            txtFechaInicio.setBorder(BorderFactory.createLineBorder(cBordeAcento));
-        }
-        if (txtFechaFin != null) {
-            txtFechaFin.setBackground(cTextoAmarillo);
-            txtFechaFin.setBorder(BorderFactory.createLineBorder(cBordeAcento));
-        }
+        estilizarDateChooser(dcFechaInicio);
+        estilizarDateChooser(dcFechaFin);
 
         if (btnConsultar != null) {
             estilizarBotonConsola(btnConsultar, cBarraSur);
@@ -188,7 +198,6 @@ public class FrmVentasPorFamilia extends JInternalFrame {
             tablaReporte.getTableHeader().setForeground(cTextoAmarillo);
             tablaReporte.getTableHeader().setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, cBordeAcento));
 
-            // Actualizar renderizadores de celdas
             DefaultTableCellRenderer centerRenderer = crearRendererCelda(JLabel.CENTER);
             DefaultTableCellRenderer leftRenderer = crearRendererCelda(JLabel.LEFT);
             DefaultTableCellRenderer rightRenderer = crearRendererCelda(JLabel.RIGHT);
@@ -213,6 +222,52 @@ public class FrmVentasPorFamilia extends JInternalFrame {
 
         revalidate();
         repaint();
+    }
+
+    private JDateChooser crearDateChooserConsola(LocalDate fechaInicial, int anchoPx) {
+        JDateChooser chooser = new JDateChooser();
+        chooser.setDateFormatString("dd/MM/yyyy");
+        chooser.setFont(FUENTE_MONOSPACED);
+        chooser.setPreferredSize(new Dimension(anchoPx, 26));
+        if (fechaInicial != null) {
+            chooser.setDate(Date.from(fechaInicial.atStartOfDay(ZoneId.systemDefault()).toInstant()));
+        }
+        estilizarDateChooser(chooser);
+        return chooser;
+    }
+
+    private void estilizarDateChooser(JDateChooser chooser) {
+        if (chooser == null) {
+            return;
+        }
+        chooser.setBackground(cPanelNorte);
+        chooser.setForeground(Color.WHITE);
+        chooser.setFont(FUENTE_MONOSPACED);
+
+        Component editor = chooser.getDateEditor().getUiComponent();
+        if (editor instanceof JComponent jcomp) {
+            jcomp.setBackground(cTablaFondo);
+            jcomp.setForeground(Color.WHITE);
+            jcomp.setFont(FUENTE_MONOSPACED);
+            jcomp.setBorder(BorderFactory.createLineBorder(cBordeAcento));
+        }
+        if (editor instanceof JTextField tf) {
+            tf.setBackground(cTablaFondo);
+            tf.setForeground(Color.WHITE);
+            tf.setDisabledTextColor(Color.WHITE);
+            tf.setCaretColor(cTextoAmarillo);
+            tf.repaint();
+        }
+    }
+
+    private String obtenerTextoFecha(JDateChooser chooser) {
+        if (chooser == null || chooser.getDate() == null) {
+            return "";
+        }
+        LocalDate ld = Instant.ofEpochMilli(chooser.getDate().getTime())
+                .atZone(ZoneId.systemDefault())
+                .toLocalDate();
+        return ld.format(FORMATO_FECHA);
     }
 
     private DefaultTableCellRenderer crearRendererCelda(int alineacion) {
@@ -263,19 +318,17 @@ public class FrmVentasPorFamilia extends JInternalFrame {
         lblFI.setFont(new Font("Monospaced", Font.BOLD, 12));
         lblFI.setForeground(cBordeAcento);
 
-        java.time.LocalDate fechaActualSys = java.time.LocalDate.now();
-        java.time.format.DateTimeFormatter formatoDdf = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy");
-        String fechaHoyStr = fechaActualSys.format(formatoDdf);
-
-        txtFechaInicio = new JTextField(fechaHoyStr, 12);
-        estilizarCampoTextoAmarillo(txtFechaInicio);
+        LocalDate fechaActualSys = LocalDate.now();
+        dcFechaInicio = crearDateChooserConsola(fechaActualSys, 145);
 
         lblFF = new JLabel("HASTA:");
         lblFF.setFont(new Font("Monospaced", Font.BOLD, 12));
         lblFF.setForeground(cBordeAcento);
 
-        txtFechaFin = new JTextField(fechaHoyStr, 12);
-        estilizarCampoTextoAmarillo(txtFechaFin);
+        dcFechaFin = crearDateChooserConsola(fechaActualSys, 145);
+
+        dcFechaInicio.addPropertyChangeListener("date", evt -> estilizarDateChooser(dcFechaInicio));
+        dcFechaFin.addPropertyChangeListener("date", evt -> estilizarDateChooser(dcFechaFin));
 
         btnConsultar = new JButton("Consultar [Enter]");
         estilizarBotonConsola(btnConsultar, cBarraSur);
@@ -287,9 +340,9 @@ public class FrmVentasPorFamilia extends JInternalFrame {
 
         panelFiltros.add(lblTitulo);
         panelFiltros.add(lblFI);
-        panelFiltros.add(txtFechaInicio);
+        panelFiltros.add(dcFechaInicio);
         panelFiltros.add(lblFF);
-        panelFiltros.add(txtFechaFin);
+        panelFiltros.add(dcFechaFin);
         panelFiltros.add(btnConsultar);
         panelFiltros.add(btnGrafico);
 
@@ -363,14 +416,6 @@ public class FrmVentasPorFamilia extends JInternalFrame {
         add(panelPrincipal);
     }
 
-    private void estilizarCampoTextoAmarillo(JTextField txt) {
-        txt.setFont(new Font("Monospaced", Font.BOLD, 13));
-        txt.setBackground(Color.YELLOW);
-        txt.setForeground(Color.BLACK);
-        txt.setCaretColor(Color.BLACK);
-        txt.setBorder(BorderFactory.createLineBorder(cBordeAcento));
-    }
-
     private void estilizarBotonConsola(JButton btn, Color bg) {
         btn.setFont(new Font("Monospaced", Font.BOLD, 12));
         btn.setBackground(bg);
@@ -381,8 +426,8 @@ public class FrmVentasPorFamilia extends JInternalFrame {
     }
 
     private void ejecutarConsulta() {
-        String fechaIni = txtFechaInicio.getText().trim();
-        String fechaFin = txtFechaFin.getText().trim();
+        String fechaIni = obtenerTextoFecha(dcFechaInicio);
+        String fechaFin = obtenerTextoFecha(dcFechaFin);
 
         if (fechaIni.isEmpty() || fechaFin.isEmpty()) {
             JOptionPane.showMessageDialog(this, "Debe ingresar ambas fechas.", "VEKTOR D2C", JOptionPane.WARNING_MESSAGE);
@@ -523,7 +568,6 @@ public class FrmVentasPorFamilia extends JInternalFrame {
             }
         });
 
-        // [F6] Ciclar Tema en tiempo real
         KeyStroke strokeF6 = KeyStroke.getKeyStroke(KeyEvent.VK_F6, 0);
         rootPane.getInputMap(cond).put(strokeF6, "CICLAR_TEMA");
         rootPane.getActionMap().put("CICLAR_TEMA", new AbstractAction() {

@@ -1,5 +1,6 @@
 package vista.compras;
 
+import com.toedter.calendar.JDateChooser;
 import dao.IngresoCompraDAO;
 import javax.swing.*;
 import javax.swing.border.LineBorder;
@@ -9,14 +10,20 @@ import java.awt.*;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
 import java.awt.event.KeyEvent;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.util.Date;
 import java.util.List;
 
 public class FrmIngresoCompra extends JInternalFrame {
 
-    private JTextField txtFechaInicial;
-    private JTextField txtFechaFinal;
+    private static final DateTimeFormatter FORMATO_FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
+    private JDateChooser dcFechaInicial;
+    private JDateChooser dcFechaFinal;
     private JTextField txtBuscar;
 
     private JTable tablaCompras;
@@ -35,25 +42,32 @@ public class FrmIngresoCompra extends JInternalFrame {
     private final Font FUENTE_CONSOLA = new Font("Consolas", Font.BOLD, 14);
 
     // Sistema de Temas Ciclos [F6]
-    private final String[] listaTemas = {"Clipper Clásico", "Morado Neón", "Turquesa Pro","Esmeralda Terminal" , "Naranja Fuego"};
-    private int indiceTemaActual = 0; // Empieza en Esmeralda Terminal por defecto
+    private final String[] listaTemas = {"Clipper Clásico", "Morado Neón", "Turquesa Pro", "Esmeralda Terminal", "Naranja Fuego"};
+    private int indiceTemaActual = 0;
 
     public FrmIngresoCompra() {
         super("2.- INGRESO DE COMPRAS", false, false, false, false);
 
-        // Aplicar tema inicial
         aplicarTema(listaTemas[indiceTemaActual]);
 
         initComponentsManual();
         cargarFechasPorDefecto();
         ejecutarBusqueda();
-         // Forma segura para evitar advertencias de constructor en Swing
-        // Asignar el icono de Nexum directamente a este JInternalFrame
+
         try {
-            setFrameIcon(new javax.swing.ImageIcon(getClass().getResource("/vektor/cubo-azul-16.png")));
+            java.net.URL urlIcono = getClass().getResource("/vektor/cubo-azul-16.png");
+            if (urlIcono != null) {
+                setFrameIcon(new ImageIcon(urlIcono));
+            }
         } catch (Exception e) {
             System.out.println("No se pudo cargar el icono interno: " + e.getMessage());
         }
+
+        SwingUtilities.invokeLater(() -> {
+            utilidades.IconoUtils.aplicarIcono(this);
+            estilizarDateChooser(dcFechaInicial);
+            estilizarDateChooser(dcFechaFinal);
+        });
     }
 
     // ==========================================
@@ -165,8 +179,8 @@ public class FrmIngresoCompra extends JInternalFrame {
             panelAtajos.setBorder(new LineBorder(cBordeNeon, 1));
         }
 
-        estilizarCampoDinamico(txtFechaInicial);
-        estilizarCampoDinamico(txtFechaFinal);
+        estilizarDateChooser(dcFechaInicial);
+        estilizarDateChooser(dcFechaFinal);
         estilizarCampoDinamico(txtBuscar);
 
         actualizarTextoAtajos();
@@ -184,10 +198,73 @@ public class FrmIngresoCompra extends JInternalFrame {
         }
     }
 
+    private JDateChooser crearDateChooserConsola(LocalDate fechaInicial, int anchoPx) {
+        JDateChooser chooser = new JDateChooser();
+        chooser.setDateFormatString("dd/MM/yyyy");
+        chooser.setFont(FUENTE_CONSOLA);
+        chooser.setPreferredSize(new Dimension(anchoPx, 26));
+        if (fechaInicial != null) {
+            chooser.setDate(Date.from(fechaInicial.atStartOfDay(ZoneId.systemDefault()).toInstant()));
+        }
+        estilizarDateChooser(chooser);
+        return chooser;
+    }
+
+    private void estilizarDateChooser(JDateChooser chooser) {
+        if (chooser == null) {
+            return;
+        }
+        chooser.setBackground(cFondo);
+        chooser.setForeground(Color.WHITE);
+        chooser.setFont(FUENTE_CONSOLA);
+
+        Component editor = chooser.getDateEditor().getUiComponent();
+        if (editor instanceof JComponent jcomp) {
+            jcomp.setBackground(cPanelTabla);
+            jcomp.setForeground(Color.WHITE);
+            jcomp.setFont(FUENTE_CONSOLA);
+            jcomp.setBorder(new LineBorder(cBordeNeon, 1));
+        }
+        if (editor instanceof JTextField tf) {
+            tf.setBackground(cPanelTabla);
+            tf.setForeground(Color.WHITE);
+            tf.setDisabledTextColor(Color.WHITE);
+            tf.setCaretColor(cBordeNeon);
+            tf.repaint();
+        }
+    }
+
+    private void asignarFechaChooser(JDateChooser chooser, String fechaDdMmYyyy) {
+        if (chooser == null) {
+            return;
+        }
+        if (fechaDdMmYyyy != null && !fechaDdMmYyyy.trim().isEmpty()) {
+            try {
+                LocalDate ld = LocalDate.parse(fechaDdMmYyyy.trim(), FORMATO_FECHA);
+                chooser.setDate(Date.from(ld.atStartOfDay(ZoneId.systemDefault()).toInstant()));
+                estilizarDateChooser(chooser);
+                return;
+            } catch (DateTimeParseException ignored) {
+            }
+        }
+        chooser.setDate(new Date());
+        estilizarDateChooser(chooser);
+    }
+
+    private String obtenerTextoFecha(JDateChooser chooser) {
+        if (chooser == null || chooser.getDate() == null) {
+            return "";
+        }
+        LocalDate ld = Instant.ofEpochMilli(chooser.getDate().getTime())
+                .atZone(ZoneId.systemDefault())
+                .toLocalDate();
+        return ld.format(FORMATO_FECHA);
+    }
+
     private void actualizarTextoAtajos() {
         String temaActual = listaTemas[indiceTemaActual];
         if (lblAtajos != null) {
-            lblAtajos.setText("<html>(Ins) Nuevo | (F2) Editar | (Supr) Eliminar | (F5) Refrescar | (F6) Tema: " + temaActual + " | (Esc) Salir</html>");
+            lblAtajos.setText("<html>(Ins) Nuevo | (F2) Editar | (Supr) Eliminar | (F5) Limpiar | (F6) Tema: " + temaActual + " | (Esc) Salir</html>");
         }
     }
 
@@ -211,28 +288,27 @@ public class FrmIngresoCompra extends JInternalFrame {
         JPanel panelCampos = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 10));
         panelCampos.setOpaque(false);
 
-        txtFechaInicial = crearCampoTexto(10);
-        txtFechaFinal = crearCampoTexto(10);
+        LocalDate hoy = LocalDate.now();
+        dcFechaInicial = crearDateChooserConsola(hoy, 145);
+        dcFechaFinal = crearDateChooserConsola(hoy, 145);
         txtBuscar = crearCampoTexto(22);
 
-        panelCampos.add(crearEtiqueta("F. Inicial:"));
-        panelCampos.add(txtFechaInicial);
-        panelCampos.add(crearEtiqueta("F. Final:"));
-        panelCampos.add(txtFechaFinal);
-        panelCampos.add(crearEtiqueta("Factura/Proveedor/Producto:"));
-        panelCampos.add(txtBuscar);
-
-        txtFechaInicial.addActionListener(e -> {
+        dcFechaInicial.addPropertyChangeListener("date", evt -> {
+            estilizarDateChooser(dcFechaInicial);
             ejecutarBusqueda();
-            txtFechaFinal.requestFocusInWindow();
-            txtFechaFinal.selectAll();
         });
-        txtFechaFinal.addActionListener(e -> {
+        dcFechaFinal.addPropertyChangeListener("date", evt -> {
+            estilizarDateChooser(dcFechaFinal);
             ejecutarBusqueda();
-            txtBuscar.requestFocusInWindow();
-            txtBuscar.selectAll();
         });
         txtBuscar.addActionListener(e -> ejecutarBusqueda());
+
+        panelCampos.add(crearEtiqueta("F. Inicial:"));
+        panelCampos.add(dcFechaInicial);
+        panelCampos.add(crearEtiqueta("F. Final:"));
+        panelCampos.add(dcFechaFinal);
+        panelCampos.add(crearEtiqueta("Factura/Proveedor/Producto:"));
+        panelCampos.add(txtBuscar);
 
         panelSuperior.add(panelCampos, BorderLayout.CENTER);
         add(panelSuperior, BorderLayout.NORTH);
@@ -374,15 +450,21 @@ public class FrmIngresoCompra extends JInternalFrame {
     }
 
     private void cargarFechasPorDefecto() {
-        String hoy = LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
-        txtFechaInicial.setText(hoy);
-        txtFechaFinal.setText(hoy);
+        Date hoy = new Date();
+        dcFechaInicial.setDate(hoy);
+        dcFechaFinal.setDate(hoy);
+        estilizarDateChooser(dcFechaInicial);
+        estilizarDateChooser(dcFechaFinal);
     }
 
     private void ejecutarBusqueda() {
         modeloTabla.setRowCount(0);
         IngresoCompraDAO dao = new IngresoCompraDAO();
-        List<Object[]> resultados = dao.buscarCompras(txtFechaInicial.getText(), txtFechaFinal.getText(), txtBuscar.getText());
+        List<Object[]> resultados = dao.buscarCompras(
+                obtenerTextoFecha(dcFechaInicial),
+                obtenerTextoFecha(dcFechaFinal),
+                txtBuscar.getText()
+        );
 
         double sumaUnidades = 0;
         double sumaMonto = 0;
@@ -412,7 +494,10 @@ public class FrmIngresoCompra extends JInternalFrame {
     }
 
     private void abrirFormularioMantenimiento(boolean esEdicion) {
-        String fechaActual = txtFechaInicial.getText().isEmpty() ? LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) : txtFechaInicial.getText();
+        String fechaActual = obtenerTextoFecha(dcFechaInicial);
+        if (fechaActual.isEmpty()) {
+            fechaActual = LocalDate.now().format(FORMATO_FECHA);
+        }
         String fechaSel = "";
         String facturaSel = "";
         String proveeSel = "";
@@ -422,11 +507,12 @@ public class FrmIngresoCompra extends JInternalFrame {
         String costoSel = "0";
 
         if (esEdicion) {
-            int fila = tablaCompras.getSelectedRow();
-            if (fila == -1) {
+            int filaVista = tablaCompras.getSelectedRow();
+            if (filaVista == -1) {
                 JOptionPane.showMessageDialog(this, "Debe seleccionar un registro de la tabla para editar.", "Aviso", JOptionPane.WARNING_MESSAGE);
                 return;
             }
+            int fila = tablaCompras.convertRowIndexToModel(filaVista);
             fechaSel = (String) modeloTabla.getValueAt(fila, 0);
             facturaSel = (String) modeloTabla.getValueAt(fila, 1);
             proveeSel = (String) modeloTabla.getValueAt(fila, 2);
@@ -457,8 +543,9 @@ public class FrmIngresoCompra extends JInternalFrame {
         gbc.insets = new Insets(6, 10, 6, 10);
         gbc.anchor = GridBagConstraints.WEST;
 
-        JTextField txtF = crearCampoTexto(14);
-        txtF.setText(esEdicion ? fechaSel : fechaActual);
+        JDateChooser dcFecha = crearDateChooserConsola(null, 150);
+        asignarFechaChooser(dcFecha, esEdicion ? fechaSel : fechaActual);
+
         JTextField txtFact = crearCampoTexto(14);
         txtFact.setText(facturaSel);
         JTextField txtProv = crearCampoTexto(22);
@@ -474,9 +561,9 @@ public class FrmIngresoCompra extends JInternalFrame {
 
         gbc.gridx = 0;
         gbc.gridy = 0;
-        panelCentro.add(crearEtiqueta("Fecha (dd/MM/yyyy):"), gbc);
+        panelCentro.add(crearEtiqueta("Fecha:"), gbc);
         gbc.gridx = 1;
-        panelCentro.add(txtF, gbc);
+        panelCentro.add(dcFecha, gbc);
 
         gbc.gridx = 0;
         gbc.gridy = 1;
@@ -531,7 +618,11 @@ public class FrmIngresoCompra extends JInternalFrame {
 
         Runnable guardarAccion = () -> {
             try {
-                String f = txtF.getText().trim();
+                String f = obtenerTextoFecha(dcFecha);
+                if (f.isEmpty()) {
+                    JOptionPane.showMessageDialog(dialogo, "Seleccione una fecha válida.", "Aviso", JOptionPane.WARNING_MESSAGE);
+                    return;
+                }
                 String fact = txtFact.getText().trim();
                 String prov = txtProv.getText().trim();
                 String cond = "0";
@@ -569,11 +660,12 @@ public class FrmIngresoCompra extends JInternalFrame {
     }
 
     private void eliminarRegistroSeleccionado() {
-        int fila = tablaCompras.getSelectedRow();
-        if (fila == -1) {
+        int filaVista = tablaCompras.getSelectedRow();
+        if (filaVista == -1) {
             JOptionPane.showMessageDialog(this, "Debe seleccionar un registro de la tabla para eliminar.", "Aviso", JOptionPane.WARNING_MESSAGE);
             return;
         }
+        int fila = tablaCompras.convertRowIndexToModel(filaVista);
         String factura = (String) modeloTabla.getValueAt(fila, 1);
         String barra = (String) modeloTabla.getValueAt(fila, 3);
         String nombre = (String) modeloTabla.getValueAt(fila, 4);
@@ -661,16 +753,18 @@ public class FrmIngresoCompra extends JInternalFrame {
             }
         });
 
-        // [F5] Refrescar / Limpiar búsqueda
+        // [F5] Limpiar búsqueda
         root.getInputMap(cond).put(KeyStroke.getKeyStroke(KeyEvent.VK_F5, 0), "limpiar");
         root.getActionMap().put("limpiar", new AbstractAction() {
             @Override
             public void actionPerformed(java.awt.event.ActionEvent e) {
-                txtFechaInicial.setText("");
-                txtFechaFinal.setText("");
+                dcFechaInicial.setDate(null);
+                dcFechaFinal.setDate(null);
+                estilizarDateChooser(dcFechaInicial);
+                estilizarDateChooser(dcFechaFinal);
                 txtBuscar.setText("");
                 ejecutarBusqueda();
-                txtFechaInicial.requestFocusInWindow();
+                txtBuscar.requestFocusInWindow();
             }
         });
 
